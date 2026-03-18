@@ -12,7 +12,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.12.1</version>
         <configuration>
-          <release>17</release>
+          <release>21</release>
         </configuration>
       </plugin>
       <plugin>
@@ -21,6 +21,10 @@
         <version>0.0.8</version>
         <configuration>
           <mainClass>${mainClass}</mainClass>
+          <options>
+            <option>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</option>
+            <option>--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED</option>
+          </options>
         </configuration>
       </plugin>
       <plugin>
@@ -36,7 +40,7 @@
               <outputFile>${project.build.directory}/fca4j-ui-${project.version}-standalone.jar</outputFile>
               <transformers>
                 <transformer>
-                  <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
+                  <mainClass>${mainClass}</mainClass>
                 </transformer>
               </transformers>
               <filters>
@@ -83,9 +87,9 @@
   </dependencies>
   <properties>
     <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
-    <java.version>17</java.version>
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <java.version>21</java.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javafx.version>21.0.2</javafx.version>
   </properties>

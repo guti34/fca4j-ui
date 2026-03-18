@@ -14,58 +14,63 @@
     <description>Companion JavaFX application for FCA4J</description>
 
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
         <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
     </properties>
 
     <dependencies>
-        <!-- FCA4J -->
-		<dependency>
-			<groupId>fr.lirmm.fca4j</groupId>
-			<artifactId>fca4j-iset</artifactId>
-			<version>0.4.6</version>
-		</dependency>
-	  	<dependency>
-	  		<groupId>fr.lirmm.fca4j</groupId>
-	  		<artifactId>fca4j-core</artifactId>
-	  		<version>0.4.6</version>
-	  	</dependency>
-	  	<dependency>
-	  		<groupId>fr.lirmm.fca4j</groupId>
-	  		<artifactId>fca4j-io</artifactId>
-	  		<version>0.4.6</version>
-	  	</dependency>
-        <!-- JavaFX -->
+        <!-- FCA4J (installés localement via mvn install) -->
+        <dependency>
+            <groupId>fr.lirmm.fca4j</groupId>
+            <artifactId>fca4j-iset</artifactId>
+            <version>0.4.6</version>
+        </dependency>
+        <dependency>
+            <groupId>fr.lirmm.fca4j</groupId>
+            <artifactId>fca4j-core</artifactId>
+            <version>0.4.6</version>
+        </dependency>
+        <dependency>
+            <groupId>fr.lirmm.fca4j</groupId>
+            <artifactId>fca4j-io</artifactId>
+            <version>0.4.6</version>
+        </dependency>
+
+        <!-- JavaFX 21 — classifier win requis pour les natives Windows -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
-        <!-- WebView : affichage SVG interactif des treillis -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-web</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
-   <dependency>
-        <groupId>org.openjfx</groupId>
-        <artifactId>javafx-base</artifactId>
-        <version>${javafx.version}</version>
-    </dependency>
-    <dependency>
-        <groupId>org.openjfx</groupId>
-        <artifactId>javafx-graphics</artifactId>
-        <version>${javafx.version}</version>
-    </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>win</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>win</classifier>
+        </dependency>
 
         <!-- Tests -->
         <dependency>
@@ -78,23 +83,27 @@
 
     <build>
         <plugins>
-            <!-- Compilation Java 17 -->
+            <!-- Compilation Java 21 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.12.1</version>
                 <configuration>
-                    <release>17</release>
+                    <release>21</release>
                 </configuration>
             </plugin>
 
-            <!-- Lancement rapide en dev : mvn javafx:run -->
+            <!-- Lancement en dev : mvn javafx:run -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>${mainClass}</mainClass>
+                    <options>
+                        <option>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</option>
+                        <option>--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED</option>
+                    </options>
                 </configuration>
             </plugin>
 
@@ -114,10 +123,9 @@
                             <transformers>
                                 <transformer implementation=
                                     "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
+                                    <mainClass>${mainClass}</mainClass>
                                 </transformer>
                             </transformers>
-                            <!-- Exclure les signatures pour éviter les conflits -->
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
