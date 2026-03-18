@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="fr.lirmm.fca4j.ui.controller.PreferencesController"
+      spacing="14" style="-fx-padding: 20;" prefWidth="520">
+
+    <Label fx:id="titleLabel" style="-fx-font-size: 15px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <Label fx:id="jarLabel" style="-fx-font-weight: bold;"/>
+    <HBox spacing="6">
+        <TextField fx:id="jarPathField" HBox.hgrow="ALWAYS"/>
+        <Button text="%button.browse" onAction="#onBrowseJar"/>
+    </HBox>
+    <Label fx:id="jarHintLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+    <Label fx:id="dotLabel" style="-fx-font-weight: bold;"/>
+    <HBox spacing="6">
+        <TextField fx:id="dotPathField" HBox.hgrow="ALWAYS"/>
+        <Button text="%button.browse" onAction="#onBrowseDot"/>
+    </HBox>
+    <Label fx:id="dotHintLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label fx:id="langLabel" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="languageCombo" prefWidth="140"/>
+    </HBox>
+
+    <Separator/>
+    <HBox spacing="10" style="-fx-alignment: center-right;">
+        <Button fx:id="cancelButton" onAction="#onCancel"/>
+        <Button fx:id="saveButton" onAction="#onSave" style="-fx-font-weight: bold;"/>
+    </HBox>
+</VBox>

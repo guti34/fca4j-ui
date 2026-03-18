@@ -1,0 +1,30 @@
+.root {
+    -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+.button {
+    -fx-cursor: hand;
+}
+
+/* Bouton Exécuter */
+.button:focused {
+    -fx-border-color: #0078d4;
+    -fx-border-width: 2px;
+    -fx-border-radius: 3px;
+}
+
+/* Console */
+.text-area .content {
+    -fx-background-color: #1e1e1e;
+}
+.text-area {
+    -fx-text-fill: #d4d4d4;
+    -fx-control-inner-background: #1e1e1e;
+}
+
+/* Barre de statut */
+#statusLabel {
+    -fx-font-size: 11px;
+    -fx-text-fill: #444;
+}

@@ -1,0 +1,22 @@
+*/target/** 
+bin/
+tmp/
+target/
+.settings/
+.metadata
+*.tmp
+*.jar
+*.bak
+*.swp
+*~.nib
+local.properties
+.loadpath
+.recommenders
+
+# External tool builders
+.externalToolBuilders/
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+
