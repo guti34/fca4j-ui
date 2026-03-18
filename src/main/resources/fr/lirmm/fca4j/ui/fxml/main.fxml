@@ -26,25 +26,46 @@
             </ToolBar>
         </VBox>
     </top>
+
     <center>
-        <SplitPane dividerPositions="0.30">
-            <StackPane fx:id="commandPanelContainer" minWidth="280" prefWidth="320"/>
-            <SplitPane orientation="VERTICAL" dividerPositions="0.70">
-                <WebView fx:id="graphWebView"/>
-                <VBox>
-                    <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;">
-                        <Label text="Console" style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
-                        <Pane HBox.hgrow="ALWAYS"/>
-                        <Button text="%toolbar.clear" onAction="#onClearConsole"
-                                style="-fx-font-size: 10px;"/>
-                    </HBox>
-                    <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
-                              editable="false"
-                              style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
-                </VBox>
-            </SplitPane>
+        <SplitPane dividerPositions="0.28">
+
+            <!-- Panneau gauche : paramètres commande -->
+            <StackPane fx:id="commandPanelContainer" minWidth="280" prefWidth="310"/>
+
+            <!-- Panneau droit : onglets Graph / Editor -->
+            <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
+
+                <!-- Onglet Graphe -->
+                <Tab text="%tab.graph">
+                    <SplitPane orientation="VERTICAL" dividerPositions="0.70">
+                        <WebView fx:id="graphWebView"/>
+                        <VBox>
+                            <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
+                                  alignment="CENTER_LEFT">
+                                <Label text="Console"
+                                       style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <Button text="%toolbar.clear" onAction="#onClearConsole"
+                                        style="-fx-font-size: 10px;"/>
+                            </HBox>
+                            <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
+                                      editable="false"
+                                      style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
+                        </VBox>
+                    </SplitPane>
+                </Tab>
+
+                <!-- Onglet Éditeur de contexte -->
+                <Tab text="%tab.editor">
+                    <fx:include fx:id="contextEditor"
+                                source="context_editor.fxml"/>
+                </Tab>
+
+            </TabPane>
         </SplitPane>
     </center>
+
     <bottom>
         <HBox style="-fx-padding: 4 8; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;"
               spacing="12" alignment="CENTER_LEFT">

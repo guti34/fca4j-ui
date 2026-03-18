@@ -1,4 +1,7 @@
 module fr.lirmm.fca4j.ui {
+	requires fca4j.iset;
+	requires fca4j.core;
+	requires fca4j.io;
     requires javafx.controls;
     requires javafx.fxml;
     requires javafx.web;

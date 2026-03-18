@@ -24,6 +24,11 @@
 
     <dependencies>
         <!-- FCA4J -->
+		<dependency>
+			<groupId>fr.lirmm.fca4j</groupId>
+			<artifactId>fca4j-iset</artifactId>
+			<version>0.4.6</version>
+		</dependency>
 	  	<dependency>
 	  		<groupId>fr.lirmm.fca4j</groupId>
 	  		<artifactId>fca4j-core</artifactId>

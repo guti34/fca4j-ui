@@ -25,13 +25,19 @@ import java.util.ResourceBundle;
 
 public class MainController implements Initializable {
 
-    @FXML private ComboBox<String> commandCombo;
-    @FXML private StackPane        commandPanelContainer;
-    @FXML private WebView          graphWebView;
-    @FXML private TextArea         consoleArea;
-    @FXML private Label            statusLabel;
-    @FXML private Label            selectedNodeLabel;
+    // ── Widgets FXML ──────────────────────────────────────────────────────────
+    @FXML private ComboBox<String>  commandCombo;
+    @FXML private StackPane         commandPanelContainer;
+    @FXML private WebView           graphWebView;
+    @FXML private TextArea          consoleArea;
+    @FXML private Label             statusLabel;
+    @FXML private Label             selectedNodeLabel;
+    @FXML private TabPane           mainTabPane;
 
+    // ── Contrôleur de l'éditeur (injecté via fx:include) ─────────────────────
+    @FXML private ContextEditorController contextEditorController;
+
+    // ── Services ──────────────────────────────────────────────────────────────
     private final Fca4jRunner runner = new Fca4jRunner();
     private GraphRenderer renderer;
 
@@ -52,7 +58,7 @@ public class MainController implements Initializable {
             : I18n.get("status.not.configured"));
     }
 
-    // ── Chargement dynamique du panneau ───────────────────────────────────────
+    // ── Chargement dynamique du panneau de commande ───────────────────────────
 
     private void loadCommandPanel(String command) {
         try {
@@ -82,7 +88,6 @@ public class MainController implements Initializable {
                     ctrl.configure(desc, this::executeCommand);
                 }
             }
-
             commandPanelContainer.getChildren().setAll(panel);
 
         } catch (Exception e) {
@@ -103,6 +108,9 @@ public class MainController implements Initializable {
         consoleArea.clear();
         statusLabel.setText(I18n.get("status.running", args.get(0)));
         appendConsole("$ " + builder.toDisplayString());
+
+        // Basculer sur l'onglet graphe pour voir la console
+        mainTabPane.getSelectionModel().select(0);
 
         runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
             .thenAccept(result -> Platform.runLater(() -> {
@@ -127,11 +135,11 @@ public class MainController implements Initializable {
             appendConsole(I18n.get("error.graphviz.not.found", dotFile));
             return;
         }
-
         appendConsole(I18n.get("console.graphviz.render", dotFile));
         renderer.render(dotFile)
             .exceptionally(ex -> {
-                Platform.runLater(() -> appendConsole("[GraphViz] " + ex.getCause().getMessage()));
+                Platform.runLater(() ->
+                    appendConsole("[GraphViz] " + ex.getCause().getMessage()));
                 return null;
             });
     }
@@ -178,9 +186,7 @@ public class MainController implements Initializable {
 
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
+        alert.setTitle(title); alert.setHeaderText(null); alert.setContentText(message);
         alert.showAndWait();
     }
 }
