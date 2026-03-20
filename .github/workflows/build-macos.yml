@@ -33,11 +33,27 @@ jobs:
 
       # ── 3. Installer les JARs FCA4J depuis lib/ ────────────────────────────
       # Les JARs sont stockés dans lib/ dans le dépôt (non publiés sur Maven Central)
-      - name: Install FCA4J JARs
+      - name: Install FCA4J JARs and POMs
         run: |
-          mvn install:install-file -Dfile=lib/fca4j-iset-0.4.6.jar             -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset             -Dversion=0.4.6 -Dpackaging=jar -q
-          mvn install:install-file -Dfile=lib/fca4j-core-0.4.6.jar             -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core             -Dversion=0.4.6 -Dpackaging=jar -q
-          mvn install:install-file -Dfile=lib/fca4j-io-0.4.6.jar             -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io             -Dversion=0.4.6 -Dpackaging=jar -q
+          # POM parent requis par Maven
+          mvn install:install-file -Dfile=lib/fca4j-parent-0.4.6.pom \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-parent \
+            -Dversion=0.4.6 -Dpackaging=pom -q
+          # fca4j-iset
+          mvn install:install-file -Dfile=lib/fca4j-iset-0.4.6.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset \
+            -Dversion=0.4.6 -Dpackaging=jar \
+            -DpomFile=lib/fca4j-iset-0.4.6.pom -q
+          # fca4j-core
+          mvn install:install-file -Dfile=lib/fca4j-core-0.4.6.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core \
+            -Dversion=0.4.6 -Dpackaging=jar \
+            -DpomFile=lib/fca4j-core-0.4.6.pom -q
+          # fca4j-io
+          mvn install:install-file -Dfile=lib/fca4j-io-0.4.6.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io \
+            -Dversion=0.4.6 -Dpackaging=jar \
+            -DpomFile=lib/fca4j-io-0.4.6.pom -q
 
       # ── 4. Build JAR + dépendances ──────────────────────────────────────────
       - name: Build with Maven
