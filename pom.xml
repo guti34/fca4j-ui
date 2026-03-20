@@ -138,11 +138,6 @@
     <build>
         <pluginManagement>
             <plugins>
-                <!--
-                    Supprime les faux avertissements M2E pour les plugins
-                    qui ne sont pas directement supportés par Eclipse.
-                    N'affecte PAS l'exécution via mvn en ligne de commande.
-                -->
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>
                     <artifactId>lifecycle-mapping</artifactId>
@@ -196,7 +191,6 @@
                 </configuration>
             </plugin>
 
-            <!-- JAR fat pour mvn javafx:run et développement -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -230,7 +224,6 @@
                 </executions>
             </plugin>
 
-            <!-- Copie toutes les dépendances dans target/libs pour jpackage -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -250,7 +243,6 @@
                 </executions>
             </plugin>
 
-            <!-- JAR principal dans target/libs avec classpath manifest -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -267,7 +259,6 @@
                 </configuration>
             </plugin>
 
-            <!-- jpackage : mvn package jpackage:jpackage -DskipTests -->
             <plugin>
                 <groupId>org.panteleyev</groupId>
                 <artifactId>jpackage-maven-plugin</artifactId>
