@@ -13,6 +13,7 @@
                 <TextField fx:id="inputFileField" HBox.hgrow="ALWAYS"
                            promptText="%label.input.file"/>
                 <Button text="%button.browse" onAction="#onBrowseInput"/>
+                <Button fx:id="editInputButton" onAction="#onEditInput"/>
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.input.format"/>

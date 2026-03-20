@@ -63,6 +63,32 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>windows</id>
+      <properties>
+        <javafx.platform>win</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>linux</id>
+      <properties>
+        <javafx.platform>linux</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>mac</id>
+      <properties>
+        <javafx.platform>mac</javafx.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>mac-aarch64</id>
+      <properties>
+        <javafx.platform>mac-aarch64</javafx.platform>
+      </properties>
+    </profile>
+  </profiles>
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -86,6 +112,7 @@
     </dependency>
   </dependencies>
   <properties>
+    <javafx.platform>win</javafx.platform>
     <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
     <java.version>21</java.version>
     <maven.compiler.source>21</maven.compiler.source>

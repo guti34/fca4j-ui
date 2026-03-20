@@ -46,7 +46,7 @@ public class MainController implements Initializable {
         renderer = new GraphRenderer(graphWebView.getEngine());
         renderer.setOnNodeClick(this::onNodeSelected);
 
-        commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS");
+        commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT", "BINARIZE");
         commandCombo.setValue("LATTICE");
         commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
 
@@ -70,8 +70,12 @@ public class MainController implements Initializable {
             }
 
             String fxml = switch (desc.getFamily()) {
-                case LATTICE_AOC -> "/fr/lirmm/fca4j/ui/fxml/lattice_aoc.fxml";
-                case RULE_BASIS  -> "/fr/lirmm/fca4j/ui/fxml/rule_basis.fxml";
+                case LATTICE_AOC    -> "/fr/lirmm/fca4j/ui/fxml/lattice_aoc.fxml";
+                case RULE_BASIS     -> "/fr/lirmm/fca4j/ui/fxml/rule_basis.fxml";
+                case REDUCE_CLARIFY -> "/fr/lirmm/fca4j/ui/fxml/reduce_clarify.fxml";
+                case IRREDUCIBLE    -> "/fr/lirmm/fca4j/ui/fxml/irreducible.fxml";
+                case INSPECT        -> "/fr/lirmm/fca4j/ui/fxml/inspect.fxml";
+                case BINARIZE       -> "/fr/lirmm/fca4j/ui/fxml/binarize.fxml";
             };
 
             FXMLLoader loader = new FXMLLoader(
@@ -81,17 +85,54 @@ public class MainController implements Initializable {
             switch (desc.getFamily()) {
                 case LATTICE_AOC -> {
                     LatticeAocController ctrl = loader.getController();
-                    ctrl.configure(desc, this::executeCommand);
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
                 }
                 case RULE_BASIS -> {
                     RuleBasisController ctrl = loader.getController();
-                    ctrl.configure(desc, this::executeCommand);
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
+                }
+                case REDUCE_CLARIFY -> {
+                    ReduceClarifyController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
+                }
+                case IRREDUCIBLE -> {
+                    IrreducibleController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
+                }
+                case INSPECT -> {
+                    InspectController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
+                }
+                case BINARIZE -> {
+                    BinarizeController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
                 }
             }
             commandPanelContainer.getChildren().setAll(panel);
 
         } catch (Exception e) {
-            appendConsole(I18n.get("error.panel.load", e.getMessage()));
+            Throwable cause = e;
+            while (cause.getCause() != null) cause = cause.getCause();
+            appendConsole("[Erreur panneau] " + e.getClass().getSimpleName()
+                + ": " + e.getMessage());
+            appendConsole("[Cause] " + cause.getClass().getSimpleName()
+                + ": " + cause.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
+    // ── Ouverture dans l'éditeur ──────────────────────────────────────────────
+
+    /**
+     * Ouvre un fichier dans le ContextEditor et bascule sur l'onglet éditeur.
+     * Appelé depuis les panneaux de commande via le bouton "Éditer".
+     */
+    public void openInEditor(Path filePath) {
+        if (contextEditorController != null) {
+            contextEditorController.openFile(filePath);
+            // Basculer sur l'onglet éditeur (index 1)
+            mainTabPane.getSelectionModel().select(1);
         }
     }
 

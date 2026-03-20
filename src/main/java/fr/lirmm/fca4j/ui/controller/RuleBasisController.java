@@ -4,6 +4,9 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import java.nio.file.Path;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -25,6 +28,11 @@ public class RuleBasisController implements Initializable {
     @FXML private TitledPane  threadPane;
     @FXML private TitledPane  advancedPane;
     @FXML private Button      runButton;
+
+
+    // ── Bouton édition ────────────────────────────────────────────────────────
+    @FXML private Button           editInputButton;
+    private Consumer<Path>         openInEditor;
 
     // ── Fichiers ──────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
@@ -105,7 +113,9 @@ public class RuleBasisController implements Initializable {
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
     }
 
-    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun) {
+    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
+                          Consumer<Path> openInEditor) {
+        this.openInEditor = openInEditor;
         this.descriptor = desc;
         this.onRun      = onRun;
 
@@ -115,8 +125,14 @@ public class RuleBasisController implements Initializable {
         threadPane.setText(I18n.get("section.multithreading"));
         advancedPane.setText(I18n.get("section.advanced"));
         dbasisPane.setText(I18n.get("section.dbasis"));
-        algoPane.setText(I18n.get("section.algorithm"));
         runButton.setText(I18n.get("button.run"));
+
+        // Bouton "Ouvrir dans l'éditeur"
+        FontIcon editIcon = new FontIcon(Material2AL.EDIT);
+        editIcon.setIconSize(14);
+        editInputButton.setGraphic(editIcon);
+        editInputButton.setText("");
+        editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 
         boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
         boolean isDbasis    = "DBASIS".equals(desc.getName());
@@ -155,6 +171,19 @@ public class RuleBasisController implements Initializable {
         sortBySupportCheckBox.setManaged(isRuleBasis);
     }
 
+
+    @FXML
+    private void onEditInput() {
+        String path = inputFileField.getText().trim();
+        if (path.isBlank()) {
+            showError(I18n.get("error.no.input.title"),
+                      I18n.get("error.no.input.detail"));
+            return;
+        }
+        if (openInEditor != null)
+            openInEditor.accept(java.nio.file.Path.of(path));
+    }
+
     @FXML
     private void onBrowseInput() {
         FileChooser fc = new FileChooser();
@@ -162,7 +191,7 @@ public class RuleBasisController implements Initializable {
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("Contextes FCA",
-                "*.cxt", "*.slf", "*.xml", "*.cex", "*.csv"),
+                "*.slf","*.cex","*.cxt",  "*.xml",  "*.csv"),
             new FileChooser.ExtensionFilter("Tous les fichiers", "*.*")
         );
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
@@ -186,7 +215,7 @@ public class RuleBasisController implements Initializable {
             new FileChooser.ExtensionFilter("Texte", "*.txt"),
             new FileChooser.ExtensionFilter("JSON", "*.json"),
             new FileChooser.ExtensionFilter("XML", "*.xml"),
-            new FileChooser.ExtensionFilter("Datalog", "*.dlgp")
+            new FileChooser.ExtensionFilter("Datalog+", "*.dlgp")
         );
         File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
         if (f != null) {

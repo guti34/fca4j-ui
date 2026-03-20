@@ -4,9 +4,10 @@
 
 <ScrollPane fitToWidth="true"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="fr.lirmm.fca4j.ui.controller.LatticeAocController">
+            fx:controller="fr.lirmm.fca4j.ui.controller.IrreducibleController">
 <VBox spacing="10" style="-fx-padding: 12;">
 
+    <!-- Entrée -->
     <TitledPane fx:id="inputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
@@ -24,6 +25,7 @@
         </VBox>
     </TitledPane>
 
+    <!-- Sortie optionnelle -->
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
@@ -31,42 +33,21 @@
                            promptText="%label.output.file"/>
                 <Button text="%button.browse" onAction="#onBrowseOutput"/>
             </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.output.format"/>
-                <ComboBox fx:id="outputFormatCombo" prefWidth="100"/>
-            </HBox>
+            <Label text="%irr.output.hint"
+                   style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
         </VBox>
     </TitledPane>
 
-    <TitledPane fx:id="algoPane" collapsible="false">
+    <!-- Opération -->
+    <TitledPane fx:id="operationPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.algorithm"/>
-                <ComboBox fx:id="algoCombo" prefWidth="160"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
-                <Spinner fx:id="icebergSpinner" prefWidth="80"/>
-            </HBox>
+            <CheckBox fx:id="lobjCheckBox"  text="%irr.list.objects"/>
+            <CheckBox fx:id="lattrCheckBox" text="%irr.list.attributes"/>
+            <CheckBox fx:id="groupCheckBox" text="%rc.group.by.classes"/>
         </VBox>
     </TitledPane>
 
-    <TitledPane fx:id="graphvizPane" collapsible="true" expanded="true">
-        <VBox spacing="8" style="-fx-padding: 8;">
-            <CheckBox fx:id="dotCheckBox" text="%checkbox.generate.dot"/>
-            <HBox spacing="6">
-                <TextField fx:id="dotFileField" HBox.hgrow="ALWAYS"
-                           promptText="%label.dot.file"/>
-                <Button fx:id="dotBrowseButton" text="%button.browse" onAction="#onBrowseDot"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.display.mode"/>
-                <ComboBox fx:id="displayModeCombo" prefWidth="130"/>
-            </HBox>
-            <CheckBox fx:id="stabilityCheckBox" text="%checkbox.stability"/>
-        </VBox>
-    </TitledPane>
-
+    <!-- Options avancées -->
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
@@ -83,8 +64,8 @@
         </VBox>
     </TitledPane>
 
-    <Button fx:id="runButton" maxWidth="Infinity"
-            onAction="#onRun"
+    <!-- Bouton Exécuter -->
+    <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
             style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
 
 </VBox>

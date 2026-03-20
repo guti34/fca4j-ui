@@ -13,7 +13,7 @@ public class CommandDescriptor {
     public enum Separator    { COMMA, SEMICOLON, TAB }
 
     /** Famille de commande : détermine quel panneau FXML charger. */
-    public enum CommandFamily { LATTICE_AOC, RULE_BASIS }
+    public enum CommandFamily { LATTICE_AOC, RULE_BASIS, REDUCE_CLARIFY, IRREDUCIBLE, INSPECT, BINARIZE }
 
     private final String        name;
     private final String        description;
@@ -70,14 +70,48 @@ public class CommandDescriptor {
         "MULTITHREAD", false, CommandFamily.RULE_BASIS
     );
 
-    /** Retourne le descripteur pour un nom de commande, ou null. */
-    public static CommandDescriptor forName(String name) {
-        return switch (name) {
-            case "LATTICE"   -> LATTICE;
-            case "AOCPOSET"  -> AOCPOSET;
-            case "RULEBASIS" -> RULEBASIS;
-            case "DBASIS"    -> DBASIS;
-            default          -> null;
-        };
+    public static final CommandDescriptor CLARIFY = new CommandDescriptor(
+        "CLARIFY",
+        "Élimine les objets et/ou attributs dupliqués.",
+        List.of(), "", false, CommandFamily.REDUCE_CLARIFY
+    );
+
+    public static final CommandDescriptor REDUCE = new CommandDescriptor(
+        "REDUCE",
+        "Réduit le contexte aux irréductibles (objets et/ou attributs).",
+        List.of(), "", false, CommandFamily.REDUCE_CLARIFY
+    );
+
+    public static final CommandDescriptor IRREDUCIBLE = new CommandDescriptor(
+        "IRREDUCIBLE",
+        "Liste les objets et/ou attributs irréductibles.",
+        List.of(), "", false, CommandFamily.IRREDUCIBLE
+    );
+
+    public static final CommandDescriptor INSPECT = new CommandDescriptor(
+        "INSPECT",
+        "Inspecte un contexte formel et affiche taille, densité, etc.",
+        List.of(), "", false, CommandFamily.INSPECT
+    );
+    public static final CommandDescriptor BINARIZE = new CommandDescriptor(
+            "BINARIZE",
+            "Transforme une table multivaluée CSV en contexte formel binaire.",
+            List.of(), "", false, CommandFamily.BINARIZE
+        );
+
+        /** Retourne le descripteur pour un nom de commande, ou null. */
+        public static CommandDescriptor forName(String name) {
+            return switch (name) {
+                case "LATTICE"   -> LATTICE;
+                case "AOCPOSET"  -> AOCPOSET;
+                case "RULEBASIS" -> RULEBASIS;
+                case "DBASIS"    -> DBASIS;
+                case "CLARIFY"   -> CLARIFY;
+                case "REDUCE"    -> REDUCE;
+                case "IRREDUCIBLE" -> IRREDUCIBLE;
+                case "INSPECT"     -> INSPECT;
+                case "BINARIZE"    -> BINARIZE;
+                default          -> null;
+            };
+        }
     }
-}

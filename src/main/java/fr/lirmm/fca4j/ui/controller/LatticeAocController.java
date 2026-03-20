@@ -4,6 +4,9 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import java.nio.file.Path;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -15,6 +18,11 @@ import java.util.ResourceBundle;
 import java.util.function.Consumer;
 
 public class LatticeAocController implements Initializable {
+
+
+    // ── Bouton édition ────────────────────────────────────────────────────────
+    @FXML private Button           editInputButton;
+    private Consumer<Path>         openInEditor;
 
     // ── TitledPanes et bouton Run (titres gérés par I18n) ─────────────────────
     @FXML private TitledPane       inputPane;
@@ -114,7 +122,9 @@ public class LatticeAocController implements Initializable {
      * Configure le panneau pour LATTICE ou AOCPOSET.
      * Appelé depuis MainController après chargement du FXML.
      */
-    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun) {
+    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
+                          Consumer<Path> openInEditor) {
+        this.openInEditor = openInEditor;
         this.descriptor = desc;
         this.onRun      = onRun;
 
@@ -126,6 +136,13 @@ public class LatticeAocController implements Initializable {
         advancedPane.setText(I18n.get("section.advanced"));
         runButton.setText(I18n.get("button.run"));
 
+        // Bouton "Ouvrir dans l'éditeur"
+        FontIcon editIcon = new FontIcon(Material2AL.EDIT);
+        editIcon.setIconSize(14);
+        editInputButton.setGraphic(editIcon);
+        editInputButton.setText("");
+        editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
+
         // Algorithmes spécifiques à la commande
         algoCombo.getItems().setAll(desc.getAlgorithms());
         algoCombo.setValue(desc.getDefaultAlgorithm());
@@ -133,6 +150,19 @@ public class LatticeAocController implements Initializable {
         // Zone Iceberg : LATTICE seulement
         icebergLabel.setVisible(false);
         icebergSpinner.setVisible(false);
+    }
+
+
+    @FXML
+    private void onEditInput() {
+        String path = inputFileField.getText().trim();
+        if (path.isBlank()) {
+            showError(I18n.get("error.no.input.title"),
+                      I18n.get("error.no.input.detail"));
+            return;
+        }
+        if (openInEditor != null)
+            openInEditor.accept(java.nio.file.Path.of(path));
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
@@ -144,7 +174,7 @@ public class LatticeAocController implements Initializable {
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter(
-                "FCA contexts", "*.cxt", "*.slf", "*.xml", "*.cex", "*.csv"),
+                "FCA contexts", "*.slf","*.cex","*.cxt",  "*.xml",  "*.csv"),
             new FileChooser.ExtensionFilter("*.*", "*.*")
         );
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());

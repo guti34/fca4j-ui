@@ -6,6 +6,9 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
+
 import java.io.IOException;
 import java.net.URL;
 
@@ -16,6 +19,8 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
+        // Force le chargement du pack au démarrage
+        FontIcon.of(Material2AL.ADD); 
         URL fxml = getClass().getResource("/fr/lirmm/fca4j/ui/fxml/main.fxml");
         FXMLLoader loader = new FXMLLoader(fxml, I18n.getBundle());
         Scene scene = new Scene(loader.load(), 1200, 750);

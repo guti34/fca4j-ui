@@ -7,41 +7,43 @@
       spacing="0">
 
     <!-- ── Toolbar ── -->
-    <ToolBar>
-        <!-- Fichier -->
-        <Button text="%editor.btn.new"    onAction="#onNewContext"/>
-        <Button text="%editor.btn.open"   onAction="#onOpen"/>
-        <Button text="%editor.btn.save"   onAction="#onSave"/>
-        <Button text="%editor.btn.saveas" onAction="#onSaveAs"/>
+    <ToolBar styleClass="editor-toolbar">
+
+        <!-- Groupe Fichier -->
+        <Button fx:id="btnNew"    styleClass="icon-btn" onAction="#onNewContext"/>
+        <Button fx:id="btnOpen"   styleClass="icon-btn" onAction="#onOpen"/>
+        <Button fx:id="btnSave"   styleClass="icon-btn" onAction="#onSave"/>
+        <Button fx:id="btnSaveAs" styleClass="icon-btn" onAction="#onSaveAs"/>
+
         <Separator orientation="VERTICAL"/>
-        <!-- Structure -->
-        <Button text="%editor.btn.add.object"    onAction="#onAddObject"/>
-        <Button text="%editor.btn.add.attr"      onAction="#onAddAttribute"/>
-        <Button text="%editor.btn.del.object"    onAction="#onRemoveObject"/>
-        <Button text="%editor.btn.del.attr"      onAction="#onRemoveAttribute"/>
+
+        <!-- Groupe Structure -->
+        <Button fx:id="btnAddObject"    styleClass="icon-btn" onAction="#onAddObject"/>
+        <Button fx:id="btnAddAttr"      styleClass="icon-btn" onAction="#onAddAttribute"/>
+        <Button fx:id="btnDelObject"    styleClass="icon-btn" onAction="#onRemoveObject"/>
+        <Button fx:id="btnDelAttr"      styleClass="icon-btn" onAction="#onRemoveAttribute"/>
+
         <Separator orientation="VERTICAL"/>
+
         <!-- Renommer le contexte -->
-        <Button text="%editor.btn.rename" onAction="#onRenameContext"/>
+        <Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
+
         <Pane HBox.hgrow="ALWAYS"/>
-        <!-- Infos -->
-        <Label fx:id="statsLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+        <!-- Statistiques -->
+        <Label fx:id="statsLabel" styleClass="stats-label"/>
     </ToolBar>
 
     <!-- ── Titre du contexte ── -->
-    <HBox style="-fx-padding: 4 8; -fx-background-color: #f0f0f0;"
-          alignment="CENTER_LEFT" spacing="8">
-        <Label text="%editor.context.label" style="-fx-font-weight: bold;"/>
-        <Label fx:id="contextNameLabel"/>
+    <HBox styleClass="context-header" alignment="CENTER_LEFT" spacing="8">
+        <Label text="%editor.context.label" styleClass="context-header-label"/>
+        <Label fx:id="contextNameLabel" styleClass="context-name-label"/>
     </HBox>
 
     <!-- ── Tableau principal ── -->
-    <TableView fx:id="tableView" VBox.vgrow="ALWAYS"
-               style="-fx-font-size: 12px;">
-    </TableView>
+    <TableView fx:id="tableView" VBox.vgrow="ALWAYS"/>
 
     <!-- ── Barre de statut ── -->
-    <Label fx:id="statusLabel"
-           style="-fx-padding: 2 8; -fx-font-size: 11px;
-                  -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;"/>
+    <Label fx:id="statusLabel" styleClass="status-bar"/>
 
 </VBox>

@@ -42,6 +42,19 @@ public class CommandBuilder {
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
 
+    // ── CLARIFY / REDUCE ─────────────────────────────────────────────────────
+    private boolean clarifyObjects    = false; // -xo
+    private boolean clarifyAttributes = false; // -xa
+    private boolean groupByClasses    = false; // -u (REDUCE uniquement)
+
+    // ── IRREDUCIBLE ───────────────────────────────────────────────────────────
+    private boolean listObjects    = false; // -lobj
+    private boolean listAttributes = false; // -lattr
+
+    // ── BINARIZE ─────────────────────────────────────────────────────────────
+    private java.util.List<String> excludeAttrs = new java.util.ArrayList<>(); // -excl
+    private java.util.List<String> includeAttrs = new java.util.ArrayList<>(); // -incl
+
     // ── Setters fluents ──────────────────────────────────────────────────────
     public CommandBuilder command(String v)         { this.command = v;           return this; }
     public CommandBuilder inputFile(String v)       { this.inputFile = v;         return this; }
@@ -71,6 +84,16 @@ public class CommandBuilder {
     public CommandBuilder implFolder(String v)      { this.implFolder = v;        return this; }
     // DBASIS
     public CommandBuilder minimalSupport(int v)     { this.minimalSupport = v;    return this; }
+    // CLARIFY / REDUCE
+    public CommandBuilder clarifyObjects(boolean v)    { this.clarifyObjects = v;    return this; }
+    public CommandBuilder clarifyAttributes(boolean v) { this.clarifyAttributes = v; return this; }
+    public CommandBuilder groupByClasses(boolean v)    { this.groupByClasses = v;    return this; }
+    // IRREDUCIBLE
+    public CommandBuilder listObjects(boolean v)       { this.listObjects = v;       return this; }
+    public CommandBuilder listAttributes(boolean v)    { this.listAttributes = v;    return this; }
+    // BINARIZE
+    public CommandBuilder excludeAttrs(java.util.List<String> v) { this.excludeAttrs = v; return this; }
+    public CommandBuilder includeAttrs(java.util.List<String> v) { this.includeAttrs = v; return this; }
 
     // ── Construction ─────────────────────────────────────────────────────────
 
@@ -154,6 +177,19 @@ public class CommandBuilder {
         // ── Options DBASIS ───────────────────────────────────────────────────
         if (minimalSupport != null && minimalSupport > 0)
             add(args, "-x", String.valueOf(minimalSupport));
+
+        // ── Options CLARIFY / REDUCE ──────────────────────────────────────────
+        if (clarifyObjects)    args.add("-xo");
+        if (clarifyAttributes) args.add("-xa");
+        if (groupByClasses)    args.add("-u");
+
+        // ── Options IRREDUCIBLE ───────────────────────────────────────────────
+        if (listObjects)    args.add("-lobj");
+        if (listAttributes) args.add("-lattr");
+
+        // ── Options BINARIZE ──────────────────────────────────────────────────
+        for (String attr : excludeAttrs) { args.add("-excl"); args.add(attr); }
+        for (String attr : includeAttrs) { args.add("-incl"); args.add(attr); }
 
         // Timeout
         if (timeout != null && timeout > 0)
