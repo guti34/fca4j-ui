@@ -1,4 +1,4 @@
-name: Build macOS Installer 2
+name: Build macOS Installer
 
 on:
   push:
