@@ -58,6 +58,71 @@
         </executions>
       </plugin>
       <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>copy-dependencies</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-dependencies</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${jpackage.libs}</outputDirectory>
+              <includeScope>runtime</includeScope>
+              <overWriteReleases>false</overWriteReleases>
+              <overWriteSnapshots>true</overWriteSnapshots>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <outputDirectory>${jpackage.libs}</outputDirectory>
+          <archive>
+            <manifest>
+              <mainClass>${mainClass}</mainClass>
+              <addClasspath>true</addClasspath>
+              <classpathPrefix>./</classpathPrefix>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.panteleyev</groupId>
+        <artifactId>jpackage-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <name>${app.name}</name>
+          <appVersion>${app.version}</appVersion>
+          <vendor>${app.vendor}</vendor>
+          <description>${app.description}</description>
+          <copyright>${app.copyright}</copyright>
+          <input>${jpackage.libs}</input>
+          <mainJar>fca4j-ui-${project.version}.jar</mainJar>
+          <mainClass>${mainClass}</mainClass>
+          <destination>${jpackage.output}</destination>
+          <type>${jpackage.type}</type>
+          <icon>${jpackage.icon}</icon>
+          <javaOptions>
+            <option>--module-path=$APPDIR</option>
+            <option>--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.base</option>
+            <option>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</option>
+            <option>--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED</option>
+            <option>--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</option>
+          </javaOptions>
+          <winMenu>true</winMenu>
+          <winShortcut>true</winShortcut>
+          <winDirChooser>true</winDirChooser>
+          <winUpgradeUuid>a1b2c3d4-e5f6-7890-abcd-ef1234567890</winUpgradeUuid>
+          <linuxShortcut>true</linuxShortcut>
+          <linuxMenuGroup>Science</linuxMenuGroup>
+          <macPackageName>${app.name}</macPackageName>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
       </plugin>
@@ -68,24 +133,32 @@
       <id>windows</id>
       <properties>
         <javafx.platform>win</javafx.platform>
+        <jpackage.type>MSI</jpackage.type>
+        <jpackage.icon>src/main/deploy/icons/fca4j-ui.ico</jpackage.icon>
       </properties>
     </profile>
     <profile>
       <id>linux</id>
       <properties>
         <javafx.platform>linux</javafx.platform>
+        <jpackage.type>DEB</jpackage.type>
+        <jpackage.icon>src/main/deploy/icons/fca4j-ui.png</jpackage.icon>
       </properties>
     </profile>
     <profile>
       <id>mac</id>
       <properties>
         <javafx.platform>mac</javafx.platform>
+        <jpackage.type>DMG</jpackage.type>
+        <jpackage.icon>src/main/deploy/icons/fca4j-ui.icns</jpackage.icon>
       </properties>
     </profile>
     <profile>
       <id>mac-aarch64</id>
       <properties>
         <javafx.platform>mac-aarch64</javafx.platform>
+        <jpackage.type>DMG</jpackage.type>
+        <jpackage.icon>src/main/deploy/icons/fca4j-ui.icns</jpackage.icon>
       </properties>
     </profile>
   </profiles>
@@ -114,10 +187,17 @@
   <properties>
     <javafx.platform>win</javafx.platform>
     <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
-    <java.version>21</java.version>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
+    <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javafx.version>21.0.2</javafx.version>
+    <app.copyright>2024 LIRMM - Montpellier</app.copyright>
+    <app.name>FCA4J-UI</app.name>
+    <java.version>21</java.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <jpackage.output>${project.build.directory}/installer</jpackage.output>
+    <app.version>0.1.0</app.version>
+    <app.vendor>LIRMM - Montpellier</app.vendor>
+    <app.description>Companion application for FCA4J formal concept analysis</app.description>
+    <maven.compiler.target>21</maven.compiler.target>
   </properties>
 </project>

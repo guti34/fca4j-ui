@@ -14,6 +14,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
@@ -216,9 +218,24 @@ public class MainController implements Initializable {
         alert.setTitle(I18n.get("menu.help.about"));
         alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
         alert.setContentText(I18n.get("app.about.content"));
+ 
+        // Logo dans le dialogue About
+        try {
+            java.io.InputStream logoStream = getClass()
+                .getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
+            if (logoStream != null) {
+                ImageView logo = new ImageView(new Image(logoStream));
+                logo.setFitWidth(64);
+                logo.setFitHeight(64);
+                logo.setPreserveRatio(true);
+                logo.setSmooth(true);
+                alert.setGraphic(logo);
+            }
+        } catch (Exception ignored) {}
+ 
         alert.showAndWait();
     }
-
+ 
     @FXML private void onClearConsole() { consoleArea.clear(); }
 
     // ── Utilitaires ───────────────────────────────────────────────────────────

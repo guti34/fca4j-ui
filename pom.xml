@@ -20,55 +20,58 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
         <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
-        <!-- Valeur par défaut — surchargée par les profils -->
         <javafx.platform>win</javafx.platform>
+        <app.name>FCA4J-UI</app.name>
+        <app.vendor>LIRMM - Montpellier</app.vendor>
+        <app.description>Companion application for FCA4J formal concept analysis</app.description>
+        <app.copyright>2024 LIRMM - Montpellier</app.copyright>
+        <jpackage.output>${project.build.directory}/installer</jpackage.output>
+        <app.version>0.1.0</app.version>
+        <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
     </properties>
 
-    <!-- ── Profils OS — activés automatiquement ── -->
     <profiles>
         <profile>
             <id>windows</id>
-            <activation>
-                <os><family>windows</family></os>
-            </activation>
+            <activation><os><family>windows</family></os></activation>
             <properties>
                 <javafx.platform>win</javafx.platform>
+                <jpackage.type>MSI</jpackage.type>
+                <jpackage.icon>src/main/deploy/icons/fca4j-ui.ico</jpackage.icon>
             </properties>
         </profile>
         <profile>
             <id>linux</id>
-            <activation>
-                <os><family>unix</family></os>
-            </activation>
+            <activation><os><family>unix</family></os></activation>
             <properties>
                 <javafx.platform>linux</javafx.platform>
+                <jpackage.type>DEB</jpackage.type>
+                <jpackage.icon>src/main/deploy/icons/fca4j-ui.png</jpackage.icon>
             </properties>
         </profile>
         <profile>
             <id>mac</id>
-            <activation>
-                <os><family>mac</family></os>
-            </activation>
+            <activation><os><family>mac</family></os></activation>
             <properties>
                 <javafx.platform>mac</javafx.platform>
+                <jpackage.type>DMG</jpackage.type>
+                <jpackage.icon>src/main/deploy/icons/fca4j-ui.icns</jpackage.icon>
             </properties>
         </profile>
         <profile>
             <id>mac-aarch64</id>
             <activation>
-                <os>
-                    <family>mac</family>
-                    <arch>aarch64</arch>
-                </os>
+                <os><family>mac</family><arch>aarch64</arch></os>
             </activation>
             <properties>
                 <javafx.platform>mac-aarch64</javafx.platform>
+                <jpackage.type>DMG</jpackage.type>
+                <jpackage.icon>src/main/deploy/icons/fca4j-ui.icns</jpackage.icon>
             </properties>
         </profile>
     </profiles>
 
     <dependencies>
-        <!-- FCA4J (installés localement via mvn install) -->
         <dependency>
             <groupId>fr.lirmm.fca4j</groupId>
             <artifactId>fca4j-iset</artifactId>
@@ -84,18 +87,16 @@
             <artifactId>fca4j-io</artifactId>
             <version>0.4.6</version>
         </dependency>
-        <!-- icons -->
-		<dependency>
-		    <groupId>org.kordamp.ikonli</groupId>
-		    <artifactId>ikonli-javafx</artifactId>
-		    <version>12.3.1</version>
-		</dependency>
-		<dependency>
-		    <groupId>org.kordamp.ikonli</groupId>
-		    <artifactId>ikonli-material2-pack</artifactId>
-		    <version>12.3.1</version>
-		</dependency>
-        <!-- JavaFX — le classifier est résolu automatiquement selon l'OS -->
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-material2-pack</artifactId>
+            <version>12.3.1</version>
+        </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -126,8 +127,6 @@
             <version>${javafx.version}</version>
             <classifier>${javafx.platform}</classifier>
         </dependency>
-
-        <!-- Tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -137,18 +136,53 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!--
+                    Supprime les faux avertissements M2E pour les plugins
+                    qui ne sont pas directement supportés par Eclipse.
+                    N'affecte PAS l'exécution via mvn en ligne de commande.
+                -->
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-dependency-plugin</artifactId>
+                                        <versionRange>[3.0,)</versionRange>
+                                        <goals><goal>copy-dependencies</goal></goals>
+                                    </pluginExecutionFilter>
+                                    <action><ignore/></action>
+                                </pluginExecution>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-jar-plugin</artifactId>
+                                        <versionRange>[3.0,)</versionRange>
+                                        <goals><goal>jar</goal></goals>
+                                    </pluginExecutionFilter>
+                                    <action><ignore/></action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
-            <!-- Compilation Java 21 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.12.1</version>
-                <configuration>
-                    <release>21</release>
-                </configuration>
+                <configuration><release>21</release></configuration>
             </plugin>
 
-            <!-- Lancement en dev : mvn javafx:run -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -162,7 +196,7 @@
                 </configuration>
             </plugin>
 
-            <!-- JAR fat exécutable : mvn package -->
+            <!-- JAR fat pour mvn javafx:run et développement -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -196,7 +230,77 @@
                 </executions>
             </plugin>
 
-            <!-- Tests JUnit 5 -->
+            <!-- Copie toutes les dépendances dans target/libs pour jpackage -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-dependencies</goal></goals>
+                        <configuration>
+                            <outputDirectory>${jpackage.libs}</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>true</overWriteSnapshots>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- JAR principal dans target/libs avec classpath manifest -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <outputDirectory>${jpackage.libs}</outputDirectory>
+                    <archive>
+                        <manifest>
+                            <mainClass>${mainClass}</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>./</classpathPrefix>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <!-- jpackage : mvn package jpackage:jpackage -DskipTests -->
+            <plugin>
+                <groupId>org.panteleyev</groupId>
+                <artifactId>jpackage-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <name>${app.name}</name>
+                    <appVersion>${app.version}</appVersion>
+                    <vendor>${app.vendor}</vendor>
+                    <description>${app.description}</description>
+                    <copyright>${app.copyright}</copyright>
+                    <input>${jpackage.libs}</input>
+                    <mainJar>fca4j-ui-${project.version}.jar</mainJar>
+                    <mainClass>${mainClass}</mainClass>
+                    <destination>${jpackage.output}</destination>
+                    <type>${jpackage.type}</type>
+                    <icon>${jpackage.icon}</icon>
+                    <javaOptions>
+                        <option>--module-path=$APPDIR</option>
+                        <option>--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.base</option>
+                        <option>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</option>
+                        <option>--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED</option>
+                        <option>--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</option>
+                    </javaOptions>
+                    <winMenu>true</winMenu>
+                    <winShortcut>true</winShortcut>
+                    <winDirChooser>true</winDirChooser>
+                    <winUpgradeUuid>a1b2c3d4-e5f6-7890-abcd-ef1234567890</winUpgradeUuid>
+                    <linuxShortcut>true</linuxShortcut>
+                    <linuxMenuGroup>Science</linuxMenuGroup>
+                    <macPackageName>${app.name}</macPackageName>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
