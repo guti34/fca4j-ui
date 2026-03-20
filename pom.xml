@@ -26,7 +26,7 @@
         <app.description>Companion application for FCA4J formal concept analysis</app.description>
         <app.copyright>2024 LIRMM - Montpellier</app.copyright>
         <jpackage.output>${project.build.directory}/installer</jpackage.output>
-        <app.version>0.1.0</app.version>
+        <app.version>1.0.0</app.version>
         <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
     </properties>
 
