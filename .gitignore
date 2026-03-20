@@ -6,6 +6,8 @@ target/
 .metadata
 *.tmp
 *.jar
+# Ne pas ignorer lib/ — contient les JARs FCA4J nécessaires au build CI
+!lib/*.jar
 *.bak
 *.swp
 *~.nib
