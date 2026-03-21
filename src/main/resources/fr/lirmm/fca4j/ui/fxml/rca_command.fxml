@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="fr.lirmm.fca4j.ui.controller.RcaCommandController">
+<VBox spacing="10" style="-fx-padding: 12;">
+
+    <!-- Entrée : fichier famille -->
+    <TitledPane fx:id="inputPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="6">
+                <TextField fx:id="familyFileField" HBox.hgrow="ALWAYS"
+                           promptText="%rca.family.prompt"/>
+                <Button text="%button.browse" onAction="#onBrowseFamily"/>
+                <Button fx:id="editFamilyButton" onAction="#onEditFamily"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%rca.family.format"/>
+                <ComboBox fx:id="familyFormatCombo" prefWidth="120"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- Sortie -->
+    <TitledPane fx:id="outputPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="6">
+                <TextField fx:id="outputFolderField" HBox.hgrow="ALWAYS"
+                           promptText="%rca.output.folder.prompt"/>
+                <Button text="%button.browse" onAction="#onBrowseOutputFolder"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%rca.limit.steps"/>
+                <Spinner fx:id="limitStepsSpinner" prefWidth="80"/>
+                <Label text="%rca.limit.steps.hint"
+                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+            </HBox>
+            <CheckBox fx:id="storeExtendedFamily"   text="%rca.store.extended"/>
+            <CheckBox fx:id="storeExtendedEachStep" text="%rca.store.extended.steps"/>
+            <CheckBox fx:id="buildXml"              text="%rca.build.xml"/>
+            <CheckBox fx:id="addFullExtents"        text="%rca.full.extents"/>
+            <CheckBox fx:id="addFullIntents"        text="%rca.full.intents"/>
+        </VBox>
+    </TitledPane>
+
+    <!-- Algorithme -->
+    <TitledPane fx:id="algoPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.algorithm"/>
+                <ComboBox fx:id="algoCombo" prefWidth="150"/>
+            </HBox>
+            <HBox fx:id="icebergBox" spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
+                <Spinner fx:id="icebergSpinner" prefWidth="80"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- Renommage des attributs relationnels -->
+    <TitledPane fx:id="namingPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <CheckBox fx:id="renameRA"  text="%rca.rename.ra"/>
+            <CheckBox fx:id="renameRAI" text="%rca.rename.rai"/>
+            <CheckBox fx:id="renameRI"  text="%rca.rename.ri"/>
+            <CheckBox fx:id="nativeOnly" text="%rca.native.only"/>
+            <Separator/>
+            <CheckBox fx:id="cleanOption" text="%rca.clean"/>
+        </VBox>
+    </TitledPane>
+
+    <!-- GraphViz -->
+    <TitledPane fx:id="graphvizPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <CheckBox fx:id="buildDot"          text="%rca.build.dot.final"/>
+            <CheckBox fx:id="buildDotEachStep"  text="%rca.build.dot.steps"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.display.mode"/>
+                <ComboBox fx:id="displayModeCombo" prefWidth="130"/>
+            </HBox>
+            <CheckBox fx:id="stability"         text="%checkbox.stability"/>
+            <CheckBox fx:id="buildJson"         text="%rca.build.json.final"/>
+            <CheckBox fx:id="buildJsonEachStep" text="%rca.build.json.steps"/>
+        </VBox>
+    </TitledPane>
+
+    <!-- Options avancées -->
+    <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.timeout"/>
+                <Spinner fx:id="timeoutSpinner" prefWidth="80"/>
+                <Label text="%label.timeout.hint"
+                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+            </HBox>
+            <CheckBox fx:id="verboseCheckBox" text="%checkbox.verbose"/>
+        </VBox>
+    </TitledPane>
+
+    <!-- Bouton Exécuter -->
+    <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
+            style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
+
+</VBox>
+</ScrollPane>

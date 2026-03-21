@@ -19,9 +19,6 @@
                 </Menu>
             </MenuBar>
             <ToolBar>
-                <Label text="%toolbar.command"/>
-                <ComboBox fx:id="commandCombo" prefWidth="140"/>
-                <Separator orientation="VERTICAL"/>
                 <Label fx:id="statusLabel"/>
             </ToolBar>
         </VBox>
@@ -30,10 +27,35 @@
     <center>
         <SplitPane dividerPositions="0.28">
 
-            <!-- Panneau gauche : paramètres commande -->
-            <StackPane fx:id="commandPanelContainer" minWidth="280" prefWidth="310"/>
+            <!-- Panneau gauche : TabPane Context / RCA Family -->
+            <TabPane fx:id="commandTabPane" tabClosingPolicy="UNAVAILABLE"
+                     minWidth="280" prefWidth="310">
 
-            <!-- Panneau droit : onglets Graph / Editor -->
+                <!-- Onglet Context : sélecteur + panneau paramètres -->
+                <Tab fx:id="contextTab">
+                    <VBox spacing="0">
+                        <!-- Sélecteur de commande intégré à l'onglet -->
+                        <HBox spacing="8" alignment="CENTER_LEFT"
+                              style="-fx-padding: 6 8; -fx-border-color: #ddd;
+                                     -fx-border-width: 0 0 1 0; -fx-background-color: #f5f5f5;">
+                            <Label text="%toolbar.command"
+                                   style="-fx-font-weight: bold;"/>
+                            <ComboBox fx:id="commandCombo" prefWidth="160"
+                                      HBox.hgrow="ALWAYS"/>
+                        </HBox>
+                        <!-- Panneau paramètres de la commande sélectionnée -->
+                        <StackPane fx:id="commandPanelContainer" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                </Tab>
+
+                <!-- Onglet RCA Family : commande RCA -->
+                <Tab fx:id="rcaTab">
+                    <StackPane fx:id="rcaCommandContainer"/>
+                </Tab>
+
+            </TabPane>
+
+            <!-- Panneau droit : onglets Graph / Context Editor / Family Editor -->
             <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
 
                 <!-- Onglet Graphe -->
@@ -60,6 +82,12 @@
                 <Tab text="%tab.editor">
                     <fx:include fx:id="contextEditor"
                                 source="context_editor.fxml"/>
+                </Tab>
+
+                <!-- Onglet Family Editor -->
+                <Tab fx:id="familyEditorTab">
+                    <fx:include fx:id="familyEditor"
+                                source="family_editor.fxml"/>
                 </Tab>
 
             </TabPane>

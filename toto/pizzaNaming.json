@@ -1,0 +1,531 @@
+[
+{
+"attributes": {
+"vege": "vege"
+},
+"children": [
+9,
+10,
+11
+],
+"context": "Ingredient",
+"distanceToBottom": 1,
+"distanceToTop": 0,
+"id": 13,
+"objects": [],
+"parents": []
+},
+{
+"attributes": {
+"spring": "spring"
+},
+"children": [
+10
+],
+"context": "Ingredient",
+"distanceToBottom": 1,
+"distanceToTop": 0,
+"id": 12,
+"objects": [
+"scallop"
+],
+"parents": []
+},
+{
+"attributes": {
+"vegan": "vegan"
+},
+"children": [
+7,
+8
+],
+"context": "Ingredient",
+"distanceToBottom": 1,
+"distanceToTop": 1,
+"id": 11,
+"objects": [],
+"parents": [
+13
+]
+},
+{
+"attributes": {
+"summer": "summer"
+},
+"children": [
+7
+],
+"context": "Ingredient",
+"distanceToBottom": 1,
+"distanceToTop": 1,
+"id": 9,
+"objects": [
+"goatcheese"
+],
+"parents": [
+13
+]
+},
+{
+"attributes": {},
+"children": [],
+"context": "Ingredient",
+"distanceToBottom": 0,
+"distanceToTop": 1,
+"id": 10,
+"objects": [
+"burrata"
+],
+"parents": [
+12,
+13
+]
+},
+{
+"attributes": {
+"autumn": "autumn"
+},
+"children": [],
+"context": "Ingredient",
+"distanceToBottom": 0,
+"distanceToTop": 2,
+"id": 8,
+"objects": [
+"shallot",
+"mushroom"
+],
+"parents": [
+11
+]
+},
+{
+"attributes": {},
+"children": [],
+"context": "Ingredient",
+"distanceToBottom": 0,
+"distanceToTop": 2,
+"id": 7,
+"objects": [
+"tomato",
+"eggplant"
+],
+"parents": [
+9,
+11
+]
+},
+{
+"attributes": {
+"existForall_contains": {
+"concepts": [
+13
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+23,
+24
+],
+"context": "Pizza",
+"distanceToBottom": 3,
+"distanceToTop": 0,
+"id": 25,
+"objects": [],
+"parents": []
+},
+{
+"attributes": {
+"existForall_contains": {
+"concepts": [
+11
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+15,
+16
+],
+"context": "Pizza",
+"distanceToBottom": 2,
+"distanceToTop": 1,
+"id": 24,
+"objects": [],
+"parents": [
+25
+]
+},
+{
+"attributes": {
+"existForall_contains": {
+"concepts": [
+9
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+14,
+16
+],
+"context": "Pizza",
+"distanceToBottom": 2,
+"distanceToTop": 1,
+"id": 23,
+"objects": [],
+"parents": [
+25
+]
+},
+{
+"attributes": {
+"White": "White",
+"existForall_contains": {
+"concepts": [
+12
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+22
+],
+"context": "Pizza",
+"distanceToBottom": 1,
+"distanceToTop": 0,
+"id": 17,
+"objects": [
+"stjacques"
+],
+"parents": []
+},
+{
+"attributes": {
+"BBQ": "BBQ",
+"existForall_contains": {
+"concepts": [
+8
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+22
+],
+"context": "Pizza",
+"distanceToBottom": 1,
+"distanceToTop": 2,
+"id": 15,
+"objects": [
+"forest"
+],
+"parents": [
+24
+]
+},
+{
+"attributes": {
+"Red": "Red"
+},
+"children": [
+22
+],
+"context": "Pizza",
+"distanceToBottom": 1,
+"distanceToTop": 2,
+"id": 14,
+"objects": [
+"chevrette"
+],
+"parents": [
+23
+]
+},
+{
+"attributes": {
+"Pesto": "Pesto",
+"existForall_contains": {
+"concepts": [
+7
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [
+22
+],
+"context": "Pizza",
+"distanceToBottom": 1,
+"distanceToTop": 2,
+"id": 16,
+"objects": [
+"violet"
+],
+"parents": [
+23,
+24
+]
+},
+{
+"attributes": {
+"existForall_contains": {
+"concepts": [
+10
+],
+"operator": "existForall",
+"relation": "contains",
+"target": "Ingredient"
+}
+},
+"children": [],
+"context": "Pizza",
+"distanceToBottom": 0,
+"distanceToTop": 1,
+"id": 22,
+"objects": [],
+"parents": [
+14,
+15,
+16,
+17
+]
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+23,
+25
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+26,
+30
+],
+"context": "Pizzeria",
+"distanceToBottom": 3,
+"distanceToTop": 0,
+"id": 31,
+"objects": [],
+"parents": []
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+24
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+27,
+28
+],
+"context": "Pizzeria",
+"distanceToBottom": 3,
+"distanceToTop": 1,
+"id": 30,
+"objects": [],
+"parents": [
+31
+]
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+14
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+18,
+21
+],
+"context": "Pizzeria",
+"distanceToBottom": 2,
+"distanceToTop": 1,
+"id": 26,
+"objects": [],
+"parents": [
+31
+]
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+16
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+19,
+20
+],
+"context": "Pizzeria",
+"distanceToBottom": 2,
+"distanceToTop": 2,
+"id": 28,
+"objects": [],
+"parents": [
+30
+]
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+15
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+18,
+19
+],
+"context": "Pizzeria",
+"distanceToBottom": 2,
+"distanceToTop": 2,
+"id": 27,
+"objects": [],
+"parents": [
+30
+]
+},
+{
+"attributes": {
+"dine-in": "dine-in",
+"exist_serves": {
+"concepts": [
+17
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [
+29
+],
+"context": "Pizzeria",
+"distanceToBottom": 1,
+"distanceToTop": 2,
+"id": 21,
+"objects": [
+"smallitaly"
+],
+"parents": [
+26
+]
+},
+{
+"attributes": {
+"delivery": "delivery"
+},
+"children": [
+29
+],
+"context": "Pizzeria",
+"distanceToBottom": 1,
+"distanceToTop": 3,
+"id": 20,
+"objects": [
+"lafelicita"
+],
+"parents": [
+28
+]
+},
+{
+"attributes": {
+"takeaway": "takeaway"
+},
+"children": [
+29
+],
+"context": "Pizzeria",
+"distanceToBottom": 1,
+"distanceToTop": 3,
+"id": 19,
+"objects": [
+"eataly"
+],
+"parents": [
+27,
+28
+]
+},
+{
+"attributes": {
+"food-truck": "food-truck"
+},
+"children": [
+29
+],
+"context": "Pizzeria",
+"distanceToBottom": 1,
+"distanceToTop": 2,
+"id": 18,
+"objects": [
+"happizzy"
+],
+"parents": [
+26,
+27
+]
+},
+{
+"attributes": {
+"exist_serves": {
+"concepts": [
+22
+],
+"operator": "exist",
+"relation": "serves",
+"target": "Pizza"
+}
+},
+"children": [],
+"context": "Pizzeria",
+"distanceToBottom": 0,
+"distanceToTop": 3,
+"id": 29,
+"objects": [],
+"parents": [
+18,
+19,
+20,
+21
+]
+}
+]

@@ -55,6 +55,24 @@ public class CommandBuilder {
     private java.util.List<String> excludeAttrs = new java.util.ArrayList<>(); // -excl
     private java.util.List<String> includeAttrs = new java.util.ArrayList<>(); // -incl
 
+    // ── RCA ───────────────────────────────────────────────────────────────────
+    private String  familyFormat;          // -f
+    private boolean rcaClean       = false; // -clean
+    private boolean rcaRenameRA    = false; // -ra
+    private boolean rcaRenameRAI   = false; // -rai
+    private boolean rcaRenameRI    = false; // -ri
+    private boolean rcaNativeOnly  = false; // -na
+    private Integer rcaLimit;              // -x
+    private boolean rcaStoreExtended      = false; // -e
+    private boolean rcaStoreExtendedSteps = false; // -es
+    private boolean rcaBuildDot    = false; // -dot
+    private boolean rcaBuildDotSteps = false; // (dot at each step via -dot + -es combo)
+    private boolean rcaBuildJson   = false; // -json
+    private boolean rcaBuildJsonSteps = false;
+    private boolean rcaBuildXml    = false; // -xml
+    private boolean rcaFullExtents = false; // -fe
+    private boolean rcaFullIntents = false; // -fi
+
     // ── Setters fluents ──────────────────────────────────────────────────────
     public CommandBuilder command(String v)         { this.command = v;           return this; }
     public CommandBuilder inputFile(String v)       { this.inputFile = v;         return this; }
@@ -91,6 +109,23 @@ public class CommandBuilder {
     // IRREDUCIBLE
     public CommandBuilder listObjects(boolean v)       { this.listObjects = v;       return this; }
     public CommandBuilder listAttributes(boolean v)    { this.listAttributes = v;    return this; }
+    // RCA
+    public CommandBuilder familyFormat(String v)           { this.familyFormat = v;           return this; }
+    public CommandBuilder rcaClean(boolean v)              { this.rcaClean = v;               return this; }
+    public CommandBuilder rcaRenameRA(boolean v)           { this.rcaRenameRA = v;            return this; }
+    public CommandBuilder rcaRenameRAI(boolean v)          { this.rcaRenameRAI = v;           return this; }
+    public CommandBuilder rcaRenameRI(boolean v)           { this.rcaRenameRI = v;            return this; }
+    public CommandBuilder rcaNativeOnly(boolean v)         { this.rcaNativeOnly = v;          return this; }
+    public CommandBuilder rcaLimit(int v)                  { this.rcaLimit = v;               return this; }
+    public CommandBuilder rcaStoreExtended(boolean v)      { this.rcaStoreExtended = v;       return this; }
+    public CommandBuilder rcaStoreExtendedEachStep(boolean v){ this.rcaStoreExtendedSteps = v; return this; }
+    public CommandBuilder rcaBuildDot(boolean v)           { this.rcaBuildDot = v;            return this; }
+    public CommandBuilder rcaBuildDotEachStep(boolean v)   { this.rcaBuildDotSteps = v;       return this; }
+    public CommandBuilder rcaBuildJson(boolean v)          { this.rcaBuildJson = v;           return this; }
+    public CommandBuilder rcaBuildJsonEachStep(boolean v)  { this.rcaBuildJsonSteps = v;      return this; }
+    public CommandBuilder rcaBuildXml(boolean v)           { this.rcaBuildXml = v;            return this; }
+    public CommandBuilder rcaFullExtents(boolean v)        { this.rcaFullExtents = v;         return this; }
+    public CommandBuilder rcaFullIntents(boolean v)        { this.rcaFullIntents = v;         return this; }
     // BINARIZE
     public CommandBuilder excludeAttrs(java.util.List<String> v) { this.excludeAttrs = v; return this; }
     public CommandBuilder includeAttrs(java.util.List<String> v) { this.includeAttrs = v; return this; }
@@ -190,6 +225,24 @@ public class CommandBuilder {
         // ── Options BINARIZE ──────────────────────────────────────────────────
         for (String attr : excludeAttrs) { args.add("-excl"); args.add(attr); }
         for (String attr : includeAttrs) { args.add("-incl"); args.add(attr); }
+
+        // ── Options RCA ───────────────────────────────────────────────────────
+        if (familyFormat != null && !familyFormat.isBlank() && !"RCFT".equals(familyFormat))
+            add(args, "-f", familyFormat);
+        if (rcaClean)             args.add("-clean");
+        if (rcaRenameRA)          args.add("-ra");
+        if (rcaRenameRAI)         args.add("-rai");
+        if (rcaRenameRI)          args.add("-ri");
+        if (rcaNativeOnly)        args.add("-na");
+        if (rcaLimit != null && rcaLimit > 0)  add(args, "-x", String.valueOf(rcaLimit));
+        if (rcaStoreExtended)     args.add("-e");
+        if (rcaStoreExtendedSteps) args.add("-es");
+        if (rcaBuildDot)          args.add("-dot");
+        if (rcaBuildJson)         args.add("-json");
+        if (rcaBuildJsonSteps)    args.add("-json");
+        if (rcaBuildXml)          args.add("-xml");
+        if (rcaFullExtents)       args.add("-fe");
+        if (rcaFullIntents)       args.add("-fi");
 
         // Timeout
         if (timeout != null && timeout > 0)

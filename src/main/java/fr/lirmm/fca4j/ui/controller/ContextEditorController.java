@@ -104,8 +104,8 @@ public class ContextEditorController implements Initializable {
         setIconAndTooltip(btnSave,      new FontIcon(Material2MZ.SAVE),                   I18n.get("editor.tooltip.save"));
         setIconAndTooltip(btnSaveAs,    new FontIcon(Material2MZ.SAVE_ALT),               I18n.get("editor.tooltip.saveas"));
         setIconAndTooltip(btnAddObject, new FontIcon(Material2MZ.PLAYLIST_ADD),           I18n.get("editor.tooltip.add.object"));
-        setIconAndTooltip(btnAddAttr,   new FontIcon(Material2AL.ADD_CIRCLE_OUTLINE),     I18n.get("editor.tooltip.add.attr"));
         setIconAndTooltip(btnDelObject, new FontIcon(Material2MZ.REMOVE),                 I18n.get("editor.tooltip.del.object"));
+        setIconAndTooltip(btnAddAttr,   new FontIcon(Material2AL.ADD_CIRCLE_OUTLINE),     I18n.get("editor.tooltip.add.attr"));
         setIconAndTooltip(btnDelAttr,   new FontIcon(Material2MZ.REMOVE_CIRCLE_OUTLINE),  I18n.get("editor.tooltip.del.attr"));
         setIconAndTooltip(btnRename,    new FontIcon(Material2MZ.TEXT_FIELDS),            I18n.get("editor.tooltip.rename"));
     }

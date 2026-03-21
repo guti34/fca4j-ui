@@ -7,6 +7,8 @@ import fr.lirmm.fca4j.ui.service.Fca4jRunner;
 import fr.lirmm.fca4j.ui.service.GraphRenderer;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -14,8 +16,6 @@ import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.web.WebView;
 import javafx.stage.Modality;
@@ -36,6 +36,15 @@ public class MainController implements Initializable {
     @FXML private Label             selectedNodeLabel;
     @FXML private TabPane           mainTabPane;
 
+    // ── Onglet RCA Family ─────────────────────────────────────────────────────
+    @FXML private TabPane                commandTabPane;
+    @FXML private Tab                    contextTab;
+    @FXML private Tab                    rcaTab;
+    @FXML private StackPane              rcaCommandContainer;
+    @FXML private Tab                    familyEditorTab;
+    @FXML private FamilyEditorController familyEditorController;
+    private       RcaCommandController   rcaCommandController;
+
     // ── Contrôleur de l'éditeur (injecté via fx:include) ─────────────────────
     @FXML private ContextEditorController contextEditorController;
 
@@ -48,12 +57,38 @@ public class MainController implements Initializable {
         renderer = new GraphRenderer(graphWebView.getEngine());
         renderer.setOnNodeClick(this::onNodeSelected);
 
-        commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT", "BINARIZE");
+        commandCombo.getItems().addAll(
+            "LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS",
+            "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT", "BINARIZE");
         commandCombo.setValue("LATTICE");
         commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
 
         selectedNodeLabel.setText(I18n.get("panel.node.none"));
         loadCommandPanel("LATTICE");
+
+        // Titres des onglets commandes
+        if (commandTabPane != null) {
+            contextTab.setText(I18n.get("tab.context.commands"));
+            rcaTab.setText(I18n.get("tab.rca.family"));
+        }
+
+        // Charger le panneau RCA
+        loadRcaPanel();
+
+        // Synchroniser le fichier famille courant vers le panneau RCA
+        if (commandTabPane != null) {
+            rcaTab.selectedProperty().addListener((obs, old, selected) -> {
+                if (selected && rcaCommandController != null
+                        && familyEditorController != null
+                        && familyEditorController.getCurrentFile() != null) {
+                    rcaCommandController.setFamilyFile(familyEditorController.getCurrentFile());
+                }
+            });
+        }
+
+        // Titre onglet Family Editor dans la zone principale
+        if (familyEditorTab != null)
+            familyEditorTab.setText(I18n.get("tab.family.editor"));
 
         statusLabel.setText(AppPreferences.isFca4jConfigured()
             ? I18n.get("status.configured", AppPreferences.getFca4jJarPath())
@@ -123,18 +158,43 @@ public class MainController implements Initializable {
         }
     }
 
+    // ── Chargement du panneau RCA ─────────────────────────────────────────────
 
-    // ── Ouverture dans l'éditeur ──────────────────────────────────────────────
+    private void loadRcaPanel() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/fr/lirmm/fca4j/ui/fxml/rca_command.fxml"),
+                I18n.getBundle());
+            Node panel = loader.load();
+            rcaCommandController = loader.getController();
+            rcaCommandController.configure(this::executeCommand, this::openInFamilyEditor);
+            if (rcaCommandContainer != null)
+                rcaCommandContainer.getChildren().setAll(panel);
+        } catch (Exception e) {
+            Throwable cause = e;
+            while (cause.getCause() != null) cause = cause.getCause();
+            appendConsole("[RCA] " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            appendConsole("[Cause] " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-    /**
-     * Ouvre un fichier dans le ContextEditor et bascule sur l'onglet éditeur.
-     * Appelé depuis les panneaux de commande via le bouton "Éditer".
-     */
+    // ── Ouverture dans l'éditeur de contexte ─────────────────────────────────
+
     public void openInEditor(Path filePath) {
         if (contextEditorController != null) {
             contextEditorController.openFile(filePath);
-            // Basculer sur l'onglet éditeur (index 1)
             mainTabPane.getSelectionModel().select(1);
+        }
+    }
+
+    // ── Ouverture dans le Family Editor ──────────────────────────────────────
+
+    public void openInFamilyEditor(Path filePath) {
+        if (familyEditorController != null) {
+            familyEditorController.openFile(filePath);
+            // L'onglet Family Editor est le 3ème (index 2)
+            mainTabPane.getSelectionModel().select(2);
         }
     }
 
@@ -152,7 +212,6 @@ public class MainController implements Initializable {
         statusLabel.setText(I18n.get("status.running", args.get(0)));
         appendConsole("$ " + builder.toDisplayString());
 
-        // Basculer sur l'onglet graphe pour voir la console
         mainTabPane.getSelectionModel().select(0);
 
         runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
@@ -218,8 +277,7 @@ public class MainController implements Initializable {
         alert.setTitle(I18n.get("menu.help.about"));
         alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
         alert.setContentText(I18n.get("app.about.content"));
- 
-        // Logo dans le dialogue About
+
         try {
             java.io.InputStream logoStream = getClass()
                 .getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
@@ -232,10 +290,10 @@ public class MainController implements Initializable {
                 alert.setGraphic(logo);
             }
         } catch (Exception ignored) {}
- 
+
         alert.showAndWait();
     }
- 
+
     @FXML private void onClearConsole() { consoleArea.clear(); }
 
     // ── Utilitaires ───────────────────────────────────────────────────────────

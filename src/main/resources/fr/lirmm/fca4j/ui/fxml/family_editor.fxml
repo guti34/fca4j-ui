@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.canvas.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="fr.lirmm.fca4j.ui.controller.FamilyEditorController"
+      spacing="0">
+
+    <!-- Toolbar avec icônes -->
+    <ToolBar>
+        <Button fx:id="btnNew"           onAction="#onNew"/>
+        <Button fx:id="btnOpen"          onAction="#onOpen"/>
+        <Button fx:id="btnSave"          onAction="#onSave"/>
+        <Button fx:id="btnSaveAs"        onAction="#onSaveAs"/>
+        <Separator/>
+        <Button fx:id="btnAddContext"    onAction="#onAddContext"/>
+        <Button fx:id="btnRemoveContext" onAction="#onRemoveContext"/>
+        <Button fx:id="btnRenameContext" onAction="#onRenameContext"/>
+        <Separator/>
+        <Button fx:id="btnAddRelation"    onAction="#onAddRelation"/>
+        <Button fx:id="btnRemoveRelation" onAction="#onRemoveRelation"/>
+        <Separator/>
+        <Button fx:id="btnAutoLayout"    onAction="#onAutoLayout"/>
+        <Separator/>
+        <Label fx:id="familyNameLabel" style="-fx-font-weight: bold;"/>
+        <Label fx:id="statsLabel"
+               style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
+    </ToolBar>
+
+    <!-- Zone principale : graphe en haut, tableaux en bas -->
+    <SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS" dividerPositions="0.55">
+
+        <!-- Graphe -->
+        <Pane fx:id="graphPane" style="-fx-background-color: #f8f9fa;">
+            <Canvas fx:id="graphCanvas"/>
+        </Pane>
+
+        <!-- Tableaux : contextes à gauche, relations à droite -->
+        <SplitPane orientation="HORIZONTAL" dividerPositions="0.5">
+
+            <!-- Contextes formels -->
+            <VBox spacing="4" style="-fx-padding: 6;">
+                <Label text="%family.table.contexts"
+                       style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <TableView fx:id="contextsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="ctxNameCol" prefWidth="140"/>
+                        <TableColumn fx:id="ctxObjCol"  prefWidth="70"/>
+                        <TableColumn fx:id="ctxAttrCol" prefWidth="70"/>
+                    </columns>
+                    <placeholder><Label text="%family.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Contextes relationnels -->
+            <VBox spacing="4" style="-fx-padding: 6;">
+                <Label text="%family.table.relations"
+                       style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <TableView fx:id="relationsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="relNameCol"   prefWidth="120"/>
+                        <TableColumn fx:id="relSourceCol" prefWidth="90"/>
+                        <TableColumn fx:id="relTargetCol" prefWidth="90"/>
+                        <TableColumn fx:id="relOpCol"     prefWidth="100"/>
+                    </columns>
+                    <placeholder><Label text="%family.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+        </SplitPane>
+    </SplitPane>
+
+    <!-- Barre de statut -->
+    <Label fx:id="statusLabel"
+           style="-fx-padding: 2 8; -fx-font-size: 11px; -fx-text-fill: gray;"/>
+
+</VBox>
