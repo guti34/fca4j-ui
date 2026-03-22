@@ -19,10 +19,12 @@ public class GraphRenderer {
 
     private final WebEngine webEngine;
     private Consumer<String> onNodeClick;
-
+    private Path currentDotFile = null;
+    
     public GraphRenderer(WebEngine webEngine) {
         this.webEngine = webEngine;
     }
+    public Path getCurrentDotFile() { return currentDotFile; }
 
     /** Callback déclenché quand l'utilisateur clique sur un nœud du treillis. */
     public void setOnNodeClick(Consumer<String> handler) {
@@ -37,6 +39,7 @@ public class GraphRenderer {
      * @return        Future complété quand le rendu est chargé
      */
     public CompletableFuture<Void> render(Path dotFile) {
+    	   this.currentDotFile = dotFile;  // ← mémoriser
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // 1. Appel GraphViz : dot → SVG dans un fichier temporaire

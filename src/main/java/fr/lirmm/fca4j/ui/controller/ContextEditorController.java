@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.function.Consumer;
 
 /**
  * Contrôleur de l'éditeur de contexte formel binaire.
@@ -84,8 +85,15 @@ public class ContextEditorController implements Initializable {
     // ── État ──────────────────────────────────────────────────────────────────
     private IBinaryContext context;
     private Path           currentFile;
+    private boolean fromFamily = false;
     private boolean        modified = false;
+    
+    private Runnable onSave;
 
+    public void setOnSave(Consumer<IBinaryContext> onSave) {
+        this.onSaveCallback = onSave;
+    }
+    private Consumer<IBinaryContext> onSaveCallback;
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         tableView.setEditable(true);
@@ -125,7 +133,12 @@ public class ContextEditorController implements Initializable {
         rebuildTable();
         updateLabels();
     }
-
+    public void loadContextFromFamily(IBinaryContext ctx, Consumer<IBinaryContext> onSaveCallback) {
+        this.fromFamily = true;
+        this.currentFile = null;
+        this.onSaveCallback = onSaveCallback;
+        loadContext(ctx);
+    }
     // ── Construction de la TableView ──────────────────────────────────────────
 
     private void rebuildTable() {
@@ -255,6 +268,9 @@ public class ContextEditorController implements Initializable {
     @FXML
     private void onNewContext() {
         if (!confirmDiscardChanges()) return;
+        fromFamily = false;
+        onSaveCallback = null;
+        if (!confirmDiscardChanges()) return;
         String name = promptText(I18n.get("editor.dialog.new.title"),
                                  I18n.get("editor.dialog.new.prompt"),
                                  I18n.get("editor.new.context.name"));
@@ -266,6 +282,9 @@ public class ContextEditorController implements Initializable {
     @FXML
     private void onOpen() {
         if (!confirmDiscardChanges()) return;
+        fromFamily = false;
+        onSaveCallback = null;
+       if (!confirmDiscardChanges()) return;
         FileChooser fc = buildFileChooser(I18n.get("editor.open.title"), false);
         File f = fc.showOpenDialog(tableView.getScene().getWindow());
         if (f == null) return;
@@ -282,17 +301,33 @@ public class ContextEditorController implements Initializable {
 
     @FXML
     private void onSave() {
+        if (fromFamily) {
+            // Save = mettre à jour dans la famille, pas de fichier
+            modified = false;
+            updateLabels();
+            if (onSaveCallback != null) {
+                onSaveCallback.accept(context);
+                onSaveCallback = null;
+                fromFamily = false;
+            }
+            // Vider l'éditeur après sauvegarde dans la famille
+            loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
+            currentFile = null;
+            return;
+        }
         if (currentFile == null) { onSaveAs(); return; }
         saveToFile(currentFile, ContextFormat.fromFile(currentFile.toFile()));
     }
-
     @FXML
     private void onSaveAs() {
+        Consumer<IBinaryContext> savedCallback = onSaveCallback;
+        onSaveCallback = null; // désactiver temporairement
         FileChooser fc = buildFileChooser(I18n.get("editor.saveas.title"), true);
         File f = fc.showSaveDialog(tableView.getScene().getWindow());
         if (f == null) return;
         currentFile = f.toPath();
         saveToFile(currentFile, ContextFormat.fromFile(f));
+        onSaveCallback = savedCallback;        
     }
 
     private void saveToFile(Path path, ContextFormat format) {
@@ -301,11 +336,11 @@ public class ContextEditorController implements Initializable {
             modified = false;
             updateLabels();
             statusLabel.setText(I18n.get("editor.status.saved", path.getFileName()));
+            // Ne pas appeler onSaveCallback ici — géré par onSave()
         } catch (Exception e) {
             showError(I18n.get("editor.error.write.title"), e.getMessage());
         }
     }
-
     // ── Actions structure ─────────────────────────────────────────────────────
 
     @FXML

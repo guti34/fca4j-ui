@@ -102,6 +102,13 @@
     <!-- Bouton Exécuter -->
     <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
             style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-
+	<!-- Résultats DOT -->
+	<TitledPane fx:id="resultsPane" collapsible="true" expanded="false">
+	    <VBox spacing="6" style="-fx-padding: 8;">
+	        <Label fx:id="resultsFolderLabel"
+	               style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+	        <ListView fx:id="dotFilesList" prefHeight="140"/>
+    </VBox>
+</TitledPane>
 </VBox>
 </ScrollPane>

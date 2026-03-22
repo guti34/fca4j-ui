@@ -59,25 +59,34 @@
             <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
 
                 <!-- Onglet Graphe -->
-                <Tab text="%tab.graph">
-                    <SplitPane orientation="VERTICAL" dividerPositions="0.70">
-                        <WebView fx:id="graphWebView"/>
-                        <VBox>
-                            <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
-                                  alignment="CENTER_LEFT">
-                                <Label text="Console"
-                                       style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
-                                <Pane HBox.hgrow="ALWAYS"/>
-                                <Button text="%toolbar.clear" onAction="#onClearConsole"
-                                        style="-fx-font-size: 10px;"/>
-                            </HBox>
-                            <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
-                                      editable="false"
-                                      style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
-                        </VBox>
-                    </SplitPane>
-                </Tab>
-
+			<Tab text="%tab.graph">
+			    <VBox>
+			        <!-- Toolbar export -->
+			        <ToolBar>
+			            <Button fx:id="btnSaveDot" onAction="#onSaveDot"  disable="true"/>
+			            <Separator/>
+			            <Button fx:id="btnExportSvg" onAction="#onExportSvg" disable="true"/>
+			            <Button fx:id="btnExportPng" onAction="#onExportPng" disable="true"/>
+			            <Button fx:id="btnExportPdf" onAction="#onExportPdf" disable="true"/>
+			        </ToolBar>
+			        <SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
+			            <WebView fx:id="graphWebView"/>
+			            <VBox>
+			                <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
+			                      alignment="CENTER_LEFT">
+			                    <Label text="Console"
+			                           style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+			                    <Pane HBox.hgrow="ALWAYS"/>
+			                    <Button text="%toolbar.clear" onAction="#onClearConsole"
+			                            style="-fx-font-size: 10px;"/>
+			                </HBox>
+			                <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
+			                          editable="false"
+			                          style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
+			            </VBox>
+			        </SplitPane>
+			    </VBox>
+			</Tab>
                 <!-- Onglet Éditeur de contexte -->
                 <Tab text="%tab.editor">
                     <fx:include fx:id="contextEditor"

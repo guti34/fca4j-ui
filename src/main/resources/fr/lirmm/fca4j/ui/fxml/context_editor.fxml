@@ -19,26 +19,21 @@
 
         <!-- Groupe Structure -->
         <Button fx:id="btnAddObject"    styleClass="icon-btn" onAction="#onAddObject"/>
-        <Button fx:id="btnAddAttr"      styleClass="icon-btn" onAction="#onAddAttribute"/>
         <Button fx:id="btnDelObject"    styleClass="icon-btn" onAction="#onRemoveObject"/>
+        <Button fx:id="btnAddAttr"      styleClass="icon-btn" onAction="#onAddAttribute"/>
         <Button fx:id="btnDelAttr"      styleClass="icon-btn" onAction="#onRemoveAttribute"/>
 
         <Separator orientation="VERTICAL"/>
 
         <!-- Renommer le contexte -->
         <Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
-
+		<Separator/>
+		<Label fx:id="contextNameLabel" style="-fx-font-weight: bold;"/>
+		<Label fx:id="statsLabel"
+		       style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
         <Pane HBox.hgrow="ALWAYS"/>
 
-        <!-- Statistiques -->
-        <Label fx:id="statsLabel" styleClass="stats-label"/>
     </ToolBar>
-
-    <!-- ── Titre du contexte ── -->
-    <HBox styleClass="context-header" alignment="CENTER_LEFT" spacing="8">
-        <Label text="%editor.context.label" styleClass="context-header-label"/>
-        <Label fx:id="contextNameLabel" styleClass="context-name-label"/>
-    </HBox>
 
     <!-- ── Tableau principal ── -->
     <TableView fx:id="tableView" VBox.vgrow="ALWAYS"/>

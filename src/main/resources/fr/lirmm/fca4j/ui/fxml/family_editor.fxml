@@ -15,11 +15,7 @@
         <Button fx:id="btnSaveAs"        onAction="#onSaveAs"/>
         <Separator/>
         <Button fx:id="btnAddContext"    onAction="#onAddContext"/>
-        <Button fx:id="btnRemoveContext" onAction="#onRemoveContext"/>
-        <Button fx:id="btnRenameContext" onAction="#onRenameContext"/>
-        <Separator/>
         <Button fx:id="btnAddRelation"    onAction="#onAddRelation"/>
-        <Button fx:id="btnRemoveRelation" onAction="#onRemoveRelation"/>
         <Separator/>
         <Button fx:id="btnAutoLayout"    onAction="#onAutoLayout"/>
         <Separator/>
