@@ -44,458 +44,495 @@ import javafx.stage.Stage;
 
 public class MainController implements Initializable {
 
-	// ── Widgets FXML ──────────────────────────────────────────────────────────
-	@FXML
-	private ComboBox<String> commandCombo;
-	@FXML
-	private StackPane commandPanelContainer;
-	@FXML
-	private WebView graphWebView;
-	@FXML
-	private TextArea consoleArea;
-	@FXML
-	private Label statusLabel;
-	@FXML
-	private Label selectedNodeLabel;
-	@FXML
-	private TabPane mainTabPane;
-	// Onglet Graph
-	@FXML
-	private Button btnSaveDot;
-	@FXML
-	private Button btnExportSvg;
-	@FXML
-	private Button btnExportPng;
-	@FXML
-	private Button btnExportPdf;
-	// ── Onglet RCA Family ─────────────────────────────────────────────────────
-	@FXML
-	private TabPane commandTabPane;
-	@FXML
-	private Tab contextTab;
-	@FXML
-	private Tab rcaTab;
-	@FXML
-	private StackPane rcaCommandContainer;
-	@FXML
-	private Tab familyEditorTab;
-	@FXML
-	private FamilyEditorController familyEditorController;
-	private RcaCommandController rcaCommandController;
+    // ── Widgets FXML ──────────────────────────────────────────────────────────
+    @FXML private ComboBox<String>  commandCombo;
+    @FXML private StackPane         commandPanelContainer;
+    @FXML private WebView           graphWebView;
+    @FXML private TextArea          consoleArea;
+    @FXML private Label statusFca4jLabel;
+    @FXML private Label statusGraphvizLabel;
+    @FXML private Label             selectedNodeLabel;
+    @FXML private TabPane           mainTabPane;
 
-	// ── Contrôleur de l'éditeur (injecté via fx:include) ─────────────────────
-	@FXML
-	private ContextEditorController contextEditorController;
+    // ── Toolbar Graph ─────────────────────────────────────────────────────────
+    @FXML private Button btnSaveDot;
+    @FXML private Button btnExportSvg;
+    @FXML private Button btnExportPng;
+    @FXML private Button btnExportPdf;
 
-	// ── Services ──────────────────────────────────────────────────────────────
-	private final Fca4jRunner runner = new Fca4jRunner();
-	private GraphRenderer renderer;
-	private final RcfIntegrityService rcfIntegrityService = new RcfIntegrityService();
+    // ── Onglet RCA Family ─────────────────────────────────────────────────────
+    @FXML private TabPane                commandTabPane;
+    @FXML private Tab                    contextTab;
+    @FXML private Tab                    rcaTab;
+    @FXML private StackPane              rcaCommandContainer;
+    @FXML private Tab                    familyEditorTab;
+    @FXML private FamilyEditorController familyEditorController;
+    private       RcaCommandController   rcaCommandController;
 
-	@Override
-	public void initialize(URL location, ResourceBundle resources) {
-		renderer = new GraphRenderer(graphWebView.getEngine());
-		renderer.setOnNodeClick(this::onNodeSelected);
+    // ── Contrôleur de l'éditeur de contexte ──────────────────────────────────
+    @FXML private ContextEditorController contextEditorController;
 
-		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
-				"INSPECT", "BINARIZE");
-		commandCombo.setValue("LATTICE");
-		commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
+    // ── Services ──────────────────────────────────────────────────────────────
+    private final Fca4jRunner         runner             = new Fca4jRunner();
+    private       GraphRenderer       renderer;
+    private final RcfIntegrityService rcfIntegrityService = new RcfIntegrityService();
 
-		selectedNodeLabel.setText(I18n.get("panel.node.none"));
-		loadCommandPanel("LATTICE");
+    // ── État ──────────────────────────────────────────────────────────────────
+    private String lastInputFile           = "";
+    private Object currentCommandController = null;
 
-		// Titres des onglets commandes
-		if (commandTabPane != null) {
-			contextTab.setText(I18n.get("tab.context.commands"));
-			rcaTab.setText(I18n.get("tab.rca.family"));
-		}
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        renderer = new GraphRenderer(graphWebView.getEngine());
+        renderer.setOnNodeClick(this::onNodeSelected);
 
-		// Charger le panneau RCA
-		loadRcaPanel();
-		if (familyEditorController != null)
-			familyEditorController.setOpenInContextEditor(this::openContextInEditor);
-		// Synchroniser le fichier famille courant vers le panneau RCA
-		if (commandTabPane != null) {
-			rcaTab.selectedProperty().addListener((obs, old, selected) -> {
-				if (selected && rcaCommandController != null && familyEditorController != null
-						&& familyEditorController.getCurrentFile() != null) {
-					rcaCommandController.setFamilyFile(familyEditorController.getCurrentFile());
-				}
-			});
-		}
+        commandCombo.getItems().addAll(
+            "LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS",
+            "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT", "BINARIZE");
+        commandCombo.setValue("LATTICE");
+        commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
 
-		// Titre onglet Family Editor dans la zone principale
-		if (familyEditorTab != null)
-			familyEditorTab.setText(I18n.get("tab.family.editor"));
+        selectedNodeLabel.setText(I18n.get("panel.node.none"));
+        loadCommandPanel("LATTICE");
 
-		statusLabel.setText(
-				AppPreferences.isFca4jConfigured() ? I18n.get("status.configured", AppPreferences.getFca4jJarPath())
-						: I18n.get("status.not.configured"));
-		setupGraphToolbar();
-	}
+        // Titres des onglets commandes
+        if (commandTabPane != null) {
+            contextTab.setText(I18n.get("tab.context.commands"));
+            rcaTab.setText(I18n.get("tab.rca.family"));
+        }
 
-	private void enableGraphButtons() {
-		btnSaveDot.setDisable(false);
-		btnExportSvg.setDisable(false);
-		btnExportPng.setDisable(false);
-		btnExportPdf.setDisable(false);
-	}
+        // Charger le panneau RCA
+        loadRcaPanel();
 
-	private void setupGraphToolbar() {
-		setGraphToolbarBtn(btnSaveDot, new FontIcon(Material2MZ.SAVE), I18n.get("graph.btn.save.dot"));
-		setGraphToolbarBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.svg"));
-		setGraphToolbarBtn(btnExportPng, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.png"));
-		setGraphToolbarBtn(btnExportPdf, new FontIcon(Material2AL.INSERT_DRIVE_FILE), I18n.get("graph.btn.export.pdf"));
-	}
+        if (familyEditorController != null)
+            familyEditorController.setOpenInContextEditor(this::openContextInEditor);
 
-	private void setGraphToolbarBtn(Button btn, FontIcon icon, String tooltip) {
-		if (btn == null)
-			return;
-		icon.setIconSize(20);
-		icon.setIconColor(javafx.scene.paint.Color.valueOf("#444444"));
-		btn.setGraphic(icon);
-		btn.setText("");
-		btn.setTooltip(new Tooltip(tooltip));
-	}
-	// ── Chargement dynamique du panneau de commande ───────────────────────────
+        // Synchroniser le fichier famille courant vers le panneau RCA
+        if (commandTabPane != null) {
+            rcaTab.selectedProperty().addListener((obs, old, selected) -> {
+                if (selected && rcaCommandController != null
+                        && familyEditorController != null
+                        && familyEditorController.getCurrentFile() != null) {
+                    rcaCommandController.setFamilyFile(familyEditorController.getCurrentFile());
+                }
+            });
+        }
 
-	private void loadCommandPanel(String command) {
-		try {
-			CommandDescriptor desc = CommandDescriptor.forName(command);
-			if (desc == null) {
-				commandPanelContainer.getChildren().setAll(new Label(I18n.get("error.panel.load", command)));
-				return;
-			}
+        // Titre onglet Family Editor
+        if (familyEditorTab != null)
+            familyEditorTab.setText(I18n.get("tab.family.editor"));
 
-			String fxml = switch (desc.getFamily()) {
-			case LATTICE_AOC -> "/fr/lirmm/fca4j/ui/fxml/lattice_aoc.fxml";
-			case RULE_BASIS -> "/fr/lirmm/fca4j/ui/fxml/rule_basis.fxml";
-			case REDUCE_CLARIFY -> "/fr/lirmm/fca4j/ui/fxml/reduce_clarify.fxml";
-			case IRREDUCIBLE -> "/fr/lirmm/fca4j/ui/fxml/irreducible.fxml";
-			case INSPECT -> "/fr/lirmm/fca4j/ui/fxml/inspect.fxml";
-			case BINARIZE -> "/fr/lirmm/fca4j/ui/fxml/binarize.fxml";
-			};
+        // Populer le champ input depuis l'éditeur de contexte
+        if (contextEditorController != null) {
+            contextEditorController.setOnFileLoaded(path -> {
+                lastInputFile = path;
+                propagateInputFile(path);
+            });
+        }
+        contextEditorController.setOnFileLoaded(path -> {
+            lastInputFile = path;
+            // Propager au panneau courant si possible
+            propagateInputFile(path);
+        });
+        updateStatusBar();
+        setupGraphToolbar();
+    }
 
-			FXMLLoader loader = new FXMLLoader(getClass().getResource(fxml), I18n.getBundle());
-			Node panel = loader.load();
+    private void updateStatusBar() {
+        // FCA4J jar
+        if (AppPreferences.isFca4jConfigured()) {
+            String jarPath = AppPreferences.getFca4jJarPath();
+            String jarName = Path.of(jarPath).getFileName().toString();
+            statusFca4jLabel.setText(jarName);
+            statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+        } else {
+            statusFca4jLabel.setText(I18n.get("status.not.configured"));
+            statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
+        }
 
-			switch (desc.getFamily()) {
-			case LATTICE_AOC -> {
-				LatticeAocController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			case RULE_BASIS -> {
-				RuleBasisController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			case REDUCE_CLARIFY -> {
-				ReduceClarifyController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			case IRREDUCIBLE -> {
-				IrreducibleController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			case INSPECT -> {
-				InspectController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			case BINARIZE -> {
-				BinarizeController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor);
-			}
-			}
-			commandPanelContainer.getChildren().setAll(panel);
+        // GraphViz
+        String dotPath = AppPreferences.getDotPath();
+        File dotFile = new File(dotPath);
+        if (dotFile.exists() && dotFile.canExecute()) {
+            statusGraphvizLabel.setText(dotFile.getName());
+            statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+        } else {
+            statusGraphvizLabel.setText(I18n.get("status.graphviz.absent"));
+            statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
+        }
+    }
+    // ── Toolbar Graph ─────────────────────────────────────────────────────────
 
-		} catch (Exception e) {
-			Throwable cause = e;
-			while (cause.getCause() != null)
-				cause = cause.getCause();
-			appendConsole("[Erreur panneau] " + e.getClass().getSimpleName() + ": " + e.getMessage());
-			appendConsole("[Cause] " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
-			e.printStackTrace();
-		}
-	}
+    private void setupGraphToolbar() {
+        setGraphToolbarBtn(btnSaveDot,   new FontIcon(Material2MZ.SAVE),
+            I18n.get("graph.btn.save.dot"));
+        setGraphToolbarBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE),
+            I18n.get("graph.btn.export.svg"));
+        setGraphToolbarBtn(btnExportPng, new FontIcon(Material2AL.IMAGE),
+            I18n.get("graph.btn.export.png"));
+        setGraphToolbarBtn(btnExportPdf, new FontIcon(Material2AL.INSERT_DRIVE_FILE),
+            I18n.get("graph.btn.export.pdf"));
+    }
 
-	// ── Chargement du panneau RCA ─────────────────────────────────────────────
+    private void setGraphToolbarBtn(Button btn, FontIcon icon, String tooltip) {
+        if (btn == null) return;
+        icon.setIconSize(20);
+        icon.setIconColor(javafx.scene.paint.Color.valueOf("#444444"));
+        btn.setGraphic(icon);
+        btn.setText("");
+        btn.setTooltip(new Tooltip(tooltip));
+    }
 
-	private void loadRcaPanel() {
-		try {
-			FXMLLoader loader = new FXMLLoader(getClass().getResource("/fr/lirmm/fca4j/ui/fxml/rca_command.fxml"),
-					I18n.getBundle());
-			Node panel = loader.load();
-			rcaCommandController = loader.getController();
-			rcaCommandController.configure(this::executeRcaCommand, // ← nouveau handler dédié
-					this::openInFamilyEditor, this::openDotInGraph // ← nouveau
-			);
-			if (rcaCommandContainer != null)
-				rcaCommandContainer.getChildren().setAll(panel);
-		} catch (Exception e) {
-			appendConsole("[RCA] " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
+    private void enableGraphButtons() {
+        btnSaveDot.setDisable(false);
+        btnExportSvg.setDisable(false);
+        btnExportPng.setDisable(false);
+        btnExportPdf.setDisable(false);
+    }
 
-	private void openContextInEditor(IBinaryContext ctx) {
-		if (contextEditorController != null) {
-			contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
-				Platform.runLater(() -> {
-					RCAFamily currentFamily = familyEditorController.getFamily();
-					// Synchroniser l'intégrité référentielle
-					rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
-					familyEditorController.reloadFamily(currentFamily);
-					familyEditorController.markModified();
-					mainTabPane.getSelectionModel().select(2);
-				});
-			});
-			mainTabPane.getSelectionModel().select(1);
-		}
-	}
-	// ── Ouverture dans l'éditeur de contexte ─────────────────────────────────
+    // ── Gestion de l'input persistant entre commandes ─────────────────────────
 
-	public void openInEditor(Path filePath) {
-		if (contextEditorController != null) {
-			contextEditorController.openFile(filePath);
-			mainTabPane.getSelectionModel().select(1);
-		}
-	}
+    private void propagateInputFile(String path) {
+        lastInputFile = path;
+        if (currentCommandController instanceof LatticeAocController c)
+            c.setInputFile(path);
+        else if (currentCommandController instanceof RuleBasisController c)
+            c.setInputFile(path);
+        else if (currentCommandController instanceof ReduceClarifyController c)
+            c.setInputFile(path);
+        else if (currentCommandController instanceof IrreducibleController c)
+            c.setInputFile(path);
+        else if (currentCommandController instanceof InspectController c)
+            c.setInputFile(path);
+        // BinarizeController exclu — son input est toujours CSV
+    }
 
-	// ── Ouverture dans le Family Editor ──────────────────────────────────────
+    // ── Chargement dynamique du panneau de commande ───────────────────────────
 
-	public void openInFamilyEditor(Path filePath) {
-		if (familyEditorController != null) {
-			familyEditorController.openFile(filePath);
-			// L'onglet Family Editor est le 3ème (index 2)
-			mainTabPane.getSelectionModel().select(2);
-		}
-	}
+    private void loadCommandPanel(String command) {
+        try {
+            CommandDescriptor desc = CommandDescriptor.forName(command);
+            if (desc == null) {
+                commandPanelContainer.getChildren().setAll(
+                    new Label(I18n.get("error.panel.load", command)));
+                return;
+            }
 
-	// ── Exécution ─────────────────────────────────────────────────────────────
+            String fxml = switch (desc.getFamily()) {
+                case LATTICE_AOC    -> "/fr/lirmm/fca4j/ui/fxml/lattice_aoc.fxml";
+                case RULE_BASIS     -> "/fr/lirmm/fca4j/ui/fxml/rule_basis.fxml";
+                case REDUCE_CLARIFY -> "/fr/lirmm/fca4j/ui/fxml/reduce_clarify.fxml";
+                case IRREDUCIBLE    -> "/fr/lirmm/fca4j/ui/fxml/irreducible.fxml";
+                case INSPECT        -> "/fr/lirmm/fca4j/ui/fxml/inspect.fxml";
+                case BINARIZE       -> "/fr/lirmm/fca4j/ui/fxml/binarize.fxml";
+            };
 
-	private void executeCommand(CommandBuilder builder) {
-		if (!AppPreferences.isFca4jConfigured()) {
-			showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
-			return;
-		}
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource(fxml), I18n.getBundle());
+            Node panel = loader.load();
 
-		var args = builder.build();
-		consoleArea.clear();
-		statusLabel.setText(I18n.get("status.running", args.get(0)));
-		appendConsole("$ " + builder.toDisplayString());
+            switch (desc.getFamily()) {
+                case LATTICE_AOC -> {
+                    LatticeAocController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor,
+                            path -> { lastInputFile = path; });
+                    ctrl.setInputFile(lastInputFile);
+                    currentCommandController = ctrl;
+                }
+                case RULE_BASIS -> {
+                    RuleBasisController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor,
+                            path -> { lastInputFile = path; });
+                    ctrl.setInputFile(lastInputFile);
+                    currentCommandController = ctrl;
+                }
+                case REDUCE_CLARIFY -> {
+                    ReduceClarifyController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor,
+                            path -> { lastInputFile = path; });
+                    ctrl.setInputFile(lastInputFile);
+                    currentCommandController = ctrl;
+                }
+                case IRREDUCIBLE -> {
+                    IrreducibleController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor,
+                            path -> { lastInputFile = path; });
+                    ctrl.setInputFile(lastInputFile);
+                    currentCommandController = ctrl;
+                }
+                case INSPECT -> {
+                    InspectController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor,
+                            path -> { lastInputFile = path; });
+                    ctrl.setInputFile(lastInputFile);
+                    currentCommandController = ctrl;
+                }
+                case BINARIZE -> {
+                    BinarizeController ctrl = loader.getController();
+                    ctrl.configure(desc, this::executeCommand, this::openInEditor);
+                    // Pas de setInputFile pour BinarizeController
+                    currentCommandController = ctrl;
+                }
+            }
+            commandPanelContainer.getChildren().setAll(panel);
 
-		mainTabPane.getSelectionModel().select(0);
+        } catch (Exception e) {
+            Throwable cause = e;
+            while (cause.getCause() != null) cause = cause.getCause();
+            appendConsole("[Erreur panneau] " + e.getClass().getSimpleName()
+                + ": " + e.getMessage());
+            appendConsole("[Cause] " + cause.getClass().getSimpleName()
+                + ": " + cause.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-		runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
-				.thenAccept(result -> Platform.runLater(() -> {
-					if (result.isSuccess()) {
-						statusLabel.setText(I18n.get("status.success"));
-						appendConsole("\n" + I18n.get("console.ok"));
-						tryRenderDot(builder);
-					} else {
-						statusLabel.setText(I18n.get("status.error", result.exitCode()));
-						appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
-					}
-				}));
-	}
+    // ── Chargement du panneau RCA ─────────────────────────────────────────────
 
-	private void executeRcaCommand(CommandBuilder builder) {
-		if (!AppPreferences.isFca4jConfigured()) {
-			showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
-			return;
-		}
-		var args = builder.build();
-		consoleArea.clear();
-		statusLabel.setText(I18n.get("status.running", args.get(0)));
-		appendConsole("$ " + builder.toDisplayString());
-		mainTabPane.getSelectionModel().select(0);
+    private void loadRcaPanel() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/fr/lirmm/fca4j/ui/fxml/rca_command.fxml"),
+                I18n.getBundle());
+            Node panel = loader.load();
+            rcaCommandController = loader.getController();
+            rcaCommandController.configure(
+                this::executeRcaCommand,
+                this::openInFamilyEditor,
+                this::openDotInGraph
+            );
+            if (rcaCommandContainer != null)
+                rcaCommandContainer.getChildren().setAll(panel);
+        } catch (Exception e) {
+            appendConsole("[RCA] " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
-		runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
-				.thenAccept(result -> Platform.runLater(() -> {
-					if (result.isSuccess()) {
-						statusLabel.setText(I18n.get("status.success"));
-						appendConsole("\n" + I18n.get("console.ok"));
-						// Scanner les fichiers DOT produits
-						if (rcaCommandController != null)
-							rcaCommandController.scanDotFiles();
-					} else {
-						statusLabel.setText(I18n.get("status.error", result.exitCode()));
-						appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
-					}
-				}));
-	}
+    // ── Ouverture dans les éditeurs ───────────────────────────────────────────
 
-	private void openDotInGraph(Path dotFile) {
-		mainTabPane.getSelectionModel().select(0);
-		appendConsole(I18n.get("console.graphviz.render", dotFile));
-		renderer.render(dotFile).exceptionally(ex -> {
-			Platform.runLater(() -> appendConsole("[GraphViz] " + ex.getCause().getMessage()));
-			return null;
-		});
-		renderer.render(dotFile).thenRun(() -> Platform.runLater(this::enableGraphButtons)).exceptionally(ex -> {
-			Platform.runLater(() -> appendConsole("[GraphViz] " + ex.getCause().getMessage()));
-			return null;
-		});
-	}
+    private void openContextInEditor(IBinaryContext ctx) {
+        if (contextEditorController != null) {
+            contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
+                Platform.runLater(() -> {
+                    RCAFamily currentFamily = familyEditorController.getFamily();
+                    rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
+                    familyEditorController.reloadFamily(currentFamily);
+                    familyEditorController.markModified();
+                    mainTabPane.getSelectionModel().select(2);
+                });
+            });
+            mainTabPane.getSelectionModel().select(1);
+        }
+    }
 
-	private void tryRenderDot(CommandBuilder builder) {
-		var args = builder.build();
-		int gIdx = args.indexOf("-g");
-		if (gIdx == -1 || gIdx + 1 >= args.size())
-			return;
+    public void openInEditor(Path filePath) {
+        if (contextEditorController != null) {
+            contextEditorController.openFile(filePath);
+            mainTabPane.getSelectionModel().select(1);
+        }
+    }
 
-		Path dotFile = Path.of(args.get(gIdx + 1));
-		if (!dotFile.toFile().exists()) {
-			appendConsole(I18n.get("error.graphviz.not.found", dotFile));
-			return;
-		}
-		appendConsole(I18n.get("console.graphviz.render", dotFile));
-		renderer.render(dotFile).exceptionally(ex -> {
-			Platform.runLater(() -> appendConsole("[GraphViz] " + ex.getCause().getMessage()));
-			return null;
-		});
-		renderer.render(dotFile).thenRun(() -> Platform.runLater(this::enableGraphButtons)).exceptionally(ex -> {
-			Platform.runLater(() -> appendConsole("[GraphViz] " + ex.getCause().getMessage()));
-			return null;
-		});
-	}
+    public void openInFamilyEditor(Path filePath) {
+        if (familyEditorController != null) {
+            familyEditorController.openFile(filePath);
+            mainTabPane.getSelectionModel().select(2);
+        }
+    }
 
-	private void onNodeSelected(String nodeLabel) {
-		selectedNodeLabel.setText(nodeLabel);
-		appendConsole(I18n.get("console.node.selected", nodeLabel));
-	}
+    private void openDotInGraph(Path dotFile) {
+        mainTabPane.getSelectionModel().select(0);
+        appendConsole(I18n.get("console.graphviz.render", dotFile));
+        renderer.render(dotFile)
+            .thenRun(() -> Platform.runLater(this::enableGraphButtons))
+            .exceptionally(ex -> {
+                Platform.runLater(() ->
+                    appendConsole("[GraphViz] " + ex.getCause().getMessage()));
+                return null;
+            });
+    }
 
-	// ── Actions menu ──────────────────────────────────────────────────────────
+    // ── Exécution des commandes ───────────────────────────────────────────────
 
-	@FXML
-	private void onOpenPreferences() throws Exception {
-		FXMLLoader loader = new FXMLLoader(getClass().getResource("/fr/lirmm/fca4j/ui/fxml/preferences.fxml"),
-				I18n.getBundle());
-		Stage dialog = new Stage();
-		dialog.initModality(Modality.APPLICATION_MODAL);
-		dialog.setTitle(I18n.get("prefs.title"));
-		dialog.setScene(new Scene(loader.load()));
-		dialog.showAndWait();
+    private void executeCommand(CommandBuilder builder) {
+        if (!AppPreferences.isFca4jConfigured()) {
+            showAlert(I18n.get("error.not.configured.title"),
+                      I18n.get("error.not.configured.detail"));
+            return;
+        }
+        var args = builder.build();
+        consoleArea.clear();
+        appendConsole("$ " + builder.toDisplayString());
+        mainTabPane.getSelectionModel().select(0);
 
-		statusLabel.setText(
-				AppPreferences.isFca4jConfigured() ? I18n.get("status.configured", AppPreferences.getFca4jJarPath())
-						: I18n.get("status.not.configured"));
-	}
+        runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
+            .thenAccept(result -> Platform.runLater(() -> {
+                if (result.isSuccess()) {
+                     appendConsole("\n" + I18n.get("console.ok"));
+                    tryRenderDot(builder);
+                } else {
+                    appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
+                }
+            }));
+    }
 
-	@FXML
-	private void onQuit() {
-		Platform.exit();
-	}
+    private void executeRcaCommand(CommandBuilder builder) {
+        if (!AppPreferences.isFca4jConfigured()) {
+            showAlert(I18n.get("error.not.configured.title"),
+                      I18n.get("error.not.configured.detail"));
+            return;
+        }
+        var args = builder.build();
+        consoleArea.clear();
+        appendConsole("$ " + builder.toDisplayString());
+        mainTabPane.getSelectionModel().select(0);
 
-	@FXML
-	private void onAbout() {
-		Alert alert = new Alert(Alert.AlertType.INFORMATION);
-		alert.setTitle(I18n.get("menu.help.about"));
-		alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
-		alert.setContentText(I18n.get("app.about.content"));
+        runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
+            .thenAccept(result -> Platform.runLater(() -> {
+                if (result.isSuccess()) {
+                    appendConsole("\n" + I18n.get("console.ok"));
+                    if (rcaCommandController != null)
+                        rcaCommandController.scanDotFiles();
+                } else {
+                    appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
+                }
+            }));
+    }
 
-		try {
-			java.io.InputStream logoStream = getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
-			if (logoStream != null) {
-				ImageView logo = new ImageView(new Image(logoStream));
-				logo.setFitWidth(64);
-				logo.setFitHeight(64);
-				logo.setPreserveRatio(true);
-				logo.setSmooth(true);
-				alert.setGraphic(logo);
-			}
-		} catch (Exception ignored) {
-		}
+    private void tryRenderDot(CommandBuilder builder) {
+        var args = builder.build();
+        int gIdx = args.indexOf("-g");
+        if (gIdx == -1 || gIdx + 1 >= args.size()) return;
 
-		alert.showAndWait();
-	}
+        Path dotFile = Path.of(args.get(gIdx + 1));
+        if (!dotFile.toFile().exists()) {
+            appendConsole(I18n.get("error.graphviz.not.found", dotFile));
+            return;
+        }
+        appendConsole(I18n.get("console.graphviz.render", dotFile));
+        renderer.render(dotFile)
+            .thenRun(() -> Platform.runLater(this::enableGraphButtons))
+            .exceptionally(ex -> {
+                Platform.runLater(() ->
+                    appendConsole("[GraphViz] " + ex.getCause().getMessage()));
+                return null;
+            });
+    }
 
-	@FXML
-	private void onClearConsole() {
-		consoleArea.clear();
-	}
+    private void onNodeSelected(String nodeLabel) {
+        selectedNodeLabel.setText(nodeLabel);
+        appendConsole(I18n.get("console.node.selected", nodeLabel));
+    }
 
-	// ── Utilitaires ───────────────────────────────────────────────────────────
+    // ── Actions menu ──────────────────────────────────────────────────────────
 
-	private void appendConsole(String text) {
-		consoleArea.appendText(text + "\n");
-	}
+    @FXML
+    private void onOpenPreferences() throws Exception {
+        FXMLLoader loader = new FXMLLoader(
+            getClass().getResource("/fr/lirmm/fca4j/ui/fxml/preferences.fxml"),
+            I18n.getBundle());
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle(I18n.get("prefs.title"));
+        dialog.setScene(new Scene(loader.load()));
+        dialog.showAndWait();
 
-	private void showAlert(String title, String message) {
-		Alert alert = new Alert(Alert.AlertType.WARNING);
-		alert.setTitle(title);
-		alert.setHeaderText(null);
-		alert.setContentText(message);
-		alert.showAndWait();
-	}
+        updateStatusBar();
+        }
 
-	@FXML
-	private void onSaveDot() {
-		Path src = renderer.getCurrentDotFile();
-		if (src == null)
-			return;
-		FileChooser fc = new FileChooser();
-		fc.setTitle(I18n.get("graph.btn.save.dot"));
-		fc.setInitialFileName(src.getFileName().toString());
-		fc.setInitialDirectory(src.getParent().toFile());
-		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("DOT", "*.dot"));
-		File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
-		if (dest == null)
-			return;
-		try {
-			java.nio.file.Files.copy(src, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			appendConsole(I18n.get("graph.saved.dot", dest.getName()));
-		} catch (Exception e) {
-			appendConsole("[Error] " + e.getMessage());
-		}
-	}
+    @FXML private void onQuit() { Platform.exit(); }
 
-	@FXML
-	private void onExportSvg() {
-		exportViaGraphviz("svg", "*.svg");
-	}
+    @FXML
+    private void onAbout() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(I18n.get("menu.help.about"));
+        alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
+        alert.setContentText(I18n.get("app.about.content"));
+        try {
+            java.io.InputStream logoStream = getClass()
+                .getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
+            if (logoStream != null) {
+                ImageView logo = new ImageView(new Image(logoStream));
+                logo.setFitWidth(64); logo.setFitHeight(64);
+                logo.setPreserveRatio(true); logo.setSmooth(true);
+                alert.setGraphic(logo);
+            }
+        } catch (Exception ignored) {}
+        alert.showAndWait();
+    }
 
-	@FXML
-	private void onExportPng() {
-		exportViaGraphviz("png", "*.png");
-	}
+    @FXML private void onClearConsole() { consoleArea.clear(); }
 
-	@FXML
-	private void onExportPdf() {
-		exportViaGraphviz("pdf", "*.pdf");
-	}
+    // ── Export Graph ──────────────────────────────────────────────────────────
 
-	private void exportViaGraphviz(String format, String extension) {
-		Path src = renderer.getCurrentDotFile();
-		if (src == null)
-			return;
+    @FXML
+    private void onSaveDot() {
+        Path src = renderer.getCurrentDotFile();
+        if (src == null) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle(I18n.get("graph.btn.save.dot"));
+        fc.setInitialFileName(src.getFileName().toString());
+        fc.setInitialDirectory(src.getParent().toFile());
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("DOT", "*.dot"));
+        File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
+        if (dest == null) return;
+        try {
+            java.nio.file.Files.copy(src, dest.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            appendConsole(I18n.get("graph.saved.dot", dest.getName()));
+        } catch (Exception e) {
+            appendConsole("[Error] " + e.getMessage());
+        }
+    }
 
-		FileChooser fc = new FileChooser();
-		fc.setTitle(I18n.get("graph.export." + format));
-		fc.setInitialFileName(src.getFileName().toString().replace(".dot", "." + format));
-		fc.setInitialDirectory(src.getParent().toFile());
-		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.toUpperCase(), extension));
-		File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
-		if (dest == null)
-			return;
+    @FXML private void onExportSvg() { exportViaGraphviz("svg", "*.svg"); }
+    @FXML private void onExportPng() { exportViaGraphviz("png", "*.png"); }
+    @FXML private void onExportPdf() { exportViaGraphviz("pdf", "*.pdf"); }
 
-		String dotExe = AppPreferences.getDotPath();
-		ProcessBuilder pb = new ProcessBuilder(dotExe, "-T" + format, src.toString(), "-o", dest.getAbsolutePath());
-		pb.redirectErrorStream(true);
+    private void exportViaGraphviz(String format, String extension) {
+        Path src = renderer.getCurrentDotFile();
+        if (src == null) return;
 
-		CompletableFuture.runAsync(() -> {
-			try {
-				Process proc = pb.start();
-				int exit = proc.waitFor();
-				Platform.runLater(() -> {
-					if (exit == 0)
-						appendConsole(I18n.get("graph.exported", format.toUpperCase(), dest.getName()));
-					else
-						appendConsole("[GraphViz] export " + format + " failed (exit " + exit + ")");
-				});
-			} catch (Exception e) {
-				Platform.runLater(() -> appendConsole("[GraphViz] " + e.getMessage()));
-			}
-		});
-	}
+        FileChooser fc = new FileChooser();
+        fc.setTitle(I18n.get("graph.export." + format));
+        fc.setInitialFileName(
+            src.getFileName().toString().replace(".dot", "." + format));
+        fc.setInitialDirectory(src.getParent().toFile());
+        fc.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter(format.toUpperCase(), extension));
+        File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
+        if (dest == null) return;
+
+        String dotExe = AppPreferences.getDotPath();
+        ProcessBuilder pb = new ProcessBuilder(
+            dotExe, "-T" + format, src.toString(), "-o", dest.getAbsolutePath());
+        pb.redirectErrorStream(true);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Process proc = pb.start();
+                int exit = proc.waitFor();
+                Platform.runLater(() -> {
+                    if (exit == 0)
+                        appendConsole(I18n.get("graph.exported",
+                            format.toUpperCase(), dest.getName()));
+                    else
+                        appendConsole("[GraphViz] export " + format
+                            + " failed (exit " + exit + ")");
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> appendConsole("[GraphViz] " + e.getMessage()));
+            }
+        });
+    }
+
+    // ── Utilitaires ───────────────────────────────────────────────────────────
+
+    private void appendConsole(String text) { consoleArea.appendText(text + "\n"); }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title); alert.setHeaderText(null); alert.setContentText(message);
+        alert.showAndWait();
+    }
 }

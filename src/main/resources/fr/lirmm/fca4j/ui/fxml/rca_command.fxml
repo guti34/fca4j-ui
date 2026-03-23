@@ -5,9 +5,9 @@
 <ScrollPane fitToWidth="true"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="fr.lirmm.fca4j.ui.controller.RcaCommandController">
-<VBox spacing="10" style="-fx-padding: 12;">
+<VBox spacing="8" style="-fx-padding: 10;">
 
-    <!-- Entrée : fichier famille -->
+    <!-- Entrée -->
     <TitledPane fx:id="inputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
@@ -18,14 +18,14 @@
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%rca.family.format"/>
-                <ComboBox fx:id="familyFormatCombo" prefWidth="120"/>
+                <ComboBox fx:id="familyFormatCombo" prefWidth="110"/>
             </HBox>
         </VBox>
     </TitledPane>
 
     <!-- Sortie -->
     <TitledPane fx:id="outputPane" collapsible="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
+        <VBox spacing="6" style="-fx-padding: 8;">
             <HBox spacing="6">
                 <TextField fx:id="outputFolderField" HBox.hgrow="ALWAYS"
                            promptText="%rca.output.folder.prompt"/>
@@ -33,7 +33,7 @@
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%rca.limit.steps"/>
-                <Spinner fx:id="limitStepsSpinner" prefWidth="80"/>
+                <Spinner fx:id="limitStepsSpinner" prefWidth="75"/>
                 <Label text="%rca.limit.steps.hint"
                        style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
             </HBox>
@@ -42,29 +42,32 @@
             <CheckBox fx:id="buildXml"              text="%rca.build.xml"/>
             <CheckBox fx:id="addFullExtents"        text="%rca.full.extents"/>
             <CheckBox fx:id="addFullIntents"        text="%rca.full.intents"/>
+			<CheckBox fx:id="buildJson"       text="%rca.build.json"/>            
         </VBox>
     </TitledPane>
 
     <!-- Algorithme -->
     <TitledPane fx:id="algoPane" collapsible="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
+        <VBox spacing="6" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.algorithm"/>
-                <ComboBox fx:id="algoCombo" prefWidth="150"/>
+                <ComboBox fx:id="algoCombo" prefWidth="140"/>
             </HBox>
-            <HBox fx:id="icebergBox" spacing="8" alignment="CENTER_LEFT">
+            <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
-                <Spinner fx:id="icebergSpinner" prefWidth="80"/>
+                <Spinner fx:id="icebergSpinner" prefWidth="75"/>
             </HBox>
         </VBox>
     </TitledPane>
 
-    <!-- Renommage des attributs relationnels -->
+    <!-- Renommage -->
     <TitledPane fx:id="namingPane" collapsible="true" expanded="false">
         <VBox spacing="6" style="-fx-padding: 8;">
-            <CheckBox fx:id="renameRA"  text="%rca.rename.ra"/>
-            <CheckBox fx:id="renameRAI" text="%rca.rename.rai"/>
-            <CheckBox fx:id="renameRI"  text="%rca.rename.ri"/>
+            <Label text="%rca.naming.hint"
+                   style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+            <CheckBox fx:id="renameRA"   text="%rca.rename.ra"/>
+            <CheckBox fx:id="renameRAI"  text="%rca.rename.rai"/>
+            <CheckBox fx:id="renameRI"   text="%rca.rename.ri"/>
             <CheckBox fx:id="nativeOnly" text="%rca.native.only"/>
             <Separator/>
             <CheckBox fx:id="cleanOption" text="%rca.clean"/>
@@ -74,24 +77,43 @@
     <!-- GraphViz -->
     <TitledPane fx:id="graphvizPane" collapsible="true" expanded="false">
         <VBox spacing="6" style="-fx-padding: 8;">
-            <CheckBox fx:id="buildDot"          text="%rca.build.dot.final"/>
-            <CheckBox fx:id="buildDotEachStep"  text="%rca.build.dot.steps"/>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.display.mode"/>
-                <ComboBox fx:id="displayModeCombo" prefWidth="130"/>
+            <CheckBox fx:id="buildDot" text="%rca.build.dot"/>
+            <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-padding: 0 0 0 16;">
+                <Label fx:id="displayModeLabel" text="%label.display.mode"/>
+                <ComboBox fx:id="displayModeCombo" prefWidth="120"/>
             </HBox>
-            <CheckBox fx:id="stability"         text="%checkbox.stability"/>
-            <CheckBox fx:id="buildJson"         text="%rca.build.json.final"/>
-            <CheckBox fx:id="buildJsonEachStep" text="%rca.build.json.steps"/>
+            <CheckBox fx:id="stability" text="%checkbox.stability"
+                      style="-fx-padding: 0 0 0 16;"/>
+        </VBox>
+    </TitledPane>
+
+    <!-- Datalog -->
+    <TitledPane fx:id="datalogPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <Label text="%rca.datalog.hint"
+                   style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+            <HBox spacing="6" alignment="CENTER_LEFT">
+                <Label text="%rca.datalog.folder" minWidth="120"/>
+                <TextField fx:id="datalogFolderField" HBox.hgrow="ALWAYS"
+                           promptText="%rca.datalog.folder.prompt"/>
+                <Button text="%button.browse" onAction="#onBrowseDatalogFolder"/>
+            </HBox>
+            <HBox spacing="6" alignment="CENTER_LEFT">
+                <Label text="%rca.datalog.file" minWidth="120"/>
+                <TextField fx:id="datalogFileField" HBox.hgrow="ALWAYS"
+                           promptText="%rca.datalog.file.prompt"/>
+                <Button text="%button.browse" onAction="#onBrowseDatalogFile"/>
+            </HBox>
+            <CheckBox fx:id="noDirectSiblings" text="%rca.no.direct.siblings"/>
         </VBox>
     </TitledPane>
 
     <!-- Options avancées -->
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
+        <VBox spacing="6" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.timeout"/>
-                <Spinner fx:id="timeoutSpinner" prefWidth="80"/>
+                <Spinner fx:id="timeoutSpinner" prefWidth="75"/>
                 <Label text="%label.timeout.hint"
                        style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
             </HBox>
@@ -102,13 +124,15 @@
     <!-- Bouton Exécuter -->
     <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
             style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-	<!-- Résultats DOT -->
-	<TitledPane fx:id="resultsPane" collapsible="true" expanded="false">
-	    <VBox spacing="6" style="-fx-padding: 8;">
-	        <Label fx:id="resultsFolderLabel"
-	               style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
-	        <ListView fx:id="dotFilesList" prefHeight="140"/>
-    </VBox>
-</TitledPane>
+
+    <!-- Résultats DOT -->
+    <TitledPane fx:id="resultsPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <Label fx:id="resultsFolderLabel"
+                   style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+            <ListView fx:id="dotFilesList" prefHeight="130"/>
+        </VBox>
+    </TitledPane>
+
 </VBox>
 </ScrollPane>

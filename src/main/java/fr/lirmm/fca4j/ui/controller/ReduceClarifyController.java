@@ -60,7 +60,8 @@ public class ReduceClarifyController implements Initializable {
     // ── État ──────────────────────────────────────────────────────────────────
     private CommandDescriptor        descriptor;
     private Consumer<CommandBuilder> onRun;
-
+    private Consumer<String> onInputChanged;
+    
     // Formats communs aux deux commandes (contexte → contexte)
     private static final java.util.List<String> CONTEXT_FORMATS =
         java.util.List.of("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
@@ -100,7 +101,8 @@ public class ReduceClarifyController implements Initializable {
     }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
-                          Consumer<Path> openInEditor) {
+            Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
+this.onInputChanged = onInputChanged;
         this.openInEditor = openInEditor;
         this.descriptor = desc;
         this.onRun      = onRun;
@@ -155,6 +157,7 @@ public class ReduceClarifyController implements Initializable {
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
         if (f != null) {
             inputFileField.setText(f.getAbsolutePath());
+            if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
             AppPreferences.setLastDirectory(f.getParent());
             autoDetectFormat(f.getName(), inputFormatCombo);
             if (outputFileField.getText().isBlank()) {
@@ -252,4 +255,9 @@ public class ReduceClarifyController implements Initializable {
         a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
         a.showAndWait();
     }
-}
+    public void setInputFile(String path) {
+        if (path!=null && !path.isBlank()) inputFileField.setText(path);
+    }
+    public String getInputFile() {
+        return inputFileField.getText();
+    }}

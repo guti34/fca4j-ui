@@ -1,0 +1,48 @@
+<svg width="128" height="128" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0047B3"></stop>
+      <stop offset="100%" stop-color="#001A40"></stop>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="4" y="4" width="92" height="92" rx="22" fill="#FFE082"></rect>
+
+  <!-- Edges -->
+  <g stroke="url(#gradDark)" stroke-width="4" stroke-linecap="round">
+    <!-- top connections -->
+    <line x1="46" y1="18" x2="30" y2="40"></line>
+    <line x1="46" y1="18" x2="68" y2="38"></line>
+
+    <!-- middle structure -->
+    <line x1="30" y1="40" x2="52" y2="68"></line>
+    <line x1="68" y1="38" x2="52" y2="68"></line>
+
+    <!-- extra asymmetric branch -->
+    <line x1="68" y1="38" x2="82" y2="62"></line>
+    <line x1="82" y1="62" x2="52" y2="68"></line>
+
+    <!-- bottom -->
+    <line x1="52" y1="68" x2="48" y2="88"></line>
+  </g>
+
+  <!-- Nodes -->
+  <g fill="url(#gradDark)">
+    <!-- top -->
+    <circle cx="46" cy="18" r="6.5"></circle>
+
+    <!-- mid left / right -->
+    <circle cx="30" cy="40" r="6.5"></circle>
+    <circle cx="68" cy="38" r="6.5"></circle>
+
+    <!-- asymmetric extra node -->
+    <circle cx="82" cy="62" r="6.5"></circle>
+
+    <!-- central dominant -->
+    <circle cx="52" cy="68" r="8"></circle>
+
+    <!-- bottom -->
+    <circle cx="48" cy="88" r="6.5"></circle>
+  </g>
+</svg>

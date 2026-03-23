@@ -65,10 +65,5 @@
             </VBox>
 
         </SplitPane>
-    </SplitPane>
-
-    <!-- Barre de statut -->
-    <Label fx:id="statusLabel"
-           style="-fx-padding: 2 8; -fx-font-size: 11px; -fx-text-fill: gray;"/>
-
+    </SplitPane>    
 </VBox>

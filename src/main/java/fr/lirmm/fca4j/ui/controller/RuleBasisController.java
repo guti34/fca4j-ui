@@ -22,294 +22,333 @@ import java.util.function.Consumer;
  */
 public class RuleBasisController implements Initializable {
 
+	@FXML
+	private TitledPane inputPane;
+	@FXML
+	private TitledPane outputPane;
+	@FXML
+	private TitledPane threadPane;
+	@FXML
+	private TitledPane advancedPane;
+	@FXML
+	private Button runButton;
 
-    @FXML private TitledPane  inputPane;
-    @FXML private TitledPane  outputPane;
-    @FXML private TitledPane  threadPane;
-    @FXML private TitledPane  advancedPane;
-    @FXML private Button      runButton;
+	// ── Bouton édition ────────────────────────────────────────────────────────
+	@FXML
+	private Button editInputButton;
+	private Consumer<Path> openInEditor;
 
+	// ── Fichiers ──────────────────────────────────────────────────────────────
+	@FXML
+	private TextField inputFileField;
+	@FXML
+	private ComboBox<String> inputFormatCombo;
+	@FXML
+	private Label separatorLabel;
+	@FXML
+	private ComboBox<String> separatorCombo;
+	@FXML
+	private TextField outputFileField;
+	@FXML
+	private ComboBox<String> outputFormatCombo;
 
-    // ── Bouton édition ────────────────────────────────────────────────────────
-    @FXML private Button           editInputButton;
-    private Consumer<Path>         openInEditor;
+	// ── Algorithme (RULEBASIS seulement) ──────────────────────────────────────
+	@FXML
+	private TitledPane algoPane;
+	@FXML
+	private ComboBox<String> algoCombo;
+	@FXML
+	private Label closureLabel;
+	@FXML
+	private ComboBox<String> closureCombo;
+	@FXML
+	private CheckBox clarifyCheckBox;
 
-    // ── Fichiers ──────────────────────────────────────────────────────────────
-    @FXML private TextField        inputFileField;
-    @FXML private ComboBox<String> inputFormatCombo;
-    @FXML private Label            separatorLabel;
-    @FXML private ComboBox<String> separatorCombo;
-    @FXML private TextField        outputFileField;
-    @FXML private ComboBox<String> outputFormatCombo;
+	// ── Multithreading ────────────────────────────────────────────────────────
+	@FXML
+	private ComboBox<String> poolModeCombo;
+	@FXML
+	private Label thresholdLabel;
+	@FXML
+	private Spinner<Integer> thresholdSpinner;
 
-    // ── Algorithme (RULEBASIS seulement) ──────────────────────────────────────
-    @FXML private TitledPane       algoPane;
-    @FXML private ComboBox<String> algoCombo;
-    @FXML private Label            closureLabel;
-    @FXML private ComboBox<String> closureCombo;
-    @FXML private CheckBox         clarifyCheckBox;
+	// ── Options DBASIS ────────────────────────────────────────────────────────
+	@FXML
+	private TitledPane dbasisPane;
+	@FXML
+	private Spinner<Integer> minSupportSpinner;
 
-    // ── Multithreading ────────────────────────────────────────────────────────
-    @FXML private ComboBox<String> poolModeCombo;
-    @FXML private Label            thresholdLabel;
-    @FXML private Spinner<Integer> thresholdSpinner;
+	// ── Options communes ──────────────────────────────────────────────────────
+	@FXML
+	private CheckBox sortBySupportCheckBox;
+	@FXML
+	private TextField reportFileField;
+	@FXML
+	private TextField implFolderField;
+	@FXML
+	private ComboBox<String> implCombo;
+	@FXML
+	private Spinner<Integer> timeoutSpinner;
+	@FXML
+	private CheckBox verboseCheckBox;
 
-    // ── Options DBASIS ────────────────────────────────────────────────────────
-    @FXML private TitledPane       dbasisPane;
-    @FXML private Spinner<Integer> minSupportSpinner;
+	private CommandDescriptor descriptor;
+	private Consumer<CommandBuilder> onRun;
+	private Consumer<String> onInputChanged;
 
-    // ── Options communes ──────────────────────────────────────────────────────
-    @FXML private CheckBox         sortBySupportCheckBox;
-    @FXML private TextField        reportFileField;
-    @FXML private TextField        implFolderField;
-    @FXML private ComboBox<String> implCombo;
-    @FXML private Spinner<Integer> timeoutSpinner;
-    @FXML private CheckBox         verboseCheckBox;
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
+		inputFormatCombo.setValue("(auto)");
 
-    private CommandDescriptor        descriptor;
-    private Consumer<CommandBuilder> onRun;
+		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
+		separatorCombo.setValue("COMMA");
+		separatorLabel.setVisible(false);
+		separatorCombo.setVisible(false);
+		inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
+			boolean csv = "CSV".equals(val);
+			separatorLabel.setVisible(csv);
+			separatorCombo.setVisible(csv);
+		});
 
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
-        inputFormatCombo.setValue("(auto)");
+		outputFormatCombo.getItems().addAll("TXT", "JSON", "XML", "DATALOG");
+		outputFormatCombo.setValue("TXT");
 
-        separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-        separatorCombo.setValue("COMMA");
-        separatorLabel.setVisible(false);
-        separatorCombo.setVisible(false);
-        inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-            boolean csv = "CSV".equals(val);
-            separatorLabel.setVisible(csv);
-            separatorCombo.setVisible(csv);
-        });
+		closureCombo.getItems().addAll("BASIC", "WITH_HISTORY");
+		closureCombo.setValue("BASIC");
 
-        outputFormatCombo.getItems().addAll("TXT", "JSON", "XML", "DATALOG");
-        outputFormatCombo.setValue("TXT");
+		thresholdSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 10000, 50, 10));
+		thresholdLabel.setVisible(false);
+		thresholdSpinner.setVisible(false);
+		poolModeCombo.valueProperty().addListener((obs, old, val) -> {
+			boolean mt = !"MONO".equals(val);
+			boolean rb = descriptor != null && "RULEBASIS".equals(descriptor.getName());
+			thresholdLabel.setVisible(mt && rb);
+			thresholdSpinner.setVisible(mt && rb);
+		});
 
-        closureCombo.getItems().addAll("BASIC", "WITH_HISTORY");
-        closureCombo.setValue("BASIC");
+		minSupportSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000, 0, 1));
 
-        thresholdSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 10000, 50, 10));
-        thresholdLabel.setVisible(false);
-        thresholdSpinner.setVisible(false);
-        poolModeCombo.valueProperty().addListener((obs, old, val) -> {
-            boolean mt = !"MONO".equals(val);
-            boolean rb = descriptor != null && "RULEBASIS".equals(descriptor.getName());
-            thresholdLabel.setVisible(mt && rb);
-            thresholdSpinner.setVisible(mt && rb);
-        });
+		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "TREESET", "INT_ARRAY", "ARRAYLIST",
+				"BOOL_ARRAY");
+		implCombo.setValue("BITSET");
 
-        minSupportSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000, 0, 1));
+		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
+	}
 
-        implCombo.getItems().addAll(
-            "BITSET", "ROARING_BITMAP", "SPARSE_BITSET",
-            "TREESET", "INT_ARRAY", "ARRAYLIST", "BOOL_ARRAY");
-        implCombo.setValue("BITSET");
+	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
+			Consumer<String> onInputChanged) {
+		this.onInputChanged = onInputChanged;
+		this.openInEditor = openInEditor;
+		this.descriptor = desc;
+		this.onRun = onRun;
 
-        timeoutSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
-    }
+		inputPane.setText(I18n.get("section.input"));
+		outputPane.setText(I18n.get("section.output"));
+		threadPane.setText(I18n.get("section.multithreading"));
+		advancedPane.setText(I18n.get("section.advanced"));
+		dbasisPane.setText(I18n.get("section.dbasis"));
+		runButton.setText(I18n.get("button.run"));
 
-    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
-                          Consumer<Path> openInEditor) {
-        this.openInEditor = openInEditor;
-        this.descriptor = desc;
-        this.onRun      = onRun;
+		// Bouton "Ouvrir dans l'éditeur"
+		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
+		editIcon.setIconSize(14);
+		editInputButton.setGraphic(editIcon);
+		editInputButton.setText("");
+		editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 
+		boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
+		boolean isDbasis = "DBASIS".equals(desc.getName());
 
-        inputPane.setText(I18n.get("section.input"));
-        outputPane.setText(I18n.get("section.output"));
-        threadPane.setText(I18n.get("section.multithreading"));
-        advancedPane.setText(I18n.get("section.advanced"));
-        dbasisPane.setText(I18n.get("section.dbasis"));
-        runButton.setText(I18n.get("button.run"));
+		// Panneau algo : RULEBASIS seulement
+		algoPane.setVisible(isRuleBasis);
+		algoPane.setManaged(isRuleBasis);
+		if (isRuleBasis) {
+			algoCombo.getItems().setAll(desc.getAlgorithms());
+			algoCombo.setValue(desc.getDefaultAlgorithm());
+		}
 
-        // Bouton "Ouvrir dans l'éditeur"
-        FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-        editIcon.setIconSize(14);
-        editInputButton.setGraphic(editIcon);
-        editInputButton.setText("");
-        editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
+		clarifyCheckBox.setVisible(isRuleBasis);
+		clarifyCheckBox.setManaged(isRuleBasis);
+		closureLabel.setVisible(isRuleBasis);
+		closureLabel.setManaged(isRuleBasis);
+		closureCombo.setVisible(isRuleBasis);
+		closureCombo.setManaged(isRuleBasis);
 
-        boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
-        boolean isDbasis    = "DBASIS".equals(desc.getName());
+		// Pool mode selon la commande
+		poolModeCombo.getItems().clear();
+		if (isRuleBasis) {
+			poolModeCombo.getItems().addAll("MONO", "FORKJOINPOOL");
+			poolModeCombo.setValue("MONO");
+		} else {
+			poolModeCombo.getItems().addAll("MONO", "MULTITHREAD");
+			poolModeCombo.setValue("MULTITHREAD");
+		}
 
-        // Panneau algo : RULEBASIS seulement
-        algoPane.setVisible(isRuleBasis);
-        algoPane.setManaged(isRuleBasis);
-        if (isRuleBasis) {
-            algoCombo.getItems().setAll(desc.getAlgorithms());
-            algoCombo.setValue(desc.getDefaultAlgorithm());
-        }
+		// Panneau DBASIS
+		dbasisPane.setVisible(isDbasis);
+		dbasisPane.setManaged(isDbasis);
 
-        clarifyCheckBox.setVisible(isRuleBasis);
-        clarifyCheckBox.setManaged(isRuleBasis);
-        closureLabel.setVisible(isRuleBasis);
-        closureLabel.setManaged(isRuleBasis);
-        closureCombo.setVisible(isRuleBasis);
-        closureCombo.setManaged(isRuleBasis);
+		// Tri par support : RULEBASIS seulement
+		sortBySupportCheckBox.setVisible(isRuleBasis);
+		sortBySupportCheckBox.setManaged(isRuleBasis);
+	}
 
-        // Pool mode selon la commande
-        poolModeCombo.getItems().clear();
-        if (isRuleBasis) {
-            poolModeCombo.getItems().addAll("MONO", "FORKJOINPOOL");
-            poolModeCombo.setValue("MONO");
-        } else {
-            poolModeCombo.getItems().addAll("MONO", "MULTITHREAD");
-            poolModeCombo.setValue("MULTITHREAD");
-        }
+	@FXML
+	private void onEditInput() {
+		String path = inputFileField.getText().trim();
+		if (path.isBlank()) {
+			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
+			return;
+		}
+		if (openInEditor != null)
+			openInEditor.accept(java.nio.file.Path.of(path));
+	}
 
-        // Panneau DBASIS
-        dbasisPane.setVisible(isDbasis);
-        dbasisPane.setManaged(isDbasis);
+	@FXML
+	private void onBrowseInput() {
+		FileChooser fc = new FileChooser();
+		fc.setTitle("Fichier de contexte formel");
+		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+		fc.getExtensionFilters().addAll(
+				new FileChooser.ExtensionFilter("Contextes FCA", "*.slf", "*.cex", "*.cxt", "*.xml", "*.csv"),
+				new FileChooser.ExtensionFilter("Tous les fichiers", "*.*"));
+		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
+		if (f != null) {
+			inputFileField.setText(f.getAbsolutePath());
+			if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
+			AppPreferences.setLastDirectory(f.getParent());
+			autoDetectFormat(f.getName());
+			if (outputFileField.getText().isBlank()) {
+				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
+				outputFileField.setText(base + "-rules.txt");
+			}
+		}
+	}
 
-        // Tri par support : RULEBASIS seulement
-        sortBySupportCheckBox.setVisible(isRuleBasis);
-        sortBySupportCheckBox.setManaged(isRuleBasis);
-    }
+	@FXML
+	private void onBrowseOutput() {
+		FileChooser fc = new FileChooser();
+		fc.setTitle("Fichier de sortie");
+		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Texte", "*.txt"),
+				new FileChooser.ExtensionFilter("JSON", "*.json"), new FileChooser.ExtensionFilter("XML", "*.xml"),
+				new FileChooser.ExtensionFilter("Datalog+", "*.dlgp"));
+		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
+		if (f != null) {
+			outputFileField.setText(f.getAbsolutePath());
+			String name = f.getName().toLowerCase();
+			if (name.endsWith(".json"))
+				outputFormatCombo.setValue("JSON");
+			else if (name.endsWith(".xml"))
+				outputFormatCombo.setValue("XML");
+			else if (name.endsWith(".dlgp"))
+				outputFormatCombo.setValue("DATALOG");
+			else
+				outputFormatCombo.setValue("TXT");
+		}
+	}
 
+	@FXML
+	private void onBrowseReport() {
+		FileChooser fc = new FileChooser();
+		fc.setTitle("Fichier de rapport");
+		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Texte", "*.txt"));
+		File f = fc.showSaveDialog(reportFileField.getScene().getWindow());
+		if (f != null)
+			reportFileField.setText(f.getAbsolutePath());
+	}
 
-    @FXML
-    private void onEditInput() {
-        String path = inputFileField.getText().trim();
-        if (path.isBlank()) {
-            showError(I18n.get("error.no.input.title"),
-                      I18n.get("error.no.input.detail"));
-            return;
-        }
-        if (openInEditor != null)
-            openInEditor.accept(java.nio.file.Path.of(path));
-    }
+	@FXML
+	private void onBrowseImplFolder() {
+		javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
+		dc.setTitle("Dossier de sortie par support");
+		dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+		File f = dc.showDialog(implFolderField.getScene().getWindow());
+		if (f != null)
+			implFolderField.setText(f.getAbsolutePath());
+	}
 
-    @FXML
-    private void onBrowseInput() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Fichier de contexte formel");
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Contextes FCA",
-                "*.slf","*.cex","*.cxt",  "*.xml",  "*.csv"),
-            new FileChooser.ExtensionFilter("Tous les fichiers", "*.*")
-        );
-        File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
-        if (f != null) {
-            inputFileField.setText(f.getAbsolutePath());
-            AppPreferences.setLastDirectory(f.getParent());
-            autoDetectFormat(f.getName());
-            if (outputFileField.getText().isBlank()) {
-                String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-                outputFileField.setText(base + "-rules.txt");
-            }
-        }
-    }
+	@FXML
+	private void onRun() {
+		if (inputFileField.getText().isBlank()) {
+			showError("Fichier d'entrée manquant", "Veuillez sélectionner un fichier de contexte.");
+			return;
+		}
 
-    @FXML
-    private void onBrowseOutput() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Fichier de sortie");
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Texte", "*.txt"),
-            new FileChooser.ExtensionFilter("JSON", "*.json"),
-            new FileChooser.ExtensionFilter("XML", "*.xml"),
-            new FileChooser.ExtensionFilter("Datalog+", "*.dlgp")
-        );
-        File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
-        if (f != null) {
-            outputFileField.setText(f.getAbsolutePath());
-            String name = f.getName().toLowerCase();
-            if      (name.endsWith(".json"))  outputFormatCombo.setValue("JSON");
-            else if (name.endsWith(".xml"))   outputFormatCombo.setValue("XML");
-            else if (name.endsWith(".dlgp"))  outputFormatCombo.setValue("DATALOG");
-            else                              outputFormatCombo.setValue("TXT");
-        }
-    }
+		CommandBuilder builder = new CommandBuilder().command(descriptor.getName())
+				.inputFile(inputFileField.getText().trim()).outputFormat(outputFormatCombo.getValue())
+				.implementation(implCombo.getValue()).verbose(verboseCheckBox.isSelected());
 
-    @FXML
-    private void onBrowseReport() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Fichier de rapport");
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        fc.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("Texte", "*.txt"));
-        File f = fc.showSaveDialog(reportFileField.getScene().getWindow());
-        if (f != null) reportFileField.setText(f.getAbsolutePath());
-    }
+		if (!outputFileField.getText().isBlank())
+			builder.outputFile(outputFileField.getText().trim());
 
-    @FXML
-    private void onBrowseImplFolder() {
-        javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
-        dc.setTitle("Dossier de sortie par support");
-        dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        File f = dc.showDialog(implFolderField.getScene().getWindow());
-        if (f != null) implFolderField.setText(f.getAbsolutePath());
-    }
+		String fmt = inputFormatCombo.getValue();
+		if (!"(auto)".equals(fmt))
+			builder.inputFormat(fmt);
+		if ("CSV".equals(fmt))
+			builder.separator(separatorCombo.getValue());
 
-    @FXML
-    private void onRun() {
-        if (inputFileField.getText().isBlank()) {
-            showError("Fichier d'entrée manquant", "Veuillez sélectionner un fichier de contexte.");
-            return;
-        }
+		builder.poolMode(poolModeCombo.getValue());
 
-        CommandBuilder builder = new CommandBuilder()
-            .command(descriptor.getName())
-            .inputFile(inputFileField.getText().trim())
-            .outputFormat(outputFormatCombo.getValue())
-            .implementation(implCombo.getValue())
-            .verbose(verboseCheckBox.isSelected());
+		int to = timeoutSpinner.getValue();
+		if (to > 0)
+			builder.timeout(to);
 
-        if (!outputFileField.getText().isBlank())
-            builder.outputFile(outputFileField.getText().trim());
+		if ("RULEBASIS".equals(descriptor.getName())) {
+			builder.algorithm(algoCombo.getValue()).clarify(clarifyCheckBox.isSelected())
+					.closureMethod(closureCombo.getValue()).sortBySupport(sortBySupportCheckBox.isSelected());
+			if (!"MONO".equals(poolModeCombo.getValue()))
+				builder.threadThreshold(thresholdSpinner.getValue());
+			if (!reportFileField.getText().isBlank())
+				builder.reportFile(reportFileField.getText().trim());
+			if (!implFolderField.getText().isBlank())
+				builder.implFolder(implFolderField.getText().trim());
+		}
 
-        String fmt = inputFormatCombo.getValue();
-        if (!"(auto)".equals(fmt)) builder.inputFormat(fmt);
-        if ("CSV".equals(fmt))     builder.separator(separatorCombo.getValue());
+		if ("DBASIS".equals(descriptor.getName())) {
+			int ms = minSupportSpinner.getValue();
+			if (ms > 0)
+				builder.minimalSupport(ms);
+			if (!reportFileField.getText().isBlank())
+				builder.reportFile(reportFileField.getText().trim());
+		}
 
-        builder.poolMode(poolModeCombo.getValue());
+		if (onRun != null)
+			onRun.accept(builder);
+	}
 
-        int to = timeoutSpinner.getValue();
-        if (to > 0) builder.timeout(to);
+	private void autoDetectFormat(String filename) {
+		String lower = filename.toLowerCase();
+		if (lower.endsWith(".cxt"))
+			inputFormatCombo.setValue("CXT");
+		else if (lower.endsWith(".slf"))
+			inputFormatCombo.setValue("SLF");
+		else if (lower.endsWith(".xml"))
+			inputFormatCombo.setValue("XML");
+		else if (lower.endsWith(".cex"))
+			inputFormatCombo.setValue("CEX");
+		else if (lower.endsWith(".csv"))
+			inputFormatCombo.setValue("CSV");
+		else
+			inputFormatCombo.setValue("(auto)");
+	}
 
-        if ("RULEBASIS".equals(descriptor.getName())) {
-            builder.algorithm(algoCombo.getValue())
-                   .clarify(clarifyCheckBox.isSelected())
-                   .closureMethod(closureCombo.getValue())
-                   .sortBySupport(sortBySupportCheckBox.isSelected());
-            if (!"MONO".equals(poolModeCombo.getValue()))
-                builder.threadThreshold(thresholdSpinner.getValue());
-            if (!reportFileField.getText().isBlank())
-                builder.reportFile(reportFileField.getText().trim());
-            if (!implFolderField.getText().isBlank())
-                builder.implFolder(implFolderField.getText().trim());
-        }
+	private void showError(String title, String msg) {
+		Alert a = new Alert(Alert.AlertType.WARNING);
+		a.setTitle(title);
+		a.setHeaderText(null);
+		a.setContentText(msg);
+		a.showAndWait();
+	}
 
-        if ("DBASIS".equals(descriptor.getName())) {
-            int ms = minSupportSpinner.getValue();
-            if (ms > 0) builder.minimalSupport(ms);
-            if (!reportFileField.getText().isBlank())
-                builder.reportFile(reportFileField.getText().trim());
-        }
+	public void setInputFile(String path) {
+		if (path != null && !path.isBlank())
+			inputFileField.setText(path);
+	}
 
-        if (onRun != null) onRun.accept(builder);
-    }
-
-    private void autoDetectFormat(String filename) {
-        String lower = filename.toLowerCase();
-        if      (lower.endsWith(".cxt")) inputFormatCombo.setValue("CXT");
-        else if (lower.endsWith(".slf")) inputFormatCombo.setValue("SLF");
-        else if (lower.endsWith(".xml")) inputFormatCombo.setValue("XML");
-        else if (lower.endsWith(".cex")) inputFormatCombo.setValue("CEX");
-        else if (lower.endsWith(".csv")) inputFormatCombo.setValue("CSV");
-        else                             inputFormatCombo.setValue("(auto)");
-    }
-
-    private void showError(String title, String msg) {
-        Alert a = new Alert(Alert.AlertType.WARNING);
-        a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
-        a.showAndWait();
-    }
+	public String getInputFile() {
+		return inputFileField.getText();
+	}
 }

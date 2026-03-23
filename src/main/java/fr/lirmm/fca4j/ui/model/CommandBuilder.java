@@ -56,22 +56,25 @@ public class CommandBuilder {
     private java.util.List<String> includeAttrs = new java.util.ArrayList<>(); // -incl
 
     // ── RCA ───────────────────────────────────────────────────────────────────
-    private String  familyFormat;          // -f
-    private boolean rcaClean       = false; // -clean
-    private boolean rcaRenameRA    = false; // -ra
-    private boolean rcaRenameRAI   = false; // -rai
-    private boolean rcaRenameRI    = false; // -ri
-    private boolean rcaNativeOnly  = false; // -na
-    private Integer rcaLimit;              // -x
-    private boolean rcaStoreExtended      = false; // -e
-    private boolean rcaStoreExtendedSteps = false; // -es
-    private boolean rcaBuildDot    = false; // -dot
-    private boolean rcaBuildDotSteps = false; // (dot at each step via -dot + -es combo)
-    private boolean rcaBuildJson   = false; // -json
-    private boolean rcaBuildJsonSteps = false;
-    private boolean rcaBuildXml    = false; // -xml
-    private boolean rcaFullExtents = false; // -fe
-    private boolean rcaFullIntents = false; // -fi
+    private String  familyFormat;                    // -f
+    private boolean rcaClean             = false;    // -clean
+    private boolean rcaRenameRA          = false;    // -ra
+    private boolean rcaRenameRAI         = false;    // -rai
+    private boolean rcaRenameRI          = false;    // -ri
+    private boolean rcaNativeOnly        = false;    // -na
+    private Integer rcaLimit;                        // -x
+    private boolean rcaStoreExtended     = false;    // -e
+    private boolean rcaStoreExtendedSteps = false;   // -es
+    private boolean rcaBuildDot          = false;    // -dot
+    private String  rcaDisplayMode       = "SIMPLIFIED"; // -d
+    private boolean rcaStability         = false;    // -sta
+    private boolean rcaBuildJson         = false;    // -json
+    private boolean rcaBuildXml          = false;    // -xml
+    private boolean rcaFullExtents       = false;    // -fe
+    private boolean rcaFullIntents       = false;    // -fi
+    private String  rcaDatalogFolder;                // -cd
+    private String  rcaDatalogFile;                  // -cdu
+    private boolean rcaNoDirectSiblings  = false;    // -nds
 
     // ── Setters fluents ──────────────────────────────────────────────────────
     public CommandBuilder command(String v)         { this.command = v;           return this; }
@@ -120,12 +123,15 @@ public class CommandBuilder {
     public CommandBuilder rcaStoreExtended(boolean v)      { this.rcaStoreExtended = v;       return this; }
     public CommandBuilder rcaStoreExtendedEachStep(boolean v){ this.rcaStoreExtendedSteps = v; return this; }
     public CommandBuilder rcaBuildDot(boolean v)           { this.rcaBuildDot = v;            return this; }
-    public CommandBuilder rcaBuildDotEachStep(boolean v)   { this.rcaBuildDotSteps = v;       return this; }
     public CommandBuilder rcaBuildJson(boolean v)          { this.rcaBuildJson = v;           return this; }
-    public CommandBuilder rcaBuildJsonEachStep(boolean v)  { this.rcaBuildJsonSteps = v;      return this; }
     public CommandBuilder rcaBuildXml(boolean v)           { this.rcaBuildXml = v;            return this; }
     public CommandBuilder rcaFullExtents(boolean v)        { this.rcaFullExtents = v;         return this; }
     public CommandBuilder rcaFullIntents(boolean v)        { this.rcaFullIntents = v;         return this; }
+    public CommandBuilder rcaDisplayMode(String v)         { this.rcaDisplayMode = v;          return this; }
+    public CommandBuilder rcaStability(boolean v)          { this.rcaStability = v;            return this; }
+    public CommandBuilder rcaDatalogFolder(String v)       { this.rcaDatalogFolder = v;        return this; }
+    public CommandBuilder rcaDatalogFile(String v)         { this.rcaDatalogFile = v;          return this; }
+    public CommandBuilder rcaNoDirectSiblings(boolean v)   { this.rcaNoDirectSiblings = v;     return this; }
     // BINARIZE
     public CommandBuilder excludeAttrs(java.util.List<String> v) { this.excludeAttrs = v; return this; }
     public CommandBuilder includeAttrs(java.util.List<String> v) { this.includeAttrs = v; return this; }
@@ -229,20 +235,29 @@ public class CommandBuilder {
         // ── Options RCA ───────────────────────────────────────────────────────
         if (familyFormat != null && !familyFormat.isBlank() && !"RCFT".equals(familyFormat))
             add(args, "-f", familyFormat);
-        if (rcaClean)             args.add("-clean");
-        if (rcaRenameRA)          args.add("-ra");
-        if (rcaRenameRAI)         args.add("-rai");
-        if (rcaRenameRI)          args.add("-ri");
-        if (rcaNativeOnly)        args.add("-na");
-        if (rcaLimit != null && rcaLimit > 0)  add(args, "-x", String.valueOf(rcaLimit));
-        if (rcaStoreExtended)     args.add("-e");
+        if (rcaClean)              args.add("-clean");
+        if (rcaRenameRA)           args.add("-ra");
+        if (rcaRenameRAI)          args.add("-rai");
+        if (rcaRenameRI)           args.add("-ri");
+        if (rcaNativeOnly)         args.add("-na");
+        if (rcaLimit != null && rcaLimit > 0) add(args, "-x", String.valueOf(rcaLimit));
+        if (rcaStoreExtended)      args.add("-e");
         if (rcaStoreExtendedSteps) args.add("-es");
-        if (rcaBuildDot)          args.add("-dot");
-        if (rcaBuildJson)         args.add("-json");
-        if (rcaBuildJsonSteps)    args.add("-json");
-        if (rcaBuildXml)          args.add("-xml");
-        if (rcaFullExtents)       args.add("-fe");
-        if (rcaFullIntents)       args.add("-fi");
+        if (rcaBuildDot) {
+            args.add("-dot");
+            if (rcaDisplayMode != null && !"SIMPLIFIED".equals(rcaDisplayMode))
+                add(args, "-d", rcaDisplayMode);
+            if (rcaStability) args.add("-sta");
+        }
+        if (rcaBuildJson)          args.add("-json");
+        if (rcaBuildXml)           args.add("-xml");
+        if (rcaFullExtents)        args.add("-fe");
+        if (rcaFullIntents)        args.add("-fi");
+        if (rcaDatalogFolder != null && !rcaDatalogFolder.isBlank())
+            add(args, "-cd", rcaDatalogFolder);
+        if (rcaDatalogFile != null && !rcaDatalogFile.isBlank())
+            add(args, "-cdu", rcaDatalogFile);
+        if (rcaNoDirectSiblings)   args.add("-nds");
 
         // Timeout
         if (timeout != null && timeout > 0)

@@ -1,1 +1,0 @@
-Pizza: step=3 nb.concepts=8 nb.attrib rel.=7

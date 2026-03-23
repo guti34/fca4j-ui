@@ -1,1 +1,0 @@
-Pizzeria: step=3 nb.concepts=10 nb.attrib rel.=8

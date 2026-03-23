@@ -54,7 +54,8 @@ public class IrreducibleController implements Initializable {
     @FXML private CheckBox         verboseCheckBox;
 
     private Consumer<CommandBuilder> onRun;
-
+    private Consumer<String> onInputChanged;
+    
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
@@ -80,7 +81,8 @@ public class IrreducibleController implements Initializable {
     }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
-                          Consumer<Path> openInEditor) {
+            Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
+this.onInputChanged = onInputChanged;
         this.onRun        = onRun;
         this.openInEditor = openInEditor;
 
@@ -118,6 +120,7 @@ public class IrreducibleController implements Initializable {
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
         if (f != null) {
             inputFileField.setText(f.getAbsolutePath());
+            if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
             AppPreferences.setLastDirectory(f.getParent());
             autoDetectFormat(f.getName());
             if (outputFileField.getText().isBlank()) {
@@ -207,4 +210,10 @@ public class IrreducibleController implements Initializable {
         a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
         a.showAndWait();
     }
-}
+    public void setInputFile(String path) {
+        if (path!=null && !path.isBlank()) inputFileField.setText(path);
+    }
+    public String getInputFile() {
+        return inputFileField.getText();
+    }
+    }

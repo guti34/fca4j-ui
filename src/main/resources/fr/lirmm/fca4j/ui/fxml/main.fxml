@@ -18,9 +18,6 @@
                     <MenuItem text="%menu.help.about" onAction="#onAbout"/>
                 </Menu>
             </MenuBar>
-            <ToolBar>
-                <Label fx:id="statusLabel"/>
-            </ToolBar>
         </VBox>
     </top>
 
@@ -103,11 +100,17 @@
         </SplitPane>
     </center>
 
-    <bottom>
-        <HBox style="-fx-padding: 4 8; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;"
-              spacing="12" alignment="CENTER_LEFT">
-            <Label text="%panel.node.label" style="-fx-font-weight: bold;"/>
-            <Label fx:id="selectedNodeLabel"/>
-        </HBox>
-    </bottom>
+	<bottom>
+	    <HBox style="-fx-padding: 3 8; -fx-border-color: #ccc;
+	                 -fx-border-width: 1 0 0 0; -fx-background-color: #f5f5f5;"
+	          spacing="16" alignment="CENTER_LEFT">
+	        <Label text="FCA4J:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+	        <Label fx:id="statusFca4jLabel" style="-fx-font-size: 11px;"/>
+	        <Separator orientation="VERTICAL"/>
+	        <Label text="GraphViz:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+	        <Label fx:id="statusGraphvizLabel" style="-fx-font-size: 11px;"/>
+	        <Pane HBox.hgrow="ALWAYS"/>
+	        <Label fx:id="selectedNodeLabel" style="-fx-font-size: 11px;"/>
+	    </HBox>
+	</bottom>
 </BorderPane>

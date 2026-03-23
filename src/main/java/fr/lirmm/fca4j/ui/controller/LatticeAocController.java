@@ -60,7 +60,8 @@ public class LatticeAocController implements Initializable {
     // ── État ──────────────────────────────────────────────────────────────────
     private CommandDescriptor        descriptor;
     private Consumer<CommandBuilder> onRun;
-
+    private Consumer<String> onInputChanged;
+    
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         inputFormatCombo.getItems().addAll(
@@ -123,7 +124,8 @@ public class LatticeAocController implements Initializable {
      * Appelé depuis MainController après chargement du FXML.
      */
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
-                          Consumer<Path> openInEditor) {
+            Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
+this.onInputChanged = onInputChanged;
         this.openInEditor = openInEditor;
         this.descriptor = desc;
         this.onRun      = onRun;
@@ -180,6 +182,7 @@ public class LatticeAocController implements Initializable {
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
         if (f != null) {
             inputFileField.setText(f.getAbsolutePath());
+            if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
             AppPreferences.setLastDirectory(f.getParent());
             autoDetectFormat(f.getName());
             if (outputFileField.getText().isBlank()) {
@@ -275,7 +278,12 @@ public class LatticeAocController implements Initializable {
         a.showAndWait();
     }
 
-    public String getInputFile() { return inputFileField.getText(); }
+    public void setInputFile(String path) {
+        if (path!=null && !path.isBlank()) inputFileField.setText(path);
+    }
+    public String getInputFile() {
+        return inputFileField.getText();
+    }
     public String getDotFile() {
         return dotCheckBox.isSelected() ? dotFileField.getText() : null;
     }
