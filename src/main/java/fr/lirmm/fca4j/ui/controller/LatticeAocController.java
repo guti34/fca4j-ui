@@ -1,21 +1,32 @@
 package fr.lirmm.fca4j.ui.controller;
 
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.ResourceBundle;
+import java.util.function.Consumer;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
+
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
-import java.nio.file.Path;
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
+import fr.lirmm.fca4j.ui.util.Utilities;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.net.URL;
-import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
 public class LatticeAocController implements Initializable {
 
@@ -52,6 +63,12 @@ public class LatticeAocController implements Initializable {
     @FXML private ComboBox<String> displayModeCombo;
     @FXML private CheckBox         stabilityCheckBox;
 
+    // Datalog
+    @FXML private TitledPane datalogPane;
+    @FXML private TextField  datalogFolderField;
+    @FXML private TextField  datalogFileField;
+    @FXML private CheckBox   noDirectSiblings;
+    
     // ── Options avancées ──────────────────────────────────────────────────────
     @FXML private ComboBox<String> implCombo;
     @FXML private Spinner<Integer> timeoutSpinner;
@@ -135,6 +152,7 @@ this.onInputChanged = onInputChanged;
         outputPane.setText(I18n.get("section.output"));
         algoPane.setText(I18n.get("section.algorithm"));
         graphvizPane.setText(I18n.get("section.graphviz"));
+        datalogPane.setText(I18n.get("rca.section.datalog"));
         advancedPane.setText(I18n.get("section.advanced"));
         runButton.setText(I18n.get("button.run"));
 
@@ -220,12 +238,33 @@ this.onInputChanged = onInputChanged;
         File f = fc.showSaveDialog(dotFileField.getScene().getWindow());
         if (f != null) dotFileField.setText(f.getAbsolutePath());
     }
+    @FXML private void onBrowseDatalogFolder() {
+        javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
+        dc.setTitle(I18n.get("rca.browse.datalog.folder"));
+        dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        File f = dc.showDialog(datalogFolderField.getScene().getWindow());
+        if (f != null) datalogFolderField.setText(f.getAbsolutePath());
+    }
 
+    @FXML private void onBrowseDatalogFile() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle(I18n.get("rca.browse.datalog.file"));
+        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        fc.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Datalog", "*.dlgp", "*.dl"));
+        File f = fc.showSaveDialog(datalogFileField.getScene().getWindow());
+        if (f != null) datalogFileField.setText(f.getAbsolutePath());
+    }
     @FXML
     private void onRun() {
         if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));
+            return;
+        }
+        if (dotCheckBox.isSelected() && dotFileField.getText().isBlank()) {
+            showError(I18n.get("error.dot.missing.title"),
+                      I18n.get("error.dot.missing.detail"));
             return;
         }
 
@@ -237,8 +276,17 @@ this.onInputChanged = onInputChanged;
             .verbose(verboseCheckBox.isSelected())
             .implementation(implCombo.getValue());
 
+        if (dotCheckBox.isSelected())
+            builder.dotFile(Utilities.resolveOutput(dotFileField.getText().trim(),inputFileField))
+                   .displayMode(displayModeCombo.getValue())
+                   .stability(stabilityCheckBox.isSelected());
+
+        if (!datalogFolderField.getText().isBlank())
+            builder.datalogFolder(Utilities.resolveOutput(datalogFolderField.getText().trim(),inputFileField));
+        if (!datalogFileField.getText().isBlank())
+            builder.datalogFile(Utilities.resolveOutput(datalogFileField.getText().trim(),inputFileField));        
         if (!outputFileField.getText().isBlank())
-            builder.outputFile(outputFileField.getText().trim());
+            builder.outputFile(Utilities.resolveOutput(outputFileField.getText().trim(),inputFileField));
 
         String fmt = inputFormatCombo.getValue();
         if (!I18n.get("format.auto").equals(fmt)) builder.inputFormat(fmt);
@@ -247,15 +295,11 @@ this.onInputChanged = onInputChanged;
         if ("ICEBERG".equals(algoCombo.getValue()))
             builder.icebergPercent(icebergSpinner.getValue());
 
-        if (dotCheckBox.isSelected() && !dotFileField.getText().isBlank())
-            builder.dotFile(dotFileField.getText().trim())
-                   .displayMode(displayModeCombo.getValue())
-                   .stability(stabilityCheckBox.isSelected());
-
         int to = timeoutSpinner.getValue();
         if (to > 0) builder.timeout(to);
 
-        if (onRun != null) onRun.accept(builder);
+        if (noDirectSiblings.isSelected())
+            builder.noDirectSiblings(true);        if (onRun != null) onRun.accept(builder);
     }
 
     // ── Utilitaires ───────────────────────────────────────────────────────────

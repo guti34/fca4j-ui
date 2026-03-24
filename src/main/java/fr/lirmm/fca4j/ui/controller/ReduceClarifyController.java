@@ -4,6 +4,8 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import java.nio.file.Path;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
@@ -206,7 +208,7 @@ this.onInputChanged = onInputChanged;
 
         // Fichier et format de sortie
         if (!outputFileField.getText().isBlank()) {
-            builder.outputFile(outputFileField.getText().trim());
+            builder.outputFile(Utilities.resolveOutput(outputFileField.getText().trim(),inputFileField));
             String outFmt = outputFormatCombo.getValue();
             if (!"XML".equals(outFmt)) builder.outputFormat(outFmt);
             if ("CSV".equals(outFmt))  builder.separator(outSeparatorCombo.getValue());

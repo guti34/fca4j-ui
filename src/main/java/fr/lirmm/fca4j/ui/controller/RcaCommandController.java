@@ -3,6 +3,8 @@ package fr.lirmm.fca4j.ui.controller;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
@@ -251,7 +253,7 @@ public class RcaCommandController implements Initializable {
         String fmt = familyFormatCombo.getValue();
         if (!"RCFT".equals(fmt)) builder.familyFormat(fmt);
 
-        if (outputFolder != null) builder.outputFile(outputFolder.toString());
+        if (outputFolder != null) builder.outputFile(Utilities.resolveOutput(outputFolder.toString(),familyFileField));
 
         int limit = limitStepsSpinner.getValue();
         if (limit > 0) builder.rcaLimit(limit);
@@ -281,9 +283,9 @@ public class RcaCommandController implements Initializable {
         if (buildJson.isSelected()) builder.rcaBuildJson(true);
 
         if (!datalogFolderField.getText().isBlank())
-            builder.rcaDatalogFolder(datalogFolderField.getText().trim());
+            builder.rcaDatalogFolder(Utilities.resolveOutput(datalogFolderField.getText().trim(),familyFileField));
         if (!datalogFileField.getText().isBlank())
-            builder.rcaDatalogFile(datalogFileField.getText().trim());
+            builder.rcaDatalogFile(Utilities.resolveOutput(datalogFileField.getText().trim(),familyFileField));
         if (noDirectSiblings.isSelected()) builder.rcaNoDirectSiblings(true);
 
         int to = timeoutSpinner.getValue();

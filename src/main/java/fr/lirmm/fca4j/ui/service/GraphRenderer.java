@@ -1,6 +1,7 @@
 package fr.lirmm.fca4j.ui.service;
 
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Worker;
 import javafx.scene.web.WebEngine;
 import netscape.javascript.JSObject;
@@ -17,32 +18,24 @@ import java.util.function.Consumer;
  */
 public class GraphRenderer {
 
-    private final WebEngine webEngine;
-    private Consumer<String> onNodeClick;
-    private Path currentDotFile = null;
-    
+    private final WebEngine      webEngine;
+    private Consumer<String>     onNodeClick;
+    private Path                 currentDotFile = null;
+
     public GraphRenderer(WebEngine webEngine) {
         this.webEngine = webEngine;
     }
+
     public Path getCurrentDotFile() { return currentDotFile; }
 
-    /** Callback déclenché quand l'utilisateur clique sur un nœud du treillis. */
     public void setOnNodeClick(Consumer<String> handler) {
         this.onNodeClick = handler;
     }
 
-    /**
-     * Rend un fichier .dot dans le WebEngine.
-     * Exécuté hors du thread JavaFX pour ne pas bloquer l'UI.
-     *
-     * @param dotFile chemin vers le fichier .dot produit par FCA4J
-     * @return        Future complété quand le rendu est chargé
-     */
     public CompletableFuture<Void> render(Path dotFile) {
-    	   this.currentDotFile = dotFile;  // ← mémoriser
+        this.currentDotFile = dotFile;
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // 1. Appel GraphViz : dot → SVG dans un fichier temporaire
                 Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
                 svgFile.toFile().deleteOnExit();
 
@@ -61,43 +54,47 @@ public class GraphRenderer {
                     );
                 }
 
-                // 2. Lecture du SVG généré
-                String svgContent = Files.readString(svgFile);
-                return svgContent;
+                return Files.readString(svgFile);
 
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }).thenAccept(svgContent -> {
-            // 3. Injection dans le WebEngine (doit se faire sur le thread JavaFX)
-            Platform.runLater(() -> loadSvgInWebEngine(svgContent));
-        });
+        }).thenAccept(svgContent ->
+            Platform.runLater(() -> loadSvgInWebEngine(svgContent))
+        );
     }
 
     private void loadSvgInWebEngine(String svgContent) {
         String html = buildHtml(svgContent);
-        webEngine.loadContent(html, "text/html");
 
-        // 4. Une fois le DOM chargé, on enregistre le bridge Java↔JS
-        webEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+        // Listener à usage unique — retiré dès le premier SUCCEEDED
+        // Évite l'accumulation de listeners et les appels parasites
+        ChangeListener<Worker.State>[] listenerHolder = new ChangeListener[1];
+        listenerHolder[0] = (obs, oldState, newState) -> {
             if (newState == Worker.State.SUCCEEDED) {
+                webEngine.getLoadWorker().stateProperty()
+                    .removeListener(listenerHolder[0]);
                 installJsBridge();
+            } else if (newState == Worker.State.FAILED) {
+                webEngine.getLoadWorker().stateProperty()
+                    .removeListener(listenerHolder[0]);
             }
-        });
+        };
+        webEngine.getLoadWorker().stateProperty().addListener(listenerHolder[0]);
+
+        webEngine.loadContent(html, "text/html");
     }
 
     private void installJsBridge() {
-        JSObject window = (JSObject) webEngine.executeScript("window");
-        window.setMember("javaApp", new JsBridge());
-        // Active les gestionnaires de clics déclarés dans le HTML
-        webEngine.executeScript("initNodeClicks()");
+        try {
+            JSObject window = (JSObject) webEngine.executeScript("window");
+            window.setMember("javaApp", new JsBridge());
+            webEngine.executeScript("initNodeClicks()");
+        } catch (Exception e) {
+            System.err.println("[GraphRenderer] installJsBridge error: " + e.getMessage());
+        }
     }
 
-    /**
-     * Construit la page HTML qui enveloppe le SVG avec :
-     * - zoom/pan via la molette et le glisser-déposer
-     * - clic sur les nœuds remontant à Java
-     */
     private String buildHtml(String svgContent) {
         return """
             <!DOCTYPE html>
@@ -127,12 +124,9 @@ public class GraphRenderer {
               var nodes = document.querySelectorAll('.node');
               nodes.forEach(function(node) {
                 node.addEventListener('click', function() {
-                  // Retrait de la sélection précédente
                   document.querySelectorAll('.node.selected')
                     .forEach(function(n) { n.classList.remove('selected'); });
                   node.classList.add('selected');
-
-                  // Récupération du label (balise <title> générée par GraphViz)
                   var title = node.querySelector('title');
                   var label = title ? title.textContent.trim() : node.id;
                   if (window.javaApp) {
@@ -142,7 +136,6 @@ public class GraphRenderer {
               });
             }
 
-            // Zoom / Pan basique sur le SVG
             (function() {
               var svg = document.querySelector('svg');
               if (!svg) return;
@@ -180,18 +173,17 @@ public class GraphRenderer {
             """.formatted(svgContent);
     }
 
-    /**
-     * Objet exposé au JavaScript via window.javaApp.
-     * Les méthodes sont appelées depuis le thread WebKit — on repasse sur le thread JavaFX.
-     */
     public class JsBridge {
-        /** Appelé par le JS quand l'utilisateur clique sur un nœud. */
         public void onNodeClick(String nodeLabel) {
             Platform.runLater(() -> {
-                if (onNodeClick != null) {
-                    onNodeClick.accept(nodeLabel);
-                }
+                if (onNodeClick != null) onNodeClick.accept(nodeLabel);
             });
         }
+    }
+
+    public void clear() {
+        currentDotFile = null;
+        webEngine.loadContent(
+            "<html><body style='background:#f8f9fa;'></body></html>");
     }
 }

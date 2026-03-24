@@ -364,7 +364,7 @@ public class MainController implements Initializable {
         consoleArea.clear();
         appendConsole("$ " + builder.toDisplayString());
         mainTabPane.getSelectionModel().select(0);
-
+        clearGraph();
         runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
             .thenAccept(result -> Platform.runLater(() -> {
                 if (result.isSuccess()) {
@@ -375,7 +375,13 @@ public class MainController implements Initializable {
                 }
             }));
     }
-
+    private void clearGraph() {
+        renderer.clear();
+        btnSaveDot.setDisable(true);
+        btnExportSvg.setDisable(true);
+        btnExportPng.setDisable(true);
+        btnExportPdf.setDisable(true);
+    }
     private void executeRcaCommand(CommandBuilder builder) {
         if (!AppPreferences.isFca4jConfigured()) {
             showAlert(I18n.get("error.not.configured.title"),

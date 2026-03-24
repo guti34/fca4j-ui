@@ -4,6 +4,8 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
@@ -163,7 +165,7 @@ this.onInputChanged = onInputChanged;
             .verbose(verboseCheckBox.isSelected());
 
         if (!outputFileField.getText().isBlank())
-            builder.outputFile(outputFileField.getText().trim());
+            builder.outputFile(Utilities.resolveOutput(outputFileField.getText().trim(),inputFileField));
 
         String fmt = inputFormatCombo.getValue();
         if (!"(auto)".equals(fmt)) builder.inputFormat(fmt);

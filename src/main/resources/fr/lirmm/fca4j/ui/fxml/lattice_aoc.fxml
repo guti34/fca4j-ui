@@ -66,7 +66,25 @@
             <CheckBox fx:id="stabilityCheckBox" text="%checkbox.stability"/>
         </VBox>
     </TitledPane>
-
+<TitledPane fx:id="datalogPane" collapsible="true" expanded="false">
+    <VBox spacing="6" style="-fx-padding: 8;">
+        <Label text="%rca.datalog.hint"
+               style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+        <HBox spacing="6" alignment="CENTER_LEFT">
+            <Label text="%rca.datalog.folder" minWidth="120"/>
+            <TextField fx:id="datalogFolderField" HBox.hgrow="ALWAYS"
+                       promptText="%rca.datalog.folder.prompt"/>
+            <Button text="%button.browse" onAction="#onBrowseDatalogFolder"/>
+        </HBox>
+        <HBox spacing="6" alignment="CENTER_LEFT">
+            <Label text="%rca.datalog.file" minWidth="120"/>
+            <TextField fx:id="datalogFileField" HBox.hgrow="ALWAYS"
+                       promptText="%rca.datalog.file.prompt"/>
+            <Button text="%button.browse" onAction="#onBrowseDatalogFile"/>
+        </HBox>
+        <CheckBox fx:id="noDirectSiblings" text="%rca.no.direct.siblings"/>
+    </VBox>
+</TitledPane>
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
