@@ -23,6 +23,8 @@ import java.util.function.Consumer;
  * Contrôleur du panneau de paramètres pour RULEBASIS et DBASIS.
  */
 public class RuleBasisController implements Initializable {
+	private static final String P = "RULEBASIS.";
+
 
 	@FXML
 	private TitledPane inputPane;
@@ -150,7 +152,6 @@ public class RuleBasisController implements Initializable {
 		threadPane.setText(I18n.get("section.multithreading"));
 		advancedPane.setText(I18n.get("section.advanced"));
 		dbasisPane.setText(I18n.get("section.dbasis"));
-		runButton.setText(I18n.get("button.run"));
 
 		// Bouton "Ouvrir dans l'éditeur"
 		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
@@ -194,6 +195,7 @@ public class RuleBasisController implements Initializable {
 		// Tri par support : RULEBASIS seulement
 		sortBySupportCheckBox.setVisible(isRuleBasis);
 		sortBySupportCheckBox.setManaged(isRuleBasis);
+		loadPrefs();
 	}
 
 	@FXML
@@ -273,7 +275,8 @@ public class RuleBasisController implements Initializable {
 	}
 
 	@FXML
-	private void onRun() {
+	public void onRun() {
+		savePrefs();
 		if (inputFileField.getText().isBlank()) {
 			showError("Fichier d'entrée manquant", "Veuillez sélectionner un fichier de contexte.");
 			return;
@@ -352,5 +355,58 @@ public class RuleBasisController implements Initializable {
 
 	public String getInputFile() {
 		return inputFileField.getText();
+	}
+	private void savePrefs() {
+	    String cmd = descriptor.getName(); // "RULEBASIS" ou "DBASIS"
+	    AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
+	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
+	    AppPreferences.saveString(cmd + ".poolMode",     poolModeCombo.getValue());
+	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
+	    AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
+
+	    if ("RULEBASIS".equals(cmd)) {
+	        AppPreferences.saveString(cmd + ".algo",     algoCombo.getValue());
+	        AppPreferences.saveString(cmd + ".closure",  closureCombo.getValue());
+	        AppPreferences.saveBool  (cmd + ".clarify",  clarifyCheckBox.isSelected());
+	        AppPreferences.saveBool  (cmd + ".sort",     sortBySupportCheckBox.isSelected());
+	        AppPreferences.saveInt   (cmd + ".threshold",thresholdSpinner.getValue());
+	    }
+	    if ("DBASIS".equals(cmd)) {
+	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
+	    }
+	}
+
+	private void loadPrefs() {
+	    String cmd = descriptor.getName();
+	    String fmt = AppPreferences.loadString(cmd + ".outputFormat", "TXT");
+	    if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);
+
+	    String impl = AppPreferences.loadString(cmd + ".impl", "BITSET");
+	    if (implCombo.getItems().contains(impl)) implCombo.setValue(impl);
+
+	    String pool = AppPreferences.loadString(cmd + ".poolMode",
+	        "RULEBASIS".equals(cmd) ? "MONO" : "MULTITHREAD");
+	    if (poolModeCombo.getItems().contains(pool)) poolModeCombo.setValue(pool);
+
+	    verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
+	    timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+
+	    if ("RULEBASIS".equals(cmd)) {
+	        String algo = AppPreferences.loadString(cmd + ".algo",
+	            descriptor.getDefaultAlgorithm());
+	        if (algoCombo.getItems().contains(algo)) algoCombo.setValue(algo);
+
+	        String closure = AppPreferences.loadString(cmd + ".closure", "BASIC");
+	        if (closureCombo.getItems().contains(closure)) closureCombo.setValue(closure);
+
+	        clarifyCheckBox.setSelected(AppPreferences.loadBool(cmd + ".clarify",   false));
+	        sortBySupportCheckBox.setSelected(AppPreferences.loadBool(cmd + ".sort", false));
+	        thresholdSpinner.getValueFactory().setValue(
+	            AppPreferences.loadInt(cmd + ".threshold", 50));
+	    }
+	    if ("DBASIS".equals(cmd)) {
+	        minSupportSpinner.getValueFactory().setValue(
+	            AppPreferences.loadInt(cmd + ".minSupport", 0));
+	    }
 	}
 }

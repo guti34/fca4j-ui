@@ -30,24 +30,49 @@
 
                 <!-- Onglet Context : sélecteur + panneau paramètres -->
                 <Tab fx:id="contextTab">
-                    <VBox spacing="0">
-                        <!-- Sélecteur de commande intégré à l'onglet -->
-                        <HBox spacing="8" alignment="CENTER_LEFT"
-                              style="-fx-padding: 6 8; -fx-border-color: #ddd;
-                                     -fx-border-width: 0 0 1 0; -fx-background-color: #f5f5f5;">
-                            <Label text="%toolbar.command"
-                                   style="-fx-font-weight: bold;"/>
-                            <ComboBox fx:id="commandCombo" prefWidth="160"
-                                      HBox.hgrow="ALWAYS"/>
-                        </HBox>
-                        <!-- Panneau paramètres de la commande sélectionnée -->
-                        <StackPane fx:id="commandPanelContainer" VBox.vgrow="ALWAYS"/>
-                    </VBox>
+				    <BorderPane>
+				        <!-- Sélecteur de commande en haut -->
+				        <top>
+				            <HBox spacing="8" alignment="CENTER_LEFT"
+				                  style="-fx-padding: 6 8; -fx-border-color: #ddd;
+				                         -fx-border-width: 0 0 1 0; -fx-background-color: #f5f5f5;">
+				                <Label text="%toolbar.command"
+				                       style="-fx-font-weight: bold;"/>
+				                <ComboBox fx:id="commandCombo" prefWidth="160"
+				                          HBox.hgrow="ALWAYS"/>
+				            </HBox>
+				        </top>
+				        <!-- Panneau paramètres scrollable au centre -->
+				        <center>
+				            <StackPane fx:id="commandPanelContainer"/>
+				        </center>
+				        <!-- Bouton Run ancré en bas -->
+				        <bottom>
+				            <Button fx:id="contextRunButton"
+				                    maxWidth="Infinity"
+				                    style="-fx-font-weight: bold; -fx-font-size: 13px;
+				                           -fx-background-color: #0047B3; -fx-text-fill: white;
+				                           -fx-padding: 10; -fx-cursor: hand;"
+				                    onAction="#onContextRun"/>
+				        </bottom>
+				    </BorderPane>
                 </Tab>
 
                 <!-- Onglet RCA Family : commande RCA -->
                 <Tab fx:id="rcaTab">
-                    <StackPane fx:id="rcaCommandContainer"/>
+				    <BorderPane>
+				        <center>
+				            <StackPane fx:id="rcaCommandContainer"/>
+				        </center>
+				        <bottom>
+				            <Button fx:id="rcaRunButton"
+				                    maxWidth="Infinity"
+				                    style="-fx-font-weight: bold; -fx-font-size: 13px;
+				                           -fx-background-color: #0047B3; -fx-text-fill: white;
+				                           -fx-padding: 10; -fx-cursor: hand;"
+				                    onAction="#onRcaRun"/>
+				        </bottom>
+				    </BorderPane>
                 </Tab>
 
             </TabPane>

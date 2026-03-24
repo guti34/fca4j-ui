@@ -18,25 +18,44 @@
         <Separator orientation="VERTICAL"/>
 
         <!-- Groupe Structure -->
-        <Button fx:id="btnAddObject"    styleClass="icon-btn" onAction="#onAddObject"/>
-        <Button fx:id="btnDelObject"    styleClass="icon-btn" onAction="#onRemoveObject"/>
-        <Button fx:id="btnAddAttr"      styleClass="icon-btn" onAction="#onAddAttribute"/>
-        <Button fx:id="btnDelAttr"      styleClass="icon-btn" onAction="#onRemoveAttribute"/>
+        <Button fx:id="btnAddObject" styleClass="icon-btn" onAction="#onAddObject"/>
+        <Button fx:id="btnDelObject" styleClass="icon-btn" onAction="#onRemoveObject"/>
+        <Button fx:id="btnAddAttr"   styleClass="icon-btn" onAction="#onAddAttribute"/>
+        <Button fx:id="btnDelAttr"   styleClass="icon-btn" onAction="#onRemoveAttribute"/>
 
         <Separator orientation="VERTICAL"/>
 
         <!-- Renommer le contexte -->
-        <Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
-		<Separator/>
-		<Label fx:id="contextNameLabel" style="-fx-font-weight: bold;"/>
+		<HBox spacing="4" alignment="CENTER_LEFT">
+		    <Label fx:id="contextNameLabel" style="-fx-font-weight: bold;"/>
+		    <Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
+		</HBox>
 		<Label fx:id="statsLabel"
-		       style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
+       style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>        
+       <Separator/>
         <Pane HBox.hgrow="ALWAYS"/>
 
     </ToolBar>
 
-    <!-- ── Tableau principal ── -->
-    <TableView fx:id="tableView" VBox.vgrow="ALWAYS"/>
+    <!-- ── Tableau : colonne objets figée + colonnes attributs scrollables ── -->
+    <HBox VBox.vgrow="ALWAYS" spacing="0">
+
+        <!-- Colonne objets figée (largeur fixe, pas de scroll horizontal) -->
+        <TableView fx:id="objectsTable"
+                   minWidth="155" maxWidth="155" prefWidth="155"
+                   style="-fx-border-width: 0 1 0 0; -fx-border-color: #cccccc;">
+            <columns>
+                <TableColumn fx:id="frozenObjCol" minWidth="154" maxWidth="154" prefWidth="154"/>
+            </columns>
+            <placeholder><Label text=""/></placeholder>
+        </TableView>
+
+        <!-- Colonnes attributs scrollables -->
+        <TableView fx:id="tableView" HBox.hgrow="ALWAYS">
+            <placeholder><Label text=""/></placeholder>
+        </TableView>
+
+    </HBox>
 
     <!-- ── Barre de statut ── -->
     <Label fx:id="statusLabel" styleClass="status-bar"/>

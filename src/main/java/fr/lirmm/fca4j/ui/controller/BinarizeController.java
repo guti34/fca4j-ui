@@ -29,13 +29,13 @@ import java.util.function.Consumer;
  * Les options -excl et -incl peuvent être répétées (listes d'attributs).
  */
 public class BinarizeController implements Initializable {
+	private static final String P = "BINARIZE.";
 
     // ── TitledPanes et bouton ─────────────────────────────────────────────────
     @FXML private TitledPane       inputPane;
     @FXML private TitledPane       outputPane;
     @FXML private TitledPane       filterPane;
     @FXML private TitledPane       advancedPane;
-    @FXML private Button           runButton;
 
     // ── Entrée CSV ────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
@@ -108,9 +108,7 @@ public class BinarizeController implements Initializable {
         outputPane.setText(I18n.get("section.output"));
         filterPane.setText(I18n.get("binarize.section.filter"));
         advancedPane.setText(I18n.get("section.advanced"));
-        runButton.setText(I18n.get("button.run"));
-
-        excludeLabel.setText(I18n.get("binarize.exclude.label"));
+         excludeLabel.setText(I18n.get("binarize.exclude.label"));
         includeLabel.setText(I18n.get("binarize.include.label"));
         filterHintLabel.setText(I18n.get("binarize.filter.hint"));
 
@@ -119,6 +117,7 @@ public class BinarizeController implements Initializable {
         setIcon(btnRemoveExclude, new FontIcon(Material2MZ.REMOVE), I18n.get("binarize.btn.remove"));
         setIcon(btnAddInclude,    new FontIcon(Material2AL.ADD),    I18n.get("binarize.btn.add"));
         setIcon(btnRemoveInclude, new FontIcon(Material2MZ.REMOVE), I18n.get("binarize.btn.remove"));
+        loadPrefs();
     }
 
     // ── Actions fichiers ──────────────────────────────────────────────────────
@@ -203,7 +202,8 @@ public class BinarizeController implements Initializable {
     // ── Exécution ─────────────────────────────────────────────────────────────
 
     @FXML
-    private void onRun() {
+    public void onRun() {
+    	savePrefs();
         if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));
@@ -248,5 +248,42 @@ public class BinarizeController implements Initializable {
         Alert a = new Alert(Alert.AlertType.WARNING);
         a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
         a.showAndWait();
+    }
+    private void savePrefs() {
+        AppPreferences.saveString(P + "separator",    separatorCombo.getValue());
+        AppPreferences.saveString(P + "outputFormat", outputFormatCombo.getValue());
+        AppPreferences.saveString(P + "outSeparator", outSeparatorCombo.getValue());
+        AppPreferences.saveBool  (P + "verbose",      verboseCheckBox.isSelected());
+        AppPreferences.saveInt   (P + "timeout",      timeoutSpinner.getValue());
+        // Listes exclude/include — sérialisées en chaîne séparée par |
+        AppPreferences.saveString(P + "excludeList",
+            String.join("|", excludeList.getItems()));
+        AppPreferences.saveString(P + "includeList",
+            String.join("|", includeList.getItems()));
+    }
+
+    private void loadPrefs() {
+        String sep = AppPreferences.loadString(P + "separator", "COMMA");
+        if (separatorCombo.getItems().contains(sep)) separatorCombo.setValue(sep);
+
+        String fmt = AppPreferences.loadString(P + "outputFormat", "CXT");
+        if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);
+
+        String outSep = AppPreferences.loadString(P + "outSeparator", "COMMA");
+        if (outSeparatorCombo.getItems().contains(outSep)) outSeparatorCombo.setValue(outSep);
+
+        verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
+        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+
+        // Restaurer les listes
+        String excl = AppPreferences.loadString(P + "excludeList", "");
+        excludeList.getItems().clear();
+        if (!excl.isBlank())
+            excludeList.getItems().addAll(excl.split("\\|"));
+
+        String incl = AppPreferences.loadString(P + "includeList", "");
+        includeList.getItems().clear();
+        if (!incl.isBlank())
+            includeList.getItems().addAll(incl.split("\\|"));
     }
 }

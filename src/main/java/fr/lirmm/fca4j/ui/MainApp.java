@@ -17,8 +17,34 @@ import java.net.URL;
 public class MainApp extends Application {
 
     public static final String APP_TITLE   = "FCA4J UI";
-    public static final String APP_VERSION = "0.1.0";
+    public static final String APP_VERSION;
+    public static final String APP_URL;
+    public static final String APP_SCM;
+    public static final String APP_ORG_NAME;
+    public static final String APP_ORG_URL;
+    public static final String APP_INCEPTION;
+    public static final String APP_LICENSE;
+    public static final String[] APP_DEVELOPERS;
 
+    static {
+        var props = new java.util.Properties();
+        try (var is = MainApp.class.getResourceAsStream("/app.properties")) {
+            if (is != null) props.load(is);
+        } catch (Exception ignored) {}
+
+        APP_VERSION   = props.getProperty("app.version",    "0.1.0");
+        APP_URL       = props.getProperty("app.url",        "");
+        APP_SCM       = props.getProperty("app.scm",        "");
+        APP_ORG_NAME  = props.getProperty("app.org.name",   "LIRMM");
+        APP_ORG_URL   = props.getProperty("app.org.url",    "");
+        APP_INCEPTION = props.getProperty("app.inception",  "2026");
+        APP_LICENSE   = props.getProperty("app.license",    "BSD-3-Clause");
+        APP_DEVELOPERS = new String[]{
+            props.getProperty("app.dev.1.name","") + " (" + props.getProperty("app.dev.1.org","") + ")",
+            props.getProperty("app.dev.2.name","") + " (" + props.getProperty("app.dev.2.org","") + ")",
+            props.getProperty("app.dev.3.name","") + " (" + props.getProperty("app.dev.3.org","") + ")",
+        };
+    }
     @Override
     public void start(Stage primaryStage) throws IOException {
         // Force le chargement du pack au démarrage

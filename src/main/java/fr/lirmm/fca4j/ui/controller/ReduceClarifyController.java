@@ -36,8 +36,7 @@ public class ReduceClarifyController implements Initializable {
     @FXML private TitledPane       outputPane;
     @FXML private TitledPane       operationPane;
     @FXML private TitledPane       advancedPane;
-    @FXML private Button           runButton;
-
+ 
     // ── Entrée ────────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
     @FXML private ComboBox<String> inputFormatCombo;
@@ -116,7 +115,6 @@ this.onInputChanged = onInputChanged;
         outputPane.setText(I18n.get("section.output"));
         operationPane.setText(I18n.get("section.operation"));
         advancedPane.setText(I18n.get("section.advanced"));
-        runButton.setText(I18n.get("button.run"));
 
         // Bouton "Ouvrir dans l'éditeur"
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
@@ -136,6 +134,7 @@ this.onInputChanged = onInputChanged;
         // Option -u : REDUCE seulement
         groupCheckBox.setVisible(isReduce);
         groupCheckBox.setManaged(isReduce);
+        loadPrefs();
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
@@ -182,7 +181,8 @@ this.onInputChanged = onInputChanged;
     }
 
     @FXML
-    private void onRun() {
+    public void onRun() {
+    	savePrefs();
         if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));
@@ -262,4 +262,42 @@ this.onInputChanged = onInputChanged;
     }
     public String getInputFile() {
         return inputFileField.getText();
-    }}
+    }
+    private void savePrefs() {
+        String cmd = descriptor.getName(); // "CLARIFY" ou "REDUCE"
+        AppPreferences.saveString(cmd + ".inputFormat",  inputFormatCombo.getValue());
+        AppPreferences.saveString(cmd + ".separator",    separatorCombo.getValue());
+        AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
+        AppPreferences.saveString(cmd + ".outSeparator", outSeparatorCombo.getValue());
+        AppPreferences.saveBool  (cmd + ".xo",           xoCheckBox.isSelected());
+        AppPreferences.saveBool  (cmd + ".xa",           xaCheckBox.isSelected());
+        AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
+        AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
+        if ("REDUCE".equals(cmd))
+            AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
+    }
+
+    private void loadPrefs() {
+        String cmd = descriptor.getName();
+
+        String inFmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
+        if (inputFormatCombo.getItems().contains(inFmt)) inputFormatCombo.setValue(inFmt);
+
+        String sep = AppPreferences.loadString(cmd + ".separator", "COMMA");
+        if (separatorCombo.getItems().contains(sep)) separatorCombo.setValue(sep);
+
+        String outFmt = AppPreferences.loadString(cmd + ".outputFormat", "CXT");
+        if (outputFormatCombo.getItems().contains(outFmt)) outputFormatCombo.setValue(outFmt);
+
+        String outSep = AppPreferences.loadString(cmd + ".outSeparator", "COMMA");
+        if (outSeparatorCombo.getItems().contains(outSep)) outSeparatorCombo.setValue(outSep);
+
+        xoCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xo",      false));
+        xaCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xa",      false));
+        verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
+        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+
+        if ("REDUCE".equals(cmd))
+            groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
+    }    
+}

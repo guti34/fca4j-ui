@@ -121,10 +121,6 @@
         </VBox>
     </TitledPane>
 
-    <!-- Bouton Exécuter -->
-    <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
-            style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
-
     <!-- Résultats DOT -->
     <TitledPane fx:id="resultsPane" collapsible="true" expanded="false">
         <VBox spacing="6" style="-fx-padding: 8;">

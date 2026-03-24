@@ -24,13 +24,13 @@ import java.util.function.Consumer;
  * Liste les objets et/ou attributs irréductibles d'un contexte formel.
  */
 public class IrreducibleController implements Initializable {
+    private static final String P = "IRREDUCIBLE.";
 
     // ── TitledPanes et bouton ─────────────────────────────────────────────────
     @FXML private TitledPane       inputPane;
     @FXML private TitledPane       outputPane;
     @FXML private TitledPane       operationPane;
     @FXML private TitledPane       advancedPane;
-    @FXML private Button           runButton;
 
     // ── Bouton édition ────────────────────────────────────────────────────────
     @FXML private Button           editInputButton;
@@ -92,7 +92,6 @@ this.onInputChanged = onInputChanged;
         outputPane.setText(I18n.get("section.output"));
         operationPane.setText(I18n.get("section.operation"));
         advancedPane.setText(I18n.get("section.advanced"));
-        runButton.setText(I18n.get("button.run"));
 
         // Bouton "Ouvrir dans l'éditeur"
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
@@ -100,6 +99,7 @@ this.onInputChanged = onInputChanged;
         editInputButton.setGraphic(editIcon);
         editInputButton.setText("");
         editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
+        loadPrefs();
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
@@ -144,7 +144,8 @@ this.onInputChanged = onInputChanged;
     }
 
     @FXML
-    private void onRun() {
+    public void onRun() {
+    	savePrefs();
         if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));
@@ -218,4 +219,32 @@ this.onInputChanged = onInputChanged;
     public String getInputFile() {
         return inputFileField.getText();
     }
+
+    private void savePrefs() {
+        AppPreferences.saveString(P + "inputFormat", inputFormatCombo.getValue());
+        AppPreferences.saveString(P + "separator",   separatorCombo.getValue());
+        AppPreferences.saveString(P + "impl",        implCombo.getValue());
+        AppPreferences.saveBool  (P + "lobj",        lobjCheckBox.isSelected());
+        AppPreferences.saveBool  (P + "lattr",       lattrCheckBox.isSelected());
+        AppPreferences.saveBool  (P + "group",       groupCheckBox.isSelected());
+        AppPreferences.saveBool  (P + "verbose",     verboseCheckBox.isSelected());
+        AppPreferences.saveInt   (P + "timeout",     timeoutSpinner.getValue());
+    }
+
+    private void loadPrefs() {
+        String fmt = AppPreferences.loadString(P + "inputFormat", "(auto)");
+        if (inputFormatCombo.getItems().contains(fmt)) inputFormatCombo.setValue(fmt);
+
+        String sep = AppPreferences.loadString(P + "separator", "COMMA");
+        if (separatorCombo.getItems().contains(sep)) separatorCombo.setValue(sep);
+
+        String impl = AppPreferences.loadString(P + "impl", "BITSET");
+        if (implCombo.getItems().contains(impl)) implCombo.setValue(impl);
+
+        lobjCheckBox.setSelected(AppPreferences.loadBool(P + "lobj",    false));
+        lattrCheckBox.setSelected(AppPreferences.loadBool(P + "lattr",  false));
+        groupCheckBox.setSelected(AppPreferences.loadBool(P + "group",  false));
+        verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
+        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+    }    
     }

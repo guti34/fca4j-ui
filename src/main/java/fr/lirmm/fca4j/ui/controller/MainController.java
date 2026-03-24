@@ -1,6 +1,7 @@
 package fr.lirmm.fca4j.ui.controller;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ResourceBundle;
@@ -29,6 +30,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -71,7 +73,8 @@ public class MainController implements Initializable {
 
     // ── Contrôleur de l'éditeur de contexte ──────────────────────────────────
     @FXML private ContextEditorController contextEditorController;
-
+    @FXML private Button contextRunButton;
+    @FXML private Button rcaRunButton;
     // ── Services ──────────────────────────────────────────────────────────────
     private final Fca4jRunner         runner             = new Fca4jRunner();
     private       GraphRenderer       renderer;
@@ -94,7 +97,8 @@ public class MainController implements Initializable {
 
         selectedNodeLabel.setText(I18n.get("panel.node.none"));
         loadCommandPanel("LATTICE");
-
+        contextRunButton.setText(I18n.get("button.run"));
+        rcaRunButton.setText(I18n.get("button.run"));
         // Titres des onglets commandes
         if (commandTabPane != null) {
             contextTab.setText(I18n.get("tab.context.commands"));
@@ -453,9 +457,42 @@ public class MainController implements Initializable {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(I18n.get("menu.help.about"));
         alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
-        alert.setContentText(I18n.get("app.about.content"));
+
+        // Contenu personnalisé avec hyperliens
+        javafx.scene.text.TextFlow content = new javafx.scene.text.TextFlow();
+        content.setLineSpacing(4);
+        content.setPrefWidth(380);
+
+        java.util.List<javafx.scene.Node> nodes = new java.util.ArrayList<>();
+
+        // Organisation
+        nodes.add(text(MainApp.APP_ORG_NAME + "\n\n", true));
+
+        // Développeurs
+        nodes.add(text(I18n.get("about.developers") + " :\n", true));
+        for (String dev : MainApp.APP_DEVELOPERS)
+            nodes.add(text("  " + dev + "\n", false));
+
+        nodes.add(text("\n"));
+
+        // Licence / Depuis
+        nodes.add(text(I18n.get("about.license") + " : " + MainApp.APP_LICENSE + "\n", false));
+        nodes.add(text(I18n.get("about.since")   + " : " + MainApp.APP_INCEPTION + "\n\n", false));
+
+        // Site web
+        nodes.add(text(I18n.get("about.website") + " : ", false));
+        nodes.add(hyperlink(MainApp.APP_URL));
+        nodes.add(text("\n", false));
+
+        // Source
+        nodes.add(text(I18n.get("about.source") + " : ", false));
+        nodes.add(hyperlink(MainApp.APP_SCM));
+
+        content.getChildren().addAll(nodes);
+
+        // Icône
         try {
-            java.io.InputStream logoStream = getClass()
+            InputStream logoStream = getClass()
                 .getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
             if (logoStream != null) {
                 ImageView logo = new ImageView(new Image(logoStream));
@@ -464,10 +501,48 @@ public class MainController implements Initializable {
                 alert.setGraphic(logo);
             }
         } catch (Exception ignored) {}
+
+        alert.getDialogPane().setContent(content);
         alert.showAndWait();
     }
+    @FXML
+    private void onContextRun() {
+        // Déléguer au contrôleur courant
+        if (currentCommandController instanceof LatticeAocController c)    c.onRun();
+        else if (currentCommandController instanceof RuleBasisController c)  c.onRun();
+        else if (currentCommandController instanceof ReduceClarifyController c) c.onRun();
+        else if (currentCommandController instanceof IrreducibleController c)   c.onRun();
+        else if (currentCommandController instanceof InspectController c)       c.onRun();
+        else if (currentCommandController instanceof BinarizeController c)      c.onRun();
+    }
 
-    @FXML private void onClearConsole() { consoleArea.clear(); }
+    @FXML
+    private void onRcaRun() {
+        if (rcaCommandController != null) rcaCommandController.onRun();
+    }
+    private javafx.scene.text.Text text(String s) {
+        return new javafx.scene.text.Text(s);
+    }
+
+    private javafx.scene.text.Text text(String s, boolean bold) {
+        javafx.scene.text.Text t = new javafx.scene.text.Text(s);
+        if (bold) t.setStyle("-fx-font-weight: bold;");
+        return t;
+    }
+
+    private Hyperlink hyperlink(String url) {
+        Hyperlink h = new Hyperlink(url);
+        h.setOnAction(e -> {
+            try {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
+        // Supprimer le padding par défaut du Hyperlink pour l'aligner avec le texte
+        h.setPadding(new javafx.geometry.Insets(0));
+        return h;
+    }    @FXML private void onClearConsole() { consoleArea.clear(); }
 
     // ── Export Graph ──────────────────────────────────────────────────────────
 

@@ -20,7 +20,8 @@ import java.util.ResourceBundle;
 import java.util.function.Consumer;
 
 public class RcaCommandController implements Initializable {
-
+	private static final String P = "RCA.";
+	
     @FXML private TitledPane inputPane;
     @FXML private TitledPane outputPane;
     @FXML private TitledPane algoPane;
@@ -29,7 +30,6 @@ public class RcaCommandController implements Initializable {
     @FXML private TitledPane datalogPane;
     @FXML private TitledPane advancedPane;
     @FXML private TitledPane resultsPane;
-    @FXML private Button     runButton;
     @FXML private Button     editFamilyButton;
 
     // Entrée
@@ -161,13 +161,13 @@ public class RcaCommandController implements Initializable {
         datalogPane.setText(I18n.get("rca.section.datalog"));
         advancedPane.setText(I18n.get("section.advanced"));
         resultsPane.setText(I18n.get("rca.section.results"));
-        runButton.setText(I18n.get("button.run"));
 
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
         editIcon.setIconSize(14);
         editFamilyButton.setGraphic(editIcon);
         editFamilyButton.setText("");
         editFamilyButton.setTooltip(new Tooltip(I18n.get("rca.btn.open.family.editor")));
+        loadPrefs();
     }
 
     @FXML private void onBrowseFamily() {
@@ -233,7 +233,9 @@ public class RcaCommandController implements Initializable {
         if (f != null) datalogFileField.setText(f.getAbsolutePath());
     }
 
-    @FXML private void onRun() {
+    @FXML 
+    public void onRun() {
+    	savePrefs();
         if (familyFileField.getText().isBlank()) {
             showError(I18n.get("rca.error.no.family.title"),
                       I18n.get("rca.error.no.family.detail")); return;
@@ -339,4 +341,56 @@ public class RcaCommandController implements Initializable {
         Alert a = new Alert(Alert.AlertType.WARNING);
         a.setTitle(title); a.setHeaderText(null); a.setContentText(msg); a.showAndWait();
     }
+    private void savePrefs() {
+        AppPreferences.saveString(P + "algo",          algoCombo.getValue());
+        AppPreferences.saveString(P + "familyFormat",  familyFormatCombo.getValue());
+        AppPreferences.saveString(P + "displayMode",   displayModeCombo.getValue());
+        AppPreferences.saveBool  (P + "dot",           buildDot.isSelected());
+        AppPreferences.saveBool  (P + "json",          buildJson.isSelected());
+        AppPreferences.saveBool  (P + "xml",           buildXml.isSelected());
+        AppPreferences.saveBool  (P + "stability",     stability.isSelected());
+        AppPreferences.saveBool  (P + "fe",            addFullExtents.isSelected());
+        AppPreferences.saveBool  (P + "fi",            addFullIntents.isSelected());
+        AppPreferences.saveBool  (P + "e",             storeExtendedFamily.isSelected());
+        AppPreferences.saveBool  (P + "es",            storeExtendedEachStep.isSelected());
+        AppPreferences.saveBool  (P + "ra",            renameRA.isSelected());
+        AppPreferences.saveBool  (P + "rai",           renameRAI.isSelected());
+        AppPreferences.saveBool  (P + "ri",            renameRI.isSelected());
+        AppPreferences.saveBool  (P + "na",            nativeOnly.isSelected());
+        AppPreferences.saveBool  (P + "clean",         cleanOption.isSelected());
+        AppPreferences.saveBool  (P + "nds",           noDirectSiblings.isSelected());
+        AppPreferences.saveBool  (P + "verbose",       verboseCheckBox.isSelected());
+        AppPreferences.saveInt   (P + "timeout",       timeoutSpinner.getValue());
+        AppPreferences.saveInt   (P + "limit",         limitStepsSpinner.getValue());
+        AppPreferences.saveInt   (P + "iceberg",       icebergSpinner.getValue());
+    }
+    private void loadPrefs() {
+        String algo = AppPreferences.loadString(P + "algo", "HERMES");
+        if (algoCombo.getItems().contains(algo)) algoCombo.setValue(algo);
+
+        String fmt = AppPreferences.loadString(P + "familyFormat", "RCFT");
+        if (familyFormatCombo.getItems().contains(fmt)) familyFormatCombo.setValue(fmt);
+
+        String dm = AppPreferences.loadString(P + "displayMode", "SIMPLIFIED");
+        if (displayModeCombo.getItems().contains(dm)) displayModeCombo.setValue(dm);
+
+        buildDot.setSelected(AppPreferences.loadBool(P + "dot",       false));
+        buildJson.setSelected(AppPreferences.loadBool(P + "json",      false));
+        buildXml.setSelected(AppPreferences.loadBool(P + "xml",        false));
+        stability.setSelected(AppPreferences.loadBool(P + "stability", false));
+        addFullExtents.setSelected(AppPreferences.loadBool(P + "fe",   false));
+        addFullIntents.setSelected(AppPreferences.loadBool(P + "fi",   false));
+        storeExtendedFamily.setSelected(AppPreferences.loadBool(P + "e",  false));
+        storeExtendedEachStep.setSelected(AppPreferences.loadBool(P + "es", false));
+        renameRA.setSelected(AppPreferences.loadBool(P + "ra",         false));
+        renameRAI.setSelected(AppPreferences.loadBool(P + "rai",       false));
+        renameRI.setSelected(AppPreferences.loadBool(P + "ri",         false));
+        nativeOnly.setSelected(AppPreferences.loadBool(P + "na",       false));
+        cleanOption.setSelected(AppPreferences.loadBool(P + "clean",   false));
+        noDirectSiblings.setSelected(AppPreferences.loadBool(P + "nds", false));
+        verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
+        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+        limitStepsSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "limit", 0));
+        icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "iceberg", 50));
+    }    
 }

@@ -26,7 +26,6 @@ public class InspectController implements Initializable {
     // ── TitledPanes et bouton ─────────────────────────────────────────────────
     @FXML private TitledPane       inputPane;
     @FXML private TitledPane       advancedPane;
-    @FXML private Button           runButton;
 
     // ── Bouton édition ────────────────────────────────────────────────────────
     @FXML private Button           editInputButton;
@@ -72,7 +71,6 @@ this.onInputChanged = onInputChanged;
 
         inputPane.setText(I18n.get("section.input"));
         advancedPane.setText(I18n.get("section.advanced"));
-        runButton.setText(I18n.get("button.run"));
 
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
         editIcon.setIconSize(14);
@@ -118,7 +116,7 @@ this.onInputChanged = onInputChanged;
     }
 
     @FXML
-    private void onRun() {
+    public void onRun() {
         if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));

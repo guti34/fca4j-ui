@@ -82,9 +82,6 @@
         </VBox>
     </TitledPane>
 
-    <!-- Bouton Exécuter -->
-    <Button fx:id="runButton" maxWidth="Infinity" onAction="#onRun"
-            style="-fx-font-weight: bold; -fx-font-size: 13px;"/>
 
 </VBox>
 </ScrollPane>

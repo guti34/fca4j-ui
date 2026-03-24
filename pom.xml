@@ -12,6 +12,41 @@
 
     <name>FCA4J UI</name>
     <description>Companion JavaFX application for FCA4J</description>
+	<licenses>
+		<license>
+			<name>BSD-3-Clause</name>
+			<url>https://opensource.org/licenses/BSD-3-Clause</url>
+		</license>
+	</licenses>
+	<url>https://www.lirmm.fr/fca4j/</url>
+	<inceptionYear>2026</inceptionYear>
+	<organization>
+		<name>Marel (LIRMM)</name>
+		<url>https://www.lirmm.fr/equipes/marel/</url>
+	</organization>
+	<scm>
+		<url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
+		<connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
+		<developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
+		<tag>fca4j-ui-0.1.0</tag>
+	</scm>
+	<developers>
+		<developer>
+			<name>Marianne HUCHARD</name>
+			<organization>LIRMM</organization>
+			<email>marianne.huchard@lirmm.fr</email>
+		</developer>
+		<developer>
+			<name>Pierre MARTIN</name>
+			<email>pierre.martin@cirad.fr</email>
+			<organization>CIRAD</organization>
+		</developer>
+		<developer>
+			<name>Alain GUTIERREZ</name>
+			<email>alain.gutierrez@lirmm.fr</email>
+			<organization>LIRMM</organization>
+		</developer>
+	</developers>
 
     <properties>
         <java.version>21</java.version>
@@ -28,6 +63,14 @@
         <jpackage.output>${project.build.directory}/installer</jpackage.output>
         <app.version>1.0.0</app.version>
         <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
+	    <app.dev.1.name>Marianne HUCHARD</app.dev.1.name>
+	    <app.dev.1.org>LIRMM</app.dev.1.org>
+	    <app.dev.2.name>Pierre MARTIN</app.dev.2.name>
+	    <app.dev.2.org>CIRAD</app.dev.2.org>
+	    <app.dev.3.name>Alain GUTIERREZ</app.dev.3.name>
+	    <app.dev.3.org>LIRMM</app.dev.3.org>
+	    <app.org.name>Marel (LIRMM)</app.org.name>
+	    <app.org.url>https://www.lirmm.fr/equipes/marel/</app.org.url>
     </properties>
 
     <profiles>
@@ -136,7 +179,23 @@
     </dependencies>
 
     <build>
-        <pluginManagement>
+		<resources>
+		    <resource>
+		        <directory>src/main/resources</directory>
+		        <filtering>true</filtering>
+		        <includes>
+		            <include>app.properties</include>
+		        </includes>
+		    </resource>
+		    <resource>
+		        <directory>src/main/resources</directory>
+		        <filtering>false</filtering>
+		        <excludes>
+		            <exclude>app.properties</exclude>
+		        </excludes>
+		    </resource>
+		</resources>        
+		<pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>

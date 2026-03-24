@@ -15,7 +15,8 @@ public class AppPreferences {
     private static final String KEY_FCA4J_JAR   = "fca4j.jar.path";
     private static final String KEY_GRAPHVIZ_DOT = "graphviz.dot.path";
     private static final String KEY_LAST_DIR     = "last.open.directory";
-
+    private static final String PREF_CMD = "cmd.";
+    
     // Valeurs par défaut
     private static final String DEFAULT_DOT = detectDefaultDot();
 
@@ -69,7 +70,24 @@ public class AppPreferences {
             return "/usr/bin/dot";
         }
     }
-
+    public static void saveString(String key, String value) {
+        if (value != null) PREFS.put(PREF_CMD + key, value);
+    }
+    public static String loadString(String key, String def) {
+        return PREFS.get(PREF_CMD + key, def);
+    }
+    public static void saveBool(String key, boolean value) {
+    	PREFS.putBoolean(PREF_CMD + key, value);
+    }
+    public static boolean loadBool(String key, boolean def) {
+        return PREFS.getBoolean(PREF_CMD + key, def);
+    }
+    public static void saveInt(String key, int value) {
+    	PREFS.putInt(PREF_CMD + key, value);
+    }
+    public static int loadInt(String key, int def) {
+        return PREFS.getInt(PREF_CMD + key, def);
+    }
     // ── Langue ────────────────────────────────────────────────────────────────
 
     private static final String KEY_LANGUAGE = "ui.language";

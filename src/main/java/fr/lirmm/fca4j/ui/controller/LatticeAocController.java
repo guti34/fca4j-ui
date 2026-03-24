@@ -41,7 +41,6 @@ public class LatticeAocController implements Initializable {
     @FXML private TitledPane       algoPane;
     @FXML private TitledPane       graphvizPane;
     @FXML private TitledPane       advancedPane;
-    @FXML private Button           runButton;
 
     // ── Fichiers ──────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
@@ -142,7 +141,7 @@ public class LatticeAocController implements Initializable {
      */
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
             Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
-this.onInputChanged = onInputChanged;
+    	this.onInputChanged = onInputChanged;
         this.openInEditor = openInEditor;
         this.descriptor = desc;
         this.onRun      = onRun;
@@ -154,8 +153,7 @@ this.onInputChanged = onInputChanged;
         graphvizPane.setText(I18n.get("section.graphviz"));
         datalogPane.setText(I18n.get("rca.section.datalog"));
         advancedPane.setText(I18n.get("section.advanced"));
-        runButton.setText(I18n.get("button.run"));
-
+ 
         // Bouton "Ouvrir dans l'éditeur"
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
         editIcon.setIconSize(14);
@@ -170,7 +168,8 @@ this.onInputChanged = onInputChanged;
         // Zone Iceberg : LATTICE seulement
         icebergLabel.setVisible(false);
         icebergSpinner.setVisible(false);
-    }
+        loadPrefs();
+        }
 
 
     @FXML
@@ -256,8 +255,9 @@ this.onInputChanged = onInputChanged;
         if (f != null) datalogFileField.setText(f.getAbsolutePath());
     }
     @FXML
-    private void onRun() {
-        if (inputFileField.getText().isBlank()) {
+    public void onRun() {
+    	savePrefs();
+    	if (inputFileField.getText().isBlank()) {
             showError(I18n.get("error.no.input.title"),
                       I18n.get("error.no.input.detail"));
             return;
@@ -331,4 +331,39 @@ this.onInputChanged = onInputChanged;
     public String getDotFile() {
         return dotCheckBox.isSelected() ? dotFileField.getText() : null;
     }
-}
+    private void savePrefs() {
+        String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+        AppPreferences.saveString(cmd + ".algo",        algoCombo.getValue());
+        AppPreferences.saveString(cmd + ".outputFormat",outputFormatCombo.getValue());
+        AppPreferences.saveString(cmd + ".displayMode", displayModeCombo.getValue());
+        AppPreferences.saveString(cmd + ".impl",        implCombo.getValue());
+        AppPreferences.saveBool  (cmd + ".dot",         dotCheckBox.isSelected());
+        AppPreferences.saveBool  (cmd + ".stability",   stabilityCheckBox.isSelected());
+        AppPreferences.saveBool  (cmd + ".verbose",     verboseCheckBox.isSelected());
+        AppPreferences.saveInt   (cmd + ".timeout",     timeoutSpinner.getValue());
+        AppPreferences.saveInt   (cmd + ".iceberg",     icebergSpinner.getValue());
+        // Datalog
+        AppPreferences.saveBool  (cmd + ".nds",         noDirectSiblings.isSelected());
+    }
+
+    private void loadPrefs() {
+        String cmd = descriptor.getName();
+        String algo = AppPreferences.loadString(cmd + ".algo", descriptor.getDefaultAlgorithm());
+        if (algoCombo.getItems().contains(algo)) algoCombo.setValue(algo);
+
+        String fmt = AppPreferences.loadString(cmd + ".outputFormat", "XML");
+        if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);
+
+        String dm = AppPreferences.loadString(cmd + ".displayMode", "SIMPLIFIED");
+        if (displayModeCombo.getItems().contains(dm)) displayModeCombo.setValue(dm);
+
+        String impl = AppPreferences.loadString(cmd + ".impl", "BITSET");
+        if (implCombo.getItems().contains(impl)) implCombo.setValue(impl);
+
+        dotCheckBox.setSelected(AppPreferences.loadBool(cmd + ".dot",       false));
+        stabilityCheckBox.setSelected(AppPreferences.loadBool(cmd + ".stability", false));
+        verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose",   false));
+        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+        icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".iceberg", 50));
+        noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
+    }}
