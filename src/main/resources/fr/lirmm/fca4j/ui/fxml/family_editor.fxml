@@ -8,22 +8,21 @@
       spacing="0">
 
     <!-- Toolbar avec icônes -->
-    <ToolBar>
-        <Button fx:id="btnNew"           onAction="#onNew"/>
-        <Button fx:id="btnOpen"          onAction="#onOpen"/>
-        <Button fx:id="btnSave"          onAction="#onSave"/>
-        <Button fx:id="btnSaveAs"        onAction="#onSaveAs"/>
-        <Separator/>
-        <Button fx:id="btnAddContext"    onAction="#onAddContext"/>
-        <Button fx:id="btnAddRelation"    onAction="#onAddRelation"/>
-        <Separator/>
-        <Button fx:id="btnAutoLayout"    onAction="#onAutoLayout"/>
-        <Separator/>
-        <Label fx:id="familyNameLabel" style="-fx-font-weight: bold;"/>
-        <Label fx:id="statsLabel"
-               style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
-    </ToolBar>
-
+	<ToolBar styleClass="editor-toolbar">
+	    <Button fx:id="btnNew"         styleClass="icon-btn" onAction="#onNew"/>
+	    <Button fx:id="btnOpen"        styleClass="icon-btn" onAction="#onOpen"/>
+	    <Button fx:id="btnSave"        styleClass="icon-btn" onAction="#onSave"/>
+	    <Button fx:id="btnSaveAs"      styleClass="icon-btn" onAction="#onSaveAs"/>
+	    <Separator/>
+	    <Button fx:id="btnAddContext"  styleClass="icon-btn" onAction="#onAddContext"/>
+	    <Button fx:id="btnAddRelation" styleClass="icon-btn" onAction="#onAddRelation"/>
+	    <Separator/>
+	    <Button fx:id="btnAutoLayout"  styleClass="icon-btn" onAction="#onAutoLayout"/>
+	    <Separator/>
+	    <Label fx:id="familyNameLabel" style="-fx-font-weight: bold;"/>
+	    <Label fx:id="statsLabel"
+	           style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
+	</ToolBar>
     <!-- Zone principale : graphe en haut, tableaux en bas -->
     <SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS" dividerPositions="0.55">
 

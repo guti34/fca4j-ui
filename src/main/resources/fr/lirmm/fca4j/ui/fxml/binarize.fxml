@@ -12,7 +12,7 @@
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
                 <TextField fx:id="inputFileField" HBox.hgrow="ALWAYS"
-                           promptText="%label.input.file"/>
+                           promptText="%label.input.mvfile"/>
                 <Button text="%button.browse" onAction="#onBrowseInput"/>
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">

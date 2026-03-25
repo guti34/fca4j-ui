@@ -8,20 +8,39 @@
             prefWidth="1200" prefHeight="750">
     <top>
         <VBox>
-            <MenuBar>
-                <Menu text="%menu.file">
-                    <MenuItem text="%menu.file.preferences" onAction="#onOpenPreferences"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="%menu.file.quit" onAction="#onQuit"/>
-                </Menu>
-                <Menu text="%menu.help">
-                    <MenuItem text="%menu.help.about" onAction="#onAbout"/>
-                </Menu>
-            </MenuBar>
+			<MenuBar>
+			    <Menu text="%menu.file">
+			
+			        <!-- New -->
+			        <Menu text="%menu.file.new">
+			            <MenuItem text="%menu.file.new.context" onAction="#onNewContext"/>
+			            <MenuItem text="%menu.file.new.family"  onAction="#onNewFamily"/>
+			        </Menu>
+			
+			        <!-- Open -->
+			        <Menu text="%menu.file.open">
+			            <MenuItem text="%menu.file.open.context" onAction="#onOpenContext"/>
+			            <MenuItem text="%menu.file.open.family"  onAction="#onOpenFamily"/>
+			        </Menu>
+			
+			        <!-- Recent -->
+			        <Menu fx:id="recentContextMenu" text="%menu.file.recent.context"/>
+			        <Menu fx:id="recentFamilyMenu"  text="%menu.file.recent.family"/>
+			
+			        <SeparatorMenuItem/>
+			        <MenuItem text="%menu.file.preferences" onAction="#onOpenPreferences"/>
+			        <SeparatorMenuItem/>
+			        <MenuItem text="%menu.file.quit" onAction="#onQuit"/>
+			    </Menu>
+			    <Menu text="%menu.help">
+			        <MenuItem text="%menu.help.about" onAction="#onAbout"/>
+			    </Menu>
+			</MenuBar>
         </VBox>
     </top>
 
     <center>
+    <StackPane fx:id="centerStack">
         <SplitPane dividerPositions="0.28">
 
             <!-- Panneau gauche : TabPane Context / RCA Family -->
@@ -74,6 +93,21 @@
 				        </bottom>
 				    </BorderPane>
                 </Tab>
+				<Tab fx:id="importTab">
+				    <BorderPane>
+				        <center>
+				            <StackPane fx:id="importCommandContainer"/>
+				        </center>
+				        <bottom>
+				            <Button fx:id="importRunButton"
+				                    maxWidth="Infinity"
+				                    style="-fx-font-weight: bold; -fx-font-size: 13px;
+				                           -fx-background-color: #0047B3; -fx-text-fill: white;
+				                           -fx-padding: 10; -fx-cursor: hand;"
+				                    onAction="#onImportRun"/>
+				        </bottom>
+				    </BorderPane>
+				</Tab>
 
             </TabPane>
 
@@ -84,14 +118,13 @@
 			<Tab text="%tab.graph">
 			    <VBox>
 			        <!-- Toolbar export -->
-			        <ToolBar>
-			            <Button fx:id="btnSaveDot" onAction="#onSaveDot"  disable="true"/>
-			            <Separator/>
-			            <Button fx:id="btnExportSvg" onAction="#onExportSvg" disable="true"/>
-			            <Button fx:id="btnExportPng" onAction="#onExportPng" disable="true"/>
-			            <Button fx:id="btnExportPdf" onAction="#onExportPdf" disable="true"/>
-			        </ToolBar>
-			        <SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
+						<ToolBar styleClass="editor-toolbar">
+						    <Button fx:id="btnSaveDot"   styleClass="icon-btn" onAction="#onSaveDot"   disable="true"/>
+						    <Separator/>
+						    <Button fx:id="btnExportSvg" styleClass="icon-btn" onAction="#onExportSvg" disable="true"/>
+						    <Button fx:id="btnExportPng" styleClass="icon-btn" onAction="#onExportPng" disable="true"/>
+						    <Button fx:id="btnExportPdf" styleClass="icon-btn" onAction="#onExportPdf" disable="true"/>
+						</ToolBar>			        <SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
 			            <WebView fx:id="graphWebView"/>
 			            <VBox>
 			                <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
@@ -120,10 +153,10 @@
                     <fx:include fx:id="familyEditor"
                                 source="family_editor.fxml"/>
                 </Tab>
-
             </TabPane>
         </SplitPane>
-    </center>
+    </StackPane>
+</center>    
 
 	<bottom>
 	    <HBox style="-fx-padding: 3 8; -fx-border-color: #ccc;

@@ -6,7 +6,57 @@
   <name>FCA4J UI</name>
   <version>0.1.0-SNAPSHOT</version>
   <description>Companion JavaFX application for FCA4J</description>
+  <url>https://www.lirmm.fr/fca4j/</url>
+  <inceptionYear>2026</inceptionYear>
+  <developers>
+    <developer>
+      <name>Marianne HUCHARD</name>
+      <email>marianne.huchard@lirmm.fr</email>
+      <organization>LIRMM</organization>
+    </developer>
+    <developer>
+      <name>Pierre MARTIN</name>
+      <email>pierre.martin@cirad.fr</email>
+      <organization>CIRAD</organization>
+    </developer>
+    <developer>
+      <name>Alain GUTIERREZ</name>
+      <email>alain.gutierrez@lirmm.fr</email>
+      <organization>LIRMM</organization>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>BSD-3-Clause</name>
+      <url>https://opensource.org/licenses/BSD-3-Clause</url>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
+    <developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
+    <tag>fca4j-ui-0.1.0</tag>
+    <url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
+  </scm>
+  <organization>
+    <name>Marel (LIRMM)</name>
+    <url>https://www.lirmm.fr/equipes/marel/</url>
+  </organization>
   <build>
+    <resources>
+      <resource>
+        <filtering>true</filtering>
+        <directory>src/main/resources</directory>
+        <includes>
+          <include>app.properties</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>app.properties</exclude>
+        </excludes>
+      </resource>
+    </resources>
     <pluginManagement>
       <plugins>
         <plugin>
@@ -227,18 +277,26 @@
   </dependencies>
   <properties>
     <javafx.platform>win</javafx.platform>
-    <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
+    <app.dev.3.name>Alain GUTIERREZ</app.dev.3.name>
     <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <app.dev.1.org>LIRMM</app.dev.1.org>
     <javafx.version>21.0.2</javafx.version>
+    <maven.compiler.source>21</maven.compiler.source>
+    <app.dev.2.org>CIRAD</app.dev.2.org>
+    <app.version>1.0.0</app.version>
+    <app.description>Companion application for FCA4J formal concept analysis</app.description>
+    <app.dev.3.org>LIRMM</app.dev.3.org>
+    <app.dev.2.name>Pierre MARTIN</app.dev.2.name>
+    <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
+    <app.dev.1.name>Marianne HUCHARD</app.dev.1.name>
+    <app.org.url>https://www.lirmm.fr/equipes/marel/</app.org.url>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <app.copyright>2024 LIRMM - Montpellier</app.copyright>
     <app.name>FCA4J-UI</app.name>
     <java.version>21</java.version>
-    <maven.compiler.source>21</maven.compiler.source>
     <jpackage.output>${project.build.directory}/installer</jpackage.output>
-    <app.version>1.0.0</app.version>
     <app.vendor>LIRMM - Montpellier</app.vendor>
-    <app.description>Companion application for FCA4J formal concept analysis</app.description>
+    <app.org.name>Marel (LIRMM)</app.org.name>
     <maven.compiler.target>21</maven.compiler.target>
   </properties>
 </project>

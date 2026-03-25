@@ -90,6 +90,8 @@ public class FamilyEditorController implements Initializable {
     private static final double NODE_CHAR_W  = 8.0;
     private static final double NODE_PADDING = 20;
 
+    private Consumer<Path> onFileOpened;
+
     /** Largeur dynamique selon le nom du contexte. */
     private double nodeWidth(String name) {
         return Math.max(NODE_MIN_W, name.length() * NODE_CHAR_W + NODE_PADDING);
@@ -104,7 +106,9 @@ public class FamilyEditorController implements Initializable {
         setupContextMenu();
         loadEmpty();
     }
-
+    public void setOnFileOpened(Consumer<Path> callback) {
+        this.onFileOpened = callback;
+    }
     // ── Toolbar ───────────────────────────────────────────────────────────────
 
     private void setupToolbar() {
@@ -362,6 +366,7 @@ public class FamilyEditorController implements Initializable {
             RCAFamily rcf = rcfService.read(path);
             this.currentFile = path;
             loadFamily(rcf);
+            if (onFileOpened != null) onFileOpened.accept(path);
         } catch (Exception e) { showError(I18n.get("family.error.read"), e.getMessage()); }
     }
 
@@ -673,9 +678,9 @@ public class FamilyEditorController implements Initializable {
 
     // ── Actions toolbar ───────────────────────────────────────────────────────
 
-    @FXML private void onNew() { if (!confirmDiscard()) return; loadEmpty(); }
+    @FXML public void onNew() { if (!confirmDiscard()) return; loadEmpty(); }
 
-    @FXML private void onOpen() {
+    @FXML public void onOpen() {
         if (!confirmDiscard()) return;
         FileChooser fc = buildFamilyChooser(I18n.get("family.open.title"));
         File f = fc.showOpenDialog(graphCanvas.getScene().getWindow());

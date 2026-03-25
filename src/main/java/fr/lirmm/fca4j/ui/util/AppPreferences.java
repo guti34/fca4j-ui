@@ -16,6 +16,11 @@ public class AppPreferences {
     private static final String KEY_GRAPHVIZ_DOT = "graphviz.dot.path";
     private static final String KEY_LAST_DIR     = "last.open.directory";
     private static final String PREF_CMD = "cmd.";
+
+    private static final int MAX_RECENT = 10;
+    private static final String KEY_RECENT_CTX    = "recent.context.";
+    private static final String KEY_RECENT_FAMILY = "recent.family.";
+    
     
     // Valeurs par défaut
     private static final String DEFAULT_DOT = detectDefaultDot();
@@ -99,5 +104,43 @@ public class AppPreferences {
     public static void setLanguage(String languageTag) {
         PREFS.put(KEY_LANGUAGE, languageTag);
     }
+ // ── Fichiers récents ──────────────────────────────────────────────────────
 
+    public static java.util.List<String> getRecentContexts() {
+        return loadRecentList(KEY_RECENT_CTX);
+    }
+
+    public static java.util.List<String> getRecentFamilies() {
+        return loadRecentList(KEY_RECENT_FAMILY);
+    }
+
+    public static void addRecentContext(String path) {
+        saveRecentList(KEY_RECENT_CTX, path);
+    }
+
+    public static void addRecentFamily(String path) {
+        saveRecentList(KEY_RECENT_FAMILY, path);
+    }
+
+    private static java.util.List<String> loadRecentList(String prefix) {
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (int i = 0; i < MAX_RECENT; i++) {
+            String val = PREFS.get(prefix + i, "");
+            if (!val.isBlank()) list.add(val);
+        }
+        return list;
+    }
+
+    private static void saveRecentList(String prefix, String newPath) {
+        java.util.List<String> list = loadRecentList(prefix);
+        list.remove(newPath);          // retirer si déjà présent
+        list.add(0, newPath);          // ajouter en tête
+        if (list.size() > MAX_RECENT)
+            list = list.subList(0, MAX_RECENT);
+        for (int i = 0; i < list.size(); i++)
+            PREFS.put(prefix + i, list.get(i));
+        // Effacer les entrées suivantes si liste raccourcie
+        for (int i = list.size(); i < MAX_RECENT; i++)
+            PREFS.remove(prefix + i);
+    }
 }

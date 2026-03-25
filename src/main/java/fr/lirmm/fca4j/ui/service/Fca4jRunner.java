@@ -15,7 +15,9 @@ import java.util.function.Consumer;
  * Toutes les exécutions sont asynchrones pour ne pas bloquer le thread JavaFX.
  */
 public class Fca4jRunner {
-
+	
+	private volatile Process currentProcess = null;
+	
     /** Résultat d'une exécution FCA4J. */
     public record RunResult(int exitCode, String stdout, String stderr) {
         public boolean isSuccess() { return exitCode == 0; }
@@ -49,7 +51,7 @@ public class Fca4jRunner {
                 pb.redirectErrorStream(false);
 
                 Process process = pb.start();
-
+                this.currentProcess = process;
                 // Lecture stdout
                 StringBuilder stdoutBuf = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(
@@ -75,14 +77,27 @@ public class Fca4jRunner {
                 }
 
                 int exitCode = process.waitFor();
+                this.currentProcess = null;
                 return new RunResult(exitCode, stdoutBuf.toString(), stderrBuf.toString());
 
             } catch (Exception e) {
+                this.currentProcess = null;
                 return new RunResult(-1, "", e.getMessage());
             }
         });
     }
-
+    public void cancel() {
+        Process p = currentProcess;
+        if (p != null && p.isAlive()) {
+            // Tuer récursivement tous les processus enfants puis le parent
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            currentProcess = null;
+        }
+    }
+    public boolean isRunning() {
+        return currentProcess != null && currentProcess.isAlive();
+    }
     /** Raccourci sans callback de ligne. */
     public CompletableFuture<RunResult> run(List<String> args) {
         return run(args, null);

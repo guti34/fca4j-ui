@@ -1,5 +1,6 @@
 package fr.lirmm.fca4j.ui;
 
+import fr.lirmm.fca4j.ui.controller.MainController;
 import fr.lirmm.fca4j.ui.util.I18n;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
@@ -52,6 +53,7 @@ public class MainApp extends Application {
         URL fxml = getClass().getResource("/fr/lirmm/fca4j/ui/fxml/main.fxml");
         FXMLLoader loader = new FXMLLoader(fxml, I18n.getBundle());
         Scene scene = new Scene(loader.load(), 1200, 750);
+        MainController mainController = loader.getController();
         scene.getStylesheets().add(
             getClass().getResource("/fr/lirmm/fca4j/ui/css/app.css").toExternalForm()
         );
@@ -67,8 +69,9 @@ public class MainApp extends Application {
         primaryStage.setTitle(I18n.get("app.title") + " " + APP_VERSION);
         primaryStage.setScene(scene);
         primaryStage.show();
-    }
-
+        primaryStage.setOnCloseRequest(e -> mainController.shutdown());   
+   }
+    
     public static void main(String[] args) {
         launch(args);
     }

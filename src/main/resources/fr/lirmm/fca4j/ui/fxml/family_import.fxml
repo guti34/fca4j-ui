@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="fr.lirmm.fca4j.ui.controller.FamilyImportController">
+<VBox spacing="8" style="-fx-padding: 10;">
+
+    <!-- Entrée -->
+    <TitledPane fx:id="inputPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="6">
+                <TextField fx:id="inputFileField" HBox.hgrow="ALWAYS"
+                           promptText="%label.import.model"/>
+                <Button text="%button.browse" onAction="#onBrowseInput"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%family.import.model.format"/>
+                <ComboBox fx:id="modelFormatCombo" prefWidth="100"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- Sortie -->
+    <TitledPane fx:id="outputPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="6">
+                <TextField fx:id="outputFileField" HBox.hgrow="ALWAYS"
+                           promptText="%label.output.file"/>
+                <Button text="%button.browse" onAction="#onBrowseOutput"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%rca.family.format"/>
+                <ComboBox fx:id="familyFormatCombo" prefWidth="110"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="separatorLabel" text="%label.separator"/>
+                <ComboBox fx:id="separatorCombo" prefWidth="110"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- Options avancées -->
+    <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.timeout"/>
+                <Spinner fx:id="timeoutSpinner" prefWidth="75"/>
+                <Label text="%label.timeout.hint"
+                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+            </HBox>
+            <CheckBox fx:id="verboseCheckBox" text="%checkbox.verbose"/>
+        </VBox>
+    </TitledPane>
+
+</VBox>
+</ScrollPane>

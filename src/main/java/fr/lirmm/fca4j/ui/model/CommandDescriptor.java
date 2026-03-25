@@ -98,7 +98,6 @@ public class CommandDescriptor {
             "Transforme une table multivaluée CSV en contexte formel binaire.",
             List.of(), "", false, CommandFamily.BINARIZE
         );
-
         /** Retourne le descripteur pour un nom de commande, ou null. */
         public static CommandDescriptor forName(String name) {
             return switch (name) {
@@ -111,7 +110,7 @@ public class CommandDescriptor {
                 case "IRREDUCIBLE" -> IRREDUCIBLE;
                 case "INSPECT"     -> INSPECT;
                 case "BINARIZE"    -> BINARIZE;
-                default          -> null;
+                 default          -> null;
             };
         }
     }

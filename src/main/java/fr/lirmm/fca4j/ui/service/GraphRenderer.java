@@ -21,11 +21,22 @@ public class GraphRenderer {
     private final WebEngine      webEngine;
     private Consumer<String>     onNodeClick;
     private Path                 currentDotFile = null;
-
+    private volatile Process currentDotProcess = null;
+    
     public GraphRenderer(WebEngine webEngine) {
         this.webEngine = webEngine;
     }
-
+    public void cancel() {
+        Process p = currentDotProcess;
+        if (p != null && p.isAlive()) {
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            currentDotProcess = null;
+        }
+    }
+    public boolean isRendering() {
+        return currentDotProcess != null && currentDotProcess.isAlive();
+    }
     public Path getCurrentDotFile() { return currentDotFile; }
 
     public void setOnNodeClick(Consumer<String> handler) {
@@ -45,8 +56,9 @@ public class GraphRenderer {
                     dotFile.toString(),
                     "-o", svgFile.toString()
                 ).start();
-
+                this.currentDotProcess = proc;
                 int exit = proc.waitFor();
+                this.currentDotProcess = null;
                 if (exit != 0) {
                     throw new RuntimeException(
                         "GraphViz a retourné le code " + exit +

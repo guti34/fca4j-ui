@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fitToWidth="true"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="fr.lirmm.fca4j.ui.controller.ImportCommandController">
+
+<fx:define>
+    <ToggleGroup fx:id="importToggleGroup"/>
+</fx:define>
+
+<VBox spacing="8" style="-fx-padding: 10;">
+
+    <!-- Sélecteur de commande -->
+    <HBox spacing="8" alignment="CENTER_LEFT"
+          style="-fx-padding: 0 0 6 0; -fx-border-color: #ddd;
+                 -fx-border-width: 0 0 1 0;">
+        <Label text="%toolbar.command" style="-fx-font-weight: bold;"/>
+        <ToggleButton fx:id="btnBinarize" text="BINARIZE"
+                      toggleGroup="$importToggleGroup" selected="true"/>
+        <ToggleButton fx:id="btnFamilyImport" text="FAMILY__IMPORT"
+                      toggleGroup="$importToggleGroup"/>
+    </HBox>
+
+    <!-- Panneau BINARIZE -->
+    <StackPane fx:id="binarizeContainer"/>
+
+    <!-- Panneau FAMILY_IMPORT -->
+    <StackPane fx:id="familyImportContainer"/>
+
+</VBox>
+</ScrollPane>

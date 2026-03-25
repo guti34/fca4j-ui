@@ -55,6 +55,8 @@ public class CommandBuilder {
     private java.util.List<String> excludeAttrs = new java.util.ArrayList<>(); // -excl
     private java.util.List<String> includeAttrs = new java.util.ArrayList<>(); // -incl
 
+    // ── FAMILY_IMPORT ────────────────────────────────────────────────────────
+    private String familyImportModelFormat; // -m JSON|XML
     // ── RCA ───────────────────────────────────────────────────────────────────
     private String  familyFormat;                    // -f
     private boolean rcaClean             = false;    // -clean
@@ -135,7 +137,10 @@ public class CommandBuilder {
     // BINARIZE
     public CommandBuilder excludeAttrs(java.util.List<String> v) { this.excludeAttrs = v; return this; }
     public CommandBuilder includeAttrs(java.util.List<String> v) { this.includeAttrs = v; return this; }
-
+    // IMPORT
+    public CommandBuilder familyImportModelFormat(String v) {
+        this.familyImportModelFormat = v; return this;
+    }
     // ── Construction ─────────────────────────────────────────────────────────
 
     public List<String> build() {
@@ -231,7 +236,13 @@ public class CommandBuilder {
         // ── Options BINARIZE ──────────────────────────────────────────────────
         for (String attr : excludeAttrs) { args.add("-excl"); args.add(attr); }
         for (String attr : includeAttrs) { args.add("-incl"); args.add(attr); }
-
+        
+     // ── Options FAMILY_IMPORT ─────────────────────────────────────────────────
+        if (familyImportModelFormat != null
+                && !familyImportModelFormat.isBlank()
+                && !"JSON".equals(familyImportModelFormat))
+            add(args, "-m", familyImportModelFormat);
+        
         // ── Options RCA ───────────────────────────────────────────────────────
         if (familyFormat != null && !familyFormat.isBlank() && !"RCFT".equals(familyFormat))
             add(args, "-f", familyFormat);

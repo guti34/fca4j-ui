@@ -86,6 +86,9 @@ public class ContextEditorController implements Initializable {
     // ── Services ──────────────────────────────────────────────────────────────
     private final ContextIOService ioService = new ContextIOService();
 
+    private Runnable onLoadStart;
+    private Runnable onLoadEnd;
+    
     // ── État ──────────────────────────────────────────────────────────────────
     private IBinaryContext context;
     private Path           currentFile;
@@ -138,13 +141,23 @@ public class ContextEditorController implements Initializable {
 
     // ── Chargement ────────────────────────────────────────────────────────────
 
+    public void setOnLoadCallbacks(Runnable onStart, Runnable onEnd) {
+        this.onLoadStart = onStart;
+        this.onLoadEnd   = onEnd;
+    }
     public void loadContext(IBinaryContext ctx) {
         this.context  = ctx;
         this.modified = false;
-        rebuildTable();
-        updateLabels();
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            // rebuildTable doit se faire sur le thread JavaFX
+            Platform.runLater(() -> {
+                rebuildTable();
+                updateLabels();
+                if (onLoadEnd != null) onLoadEnd.run();
+            });
+        });
     }
-
     public void loadContextFromFamily(IBinaryContext ctx,
                                       Consumer<IBinaryContext> onSaveCallback) {
         this.fromFamily      = true;
@@ -340,17 +353,27 @@ public class ContextEditorController implements Initializable {
         FileChooser fc = buildFileChooser(I18n.get("editor.open.title"), false);
         File f = fc.showOpenDialog(tableView.getScene().getWindow());
         if (f == null) return;
-        try {
-            IBinaryContext ctx = ioService.read(f.toPath());
-            loadContext(ctx);
-            currentFile = f.toPath();
-            AppPreferences.setLastDirectory(f.getParent());
-            statusLabel.setText(I18n.get("editor.status.loaded", f.getName()));
-        } catch (Exception e) {
-            showError(I18n.get("editor.error.read.title"), e.getMessage());
-        }
-    }
+        Path path = f.toPath();
+        AppPreferences.setLastDirectory(f.getParent());
 
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return ioService.read(path); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        }).thenAccept(ctx -> Platform.runLater(() -> {
+            if (onLoadEnd != null) onLoadEnd.run();
+            loadContext(ctx);
+            currentFile = path;
+            statusLabel.setText(I18n.get("editor.status.loaded", f.getName()));
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> {
+                if (onLoadEnd != null) onLoadEnd.run();
+                showError(I18n.get("editor.error.read.title"),
+                          ex.getCause().getMessage());
+            });
+            return null;
+        });
+    }
     @FXML
     private void onSave() {
         if (fromFamily) {
@@ -566,13 +589,23 @@ public class ContextEditorController implements Initializable {
     public IBinaryContext getContext() { return context; }
 
     public void openFile(Path path) {
-        try {
-            loadContext(ioService.read(path));
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return ioService.read(path); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        }).thenAccept(ctx -> Platform.runLater(() -> {
+            if (onLoadEnd != null) onLoadEnd.run();
+            loadContext(ctx);
             currentFile = path;
             if (onFileLoadedCallback != null)
                 onFileLoadedCallback.accept(path.toString());
-        } catch (Exception e) {
-            showError(I18n.get("editor.error.read.title"), e.getMessage());
-        }
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> {
+                if (onLoadEnd != null) onLoadEnd.run();
+                showError(I18n.get("editor.error.read.title"),
+                          ex.getCause().getMessage());
+            });
+            return null;
+        });
     }
-}
+    }
