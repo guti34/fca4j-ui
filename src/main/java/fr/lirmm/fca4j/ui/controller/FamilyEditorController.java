@@ -9,6 +9,8 @@ import fr.lirmm.fca4j.ui.service.ContextIOService;
 import fr.lirmm.fca4j.ui.service.RcfService;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
@@ -723,6 +725,19 @@ public class FamilyEditorController implements Initializable {
 
         TextField nameField = new TextField(
             I18n.get("family.default.context.name") + (family.getFormalContexts().size() + 1));
+        nameField.textProperty().addListener((obs, old, val) -> {
+            // Remplacer les espaces au fur et à mesure de la saisie
+            if (val.contains(" ")) {
+                nameField.setText(val.replace(" ", "_"));
+            }
+        });
+
+        // Désactiver OK si le champ est vide
+        javafx.scene.Node okBtn = dialog.getDialogPane()
+            .lookupButton(ButtonType.OK);
+        okBtn.setDisable(nameField.getText().isBlank());
+        nameField.textProperty().addListener((obs, old, val) ->
+            okBtn.setDisable(val.isBlank()));        
         TextField fileField = new TextField();
         fileField.setPromptText(I18n.get("family.dialog.context.file.prompt"));
         fileField.setEditable(false);
@@ -736,7 +751,7 @@ public class FamilyEditorController implements Initializable {
                 try {
                     loadedCtx[0] = new ContextIOService().read(f.toPath());
                     fileField.setText(f.getAbsolutePath());
-                    nameField.setText(loadedCtx[0].getName());
+                    nameField.setText(Utilities.sanitizeName(loadedCtx[0].getName()));
                 } catch (Exception ex) { showError(I18n.get("family.error.read"), ex.getMessage()); }
             }
         });
@@ -838,7 +853,15 @@ public class FamilyEditorController implements Initializable {
 
      // Générer un nom de relation unique
         String defaultName = generateRelationName();
-        TextField nameField = new TextField(defaultName);        ComboBox<String> srcCombo = new ComboBox<>();
+        TextField nameField = new TextField(defaultName);        
+        nameField.textProperty().addListener((obs, old, val) -> {
+            if (val.contains(" "))
+                nameField.setText(val.replace(" ", "_"));
+        });
+        javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.setDisable(nameField.getText().isBlank());
+        nameField.textProperty().addListener((obs, old, val) ->
+            okBtn.setDisable(val.isBlank()));        ComboBox<String> srcCombo = new ComboBox<>();
         srcCombo.getItems().addAll(contextNames); srcCombo.setValue(contextNames.get(0));
         ComboBox<String> tgtCombo = new ComboBox<>();
         tgtCombo.getItems().addAll(contextNames);

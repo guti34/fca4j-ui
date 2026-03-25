@@ -16,5 +16,9 @@ public class Utilities {
         if (inputDir == null) return outputPath;
         return inputDir.resolve(p).toString();
     }
-
+    /** Remplace les espaces (et caractères non valides) par des underscores. */
+    public static String sanitizeName(String name) {
+        if (name == null) return "";
+        return name.trim().replaceAll("\\s+", "_");
+    }
 }
