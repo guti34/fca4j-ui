@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="fr.lirmm.fca4j.ui.controller.ModelEditorController"
+      spacing="0">
+
+    <!-- ── Toolbar ── -->
+    <ToolBar styleClass="editor-toolbar">
+        <Button fx:id="btnNew"         styleClass="icon-btn" onAction="#onNew"/>
+        <Button fx:id="btnOpen"        styleClass="icon-btn" onAction="#onOpen"/>
+        <Button fx:id="btnSave"        styleClass="icon-btn" onAction="#onSave"/>
+        <Button fx:id="btnSaveAs"      styleClass="icon-btn" onAction="#onSaveAs"/>
+        <Separator orientation="VERTICAL"/>
+        <Button fx:id="btnAddContext"  styleClass="icon-btn" onAction="#onAddContext"/>
+        <Button fx:id="btnAddRelation" styleClass="icon-btn" onAction="#onAddRelation"/>
+        <Separator orientation="VERTICAL"/>
+        <Label fx:id="modelNameLabel" style="-fx-font-weight: bold;"/>
+        <Label fx:id="statsLabel"
+               style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
+    </ToolBar>
+
+    <!-- ── Zone principale : 2 bandes horizontales ── -->
+    <SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS" dividerPositions="0.50">
+
+        <!-- Bande haute : contextes formels (gauche) + attributs (droite) -->
+        <SplitPane orientation="HORIZONTAL" dividerPositions="0.45">
+
+            <!-- Contextes formels -->
+            <VBox spacing="4" style="-fx-padding: 6;">
+                <Label text="%model.table.contexts"
+                       style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <TableView fx:id="contextsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="ctxNomCol"  prefWidth="130"/>
+                        <TableColumn fx:id="ctxPathCol" prefWidth="220"/>
+                    </columns>
+                    <placeholder><Label text="%model.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Attributs du contexte sélectionné -->
+            <VBox spacing="4" style="-fx-padding: 6;">
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <Label fx:id="attrPaneTitle" text="%model.attrs.title"
+                           style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                    <Button fx:id="btnBrowseCsv" styleClass="icon-btn"
+                            onAction="#onBrowseCsv"/>
+                    <Label fx:id="csvPathLabel"
+                           style="-fx-text-fill: gray; -fx-font-size: 11px;"
+                           maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                </HBox>
+                <TableView fx:id="attrsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="attrIdxCol"  prefWidth="50"/>
+                        <TableColumn fx:id="attrNameCol" prefWidth="180"/>
+                        <TableColumn fx:id="attrKeyCol"  prefWidth="70"/>
+                        <TableColumn fx:id="attrBinCol"  prefWidth="80"/>
+                    </columns>
+                    <placeholder><Label text="%model.attrs.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+        </SplitPane>
+
+        <!-- Bande basse : relations (gauche) + jointure (droite) -->
+        <SplitPane orientation="HORIZONTAL" dividerPositions="0.45">
+
+            <!-- Liste des relations -->
+            <VBox spacing="4" style="-fx-padding: 6;">
+                <Label text="%model.table.relations"
+                       style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <TableView fx:id="relationsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="relNomCol"    prefWidth="100"/>
+                        <TableColumn fx:id="relSourceCol" prefWidth="80"/>
+                        <TableColumn fx:id="relTargetCol" prefWidth="80"/>
+                        <TableColumn fx:id="relQuantCol"  prefWidth="80"/>
+                    </columns>
+                    <placeholder><Label text="%model.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- Détail jointure de la relation sélectionnée -->
+            <VBox spacing="6" style="-fx-padding: 6;">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label fx:id="joinPaneTitle" text="%model.join.title"
+                           style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                    <Button fx:id="btnAddKeyPair"    styleClass="icon-btn"
+                            onAction="#onAddKeyPair"/>
+                    <Button fx:id="btnRemoveKeyPair" styleClass="icon-btn"
+                            onAction="#onRemoveKeyPair"/>
+                </HBox>
+
+                <!-- Fichier de transaction optionnel -->
+                <HBox spacing="6" alignment="CENTER_LEFT">
+                    <Label text="%model.join.transaction.file" minWidth="130"/>
+                    <TextField fx:id="transactionFileField" HBox.hgrow="ALWAYS"
+                               promptText="%model.join.transaction.optional"
+                               editable="false"/>
+                    <Button fx:id="btnBrowseTransaction" styleClass="icon-btn"
+                            onAction="#onBrowseTransaction"/>
+                    <Button fx:id="btnClearTransaction"  styleClass="icon-btn"
+                            onAction="#onClearTransaction"/>
+                </HBox>
+
+                <!-- Table des paires de clés -->
+                <TableView fx:id="keyPairsTable" VBox.vgrow="ALWAYS">
+                    <columns>
+                        <TableColumn fx:id="keyPairSourceCol" prefWidth="180"/>
+                        <TableColumn fx:id="keyPairTargetCol" prefWidth="180"/>
+                    </columns>
+                    <placeholder><Label text="%model.join.empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+        </SplitPane>
+
+    </SplitPane>
+
+    <!-- ── Barre de statut ── -->
+    <Label fx:id="statusLabel" styleClass="status-bar"/>
+
+</VBox>

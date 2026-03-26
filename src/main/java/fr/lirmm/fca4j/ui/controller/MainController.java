@@ -80,6 +80,8 @@ public class MainController implements Initializable {
 	private Menu recentContextMenu;
 	@FXML
 	private Menu recentFamilyMenu;
+    @FXML 
+    private Menu recentModelMenu;
 	// ── Onglet RCA Family ─────────────────────────────────────────────────────
 	@FXML
 	private TabPane commandTabPane;
@@ -132,7 +134,8 @@ public class MainController implements Initializable {
 			});
 	@FXML
 	private StackPane centerStack; // wrappera le SplitPane
-
+	@FXML private Tab                   modelEditorTab;
+	@FXML private ModelEditorController modelEditorController;
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		renderer = new GraphRenderer(graphWebView.getEngine());
@@ -180,18 +183,28 @@ public class MainController implements Initializable {
 			familyEditorTab.setText(I18n.get("tab.family.editor"));
 
 		// Populer le champ input depuis l'éditeur de contexte
-		if (contextEditorController != null) {
-			contextEditorController.setOnFileLoaded(path -> {
-				lastInputFile = path;
-				propagateInputFile(path);
-				AppPreferences.addRecentContext(path);
-				refreshRecentMenus();
-			});
-		}
 		contextEditorController.setOnFileLoaded(path -> {
-			lastInputFile = path;
-			// Propager au panneau courant si possible
-			propagateInputFile(path);
+		    lastInputFile = path;
+		    propagateInputFile(path);
+		    AppPreferences.addRecentContext(path);
+		    refreshRecentMenus();
+		});
+		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
+
+		// Titre onglet Family Editor
+		if (familyEditorTab != null)
+		    familyEditorTab.setText(I18n.get("tab.family.editor"));
+		familyEditorController.setOnFileOpened(path -> {
+		    AppPreferences.addRecentFamily(path.toString());
+		    refreshRecentMenus();
+		});
+
+		// Titre onglet Model Editor
+		if (modelEditorTab != null)
+		    modelEditorTab.setText(I18n.get("tab.model.editor"));
+		modelEditorController.setOnFileOpened(path -> {
+		    AppPreferences.addRecentModel(path.toString());
+		    refreshRecentMenus();
 		});
 		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 		updateStatusBar();
@@ -747,7 +760,24 @@ public class MainController implements Initializable {
 		familyEditorController.onNew();
 		mainTabPane.getSelectionModel().select(2);
 	}
+	@FXML private void onNewModel() {
+	    modelEditorController.onNew();
+	    mainTabPane.getSelectionModel().select(3); // index de l'onglet Model Editor
+	}
 
+	@FXML private void onOpenModel() {
+	    modelEditorController.onOpen();
+	    mainTabPane.getSelectionModel().select(3);
+	}
+
+	public void openInModelEditor(Path path) {
+	    if (modelEditorController != null) {
+	        AppPreferences.addRecentModel(path.toString());
+	        refreshRecentMenus();
+	        modelEditorController.openFile(path);
+	        mainTabPane.getSelectionModel().select(3);
+	    }
+	}
 	@FXML
 	private void onOpenContext() {
 		contextEditorController.onOpen();
@@ -866,6 +896,9 @@ public class MainController implements Initializable {
 		buildRecentMenu(recentContextMenu, AppPreferences.getRecentContexts(), path -> openInEditor(Path.of(path)));
 		buildRecentMenu(recentFamilyMenu, AppPreferences.getRecentFamilies(),
 				path -> openInFamilyEditor(Path.of(path)));
+	    buildRecentMenu(recentModelMenu,
+	            AppPreferences.getRecentModels(),
+	            path -> openInModelEditor(Path.of(path)));
 	}
 
 	private void buildRecentMenu(javafx.scene.control.Menu menu, java.util.List<String> paths,

@@ -15,17 +15,20 @@
 			        <Menu text="%menu.file.new">
 			            <MenuItem text="%menu.file.new.context" onAction="#onNewContext"/>
 			            <MenuItem text="%menu.file.new.family"  onAction="#onNewFamily"/>
+    					<MenuItem text="%menu.file.new.model"   onAction="#onNewModel"/>
 			        </Menu>
 			
 			        <!-- Open -->
 			        <Menu text="%menu.file.open">
 			            <MenuItem text="%menu.file.open.context" onAction="#onOpenContext"/>
 			            <MenuItem text="%menu.file.open.family"  onAction="#onOpenFamily"/>
+    					<MenuItem text="%menu.file.open.model"   onAction="#onOpenModel"/>
 			        </Menu>
 			
 			        <!-- Recent -->
 			        <Menu fx:id="recentContextMenu" text="%menu.file.recent.context"/>
 			        <Menu fx:id="recentFamilyMenu"  text="%menu.file.recent.family"/>
+			        <Menu fx:id="recentModelMenu"   text="%menu.file.recent.model"/>
 			
 			        <SeparatorMenuItem/>
 			        <MenuItem text="%menu.file.preferences" onAction="#onOpenPreferences"/>
@@ -153,6 +156,11 @@
                     <fx:include fx:id="familyEditor"
                                 source="family_editor.fxml"/>
                 </Tab>
+				<!-- Onglet Model Editor -->
+				<Tab fx:id="modelEditorTab">
+				    <fx:include fx:id="modelEditor"
+				                source="model_editor.fxml"/>
+				</Tab>
             </TabPane>
         </SplitPane>
     </StackPane>

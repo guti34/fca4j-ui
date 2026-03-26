@@ -20,6 +20,7 @@ public class AppPreferences {
     private static final int MAX_RECENT = 10;
     private static final String KEY_RECENT_CTX    = "recent.context.";
     private static final String KEY_RECENT_FAMILY = "recent.family.";
+    private static final String KEY_RECENT_MODEL = "recent.model.";
     
     
     // Valeurs par défaut
@@ -113,7 +114,13 @@ public class AppPreferences {
     public static java.util.List<String> getRecentFamilies() {
         return loadRecentList(KEY_RECENT_FAMILY);
     }
+    public static java.util.List<String> getRecentModels() {
+        return loadRecentList(KEY_RECENT_MODEL);
+    }
 
+    public static void addRecentModel(String path) {
+        saveRecentList(KEY_RECENT_MODEL, path);
+    }
     public static void addRecentContext(String path) {
         saveRecentList(KEY_RECENT_CTX, path);
     }
