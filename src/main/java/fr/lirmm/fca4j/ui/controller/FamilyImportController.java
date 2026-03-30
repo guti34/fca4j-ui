@@ -27,6 +27,9 @@ public class FamilyImportController implements Initializable {
     @FXML private ComboBox<String> separatorCombo;
     @FXML private Spinner<Integer> timeoutSpinner;
     @FXML private CheckBox         verboseCheckBox;
+    @FXML private Button btnEditModel;
+    
+    private Consumer<java.nio.file.Path> openInModelEditor;
 
     private Consumer<CommandBuilder> onRun;
 
@@ -67,9 +70,34 @@ public class FamilyImportController implements Initializable {
         inputPane.setText(I18n.get("section.model"));
         outputPane.setText(I18n.get("section.output"));
         advancedPane.setText(I18n.get("section.advanced"));
+
+        // Icône crayon
+        org.kordamp.ikonli.javafx.FontIcon editIcon =
+            new org.kordamp.ikonli.javafx.FontIcon(
+                org.kordamp.ikonli.material2.Material2AL.EDIT);
+        editIcon.setIconSize(14);
+        btnEditModel.setGraphic(editIcon);
+        btnEditModel.setText("");
+        btnEditModel.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
+        btnEditModel.setDisable(true);
+        inputFileField.textProperty().addListener((obs, old, val) ->
+            btnEditModel.setDisable(val.isBlank()));
         loadPrefs();
     }
+    public void setOpenInModelEditor(Consumer<java.nio.file.Path> callback) {
+        this.openInModelEditor = callback;
+    }
 
+    @FXML private void onEditModel() {
+        String path = inputFileField.getText().trim();
+        if (path.isBlank()) {
+            new Alert(Alert.AlertType.WARNING,
+                I18n.get("error.no.input.detail")).showAndWait();
+            return;
+        }
+        if (openInModelEditor != null)
+            openInModelEditor.accept(java.nio.file.Path.of(path));
+    }
     @FXML private void onBrowseInput() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("label.input.file"));

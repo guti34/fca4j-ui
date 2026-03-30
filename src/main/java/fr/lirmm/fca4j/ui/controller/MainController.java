@@ -68,6 +68,8 @@ public class MainController implements Initializable {
 
 	// ── Toolbar Graph ─────────────────────────────────────────────────────────
 	@FXML
+	private Button btnMagnifier;
+	@FXML
 	private Button btnSaveDot;
 	@FXML
 	private Button btnExportSvg;
@@ -80,8 +82,8 @@ public class MainController implements Initializable {
 	private Menu recentContextMenu;
 	@FXML
 	private Menu recentFamilyMenu;
-    @FXML 
-    private Menu recentModelMenu;
+	@FXML
+	private Menu recentModelMenu;
 	// ── Onglet RCA Family ─────────────────────────────────────────────────────
 	@FXML
 	private TabPane commandTabPane;
@@ -134,8 +136,13 @@ public class MainController implements Initializable {
 			});
 	@FXML
 	private StackPane centerStack; // wrappera le SplitPane
-	@FXML private Tab                   modelEditorTab;
-	@FXML private ModelEditorController modelEditorController;
+	@FXML
+	private Tab modelEditorTab;
+	@FXML
+	private ModelEditorController modelEditorController;
+	@FXML
+	private Label lastCommandLabel;
+
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		renderer = new GraphRenderer(graphWebView.getEngine());
@@ -184,27 +191,27 @@ public class MainController implements Initializable {
 
 		// Populer le champ input depuis l'éditeur de contexte
 		contextEditorController.setOnFileLoaded(path -> {
-		    lastInputFile = path;
-		    propagateInputFile(path);
-		    AppPreferences.addRecentContext(path);
-		    refreshRecentMenus();
+			lastInputFile = path;
+			propagateInputFile(path);
+			AppPreferences.addRecentContext(path);
+			refreshRecentMenus();
 		});
 		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 
 		// Titre onglet Family Editor
 		if (familyEditorTab != null)
-		    familyEditorTab.setText(I18n.get("tab.family.editor"));
+			familyEditorTab.setText(I18n.get("tab.family.editor"));
 		familyEditorController.setOnFileOpened(path -> {
-		    AppPreferences.addRecentFamily(path.toString());
-		    refreshRecentMenus();
+			AppPreferences.addRecentFamily(path.toString());
+			refreshRecentMenus();
 		});
 
 		// Titre onglet Model Editor
 		if (modelEditorTab != null)
-		    modelEditorTab.setText(I18n.get("tab.model.editor"));
+			modelEditorTab.setText(I18n.get("tab.model.editor"));
 		modelEditorController.setOnFileOpened(path -> {
-		    AppPreferences.addRecentModel(path.toString());
-		    refreshRecentMenus();
+			AppPreferences.addRecentModel(path.toString());
+			refreshRecentMenus();
 		});
 		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 		updateStatusBar();
@@ -214,6 +221,31 @@ public class MainController implements Initializable {
 			AppPreferences.addRecentFamily(path.toString());
 			refreshRecentMenus();
 		});
+	}
+
+	private void setLastCommandStatus(String command, boolean success, long durationMs) {
+		String text;
+		String color;
+		if (success) {
+			text = command + " — " + formatDuration(durationMs);
+			color = "#2a7a2a"; // vert
+		} else {
+			text = I18n.get("status.command.failed", command);
+			color = "#cc3333"; // rouge
+		}
+		Platform.runLater(() -> {
+			lastCommandLabel.setText(text);
+			lastCommandLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+		});
+	}
+
+	private String formatDuration(long ms) {
+		if (ms < 1000)
+			return ms + " ms";
+		long s = ms / 1000;
+		if (s < 60)
+			return s + " s";
+		return (s / 60) + " min " + (s % 60) + " s";
 	}
 
 	private void buildLoadingOverlay() {
@@ -324,6 +356,7 @@ public class MainController implements Initializable {
 		setGraphToolbarBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.svg"));
 		setGraphToolbarBtn(btnExportPng, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.png"));
 		setGraphToolbarBtn(btnExportPdf, new FontIcon(Material2AL.INSERT_DRIVE_FILE), I18n.get("graph.btn.export.pdf"));
+		setGraphToolbarBtn(btnMagnifier, new FontIcon(Material2MZ.SEARCH), I18n.get("graph.btn.magnifier"));
 	}
 
 	private void setGraphToolbarBtn(Button btn, FontIcon icon, String tooltip) {
@@ -341,6 +374,7 @@ public class MainController implements Initializable {
 		btnExportSvg.setDisable(false);
 		btnExportPng.setDisable(false);
 		btnExportPdf.setDisable(false);
+		btnMagnifier.setDisable(false);
 	}
 
 	// ── Gestion de l'input persistant entre commandes ─────────────────────────
@@ -466,6 +500,7 @@ public class MainController implements Initializable {
 			Node panel = loader.load();
 			ImportCommandController ctrl = loader.getController();
 			ctrl.configure(this::executeCommand);
+			ctrl.setOpenInModelEditor(this::openInModelEditor);
 			importCommandContainer.getChildren().setAll(panel);
 			importCommandController = ctrl;
 		} catch (Exception e) {
@@ -496,23 +531,23 @@ public class MainController implements Initializable {
 	}
 
 	public void openInEditor(Path filePath) {
-		if (contextEditorController != null) {
-			AppPreferences.addRecentContext(filePath.toString());
-			refreshRecentMenus();
-			contextEditorController.openFile(filePath);
-			mainTabPane.getSelectionModel().select(1);
-		}
+	    if (contextEditorController != null) {
+	        if (!contextEditorController.confirmDiscardChanges()) return; // ← ajouter
+	        AppPreferences.addRecentContext(filePath.toString());
+	        refreshRecentMenus();
+	        contextEditorController.openFile(filePath);
+	        mainTabPane.getSelectionModel().select(1);
+	    }
 	}
-
 	public void openInFamilyEditor(Path filePath) {
-		if (familyEditorController != null) {
-			AppPreferences.addRecentFamily(filePath.toString());
-			refreshRecentMenus();
-			familyEditorController.openFile(filePath);
-			mainTabPane.getSelectionModel().select(2);
-		}
+	    if (familyEditorController != null) {
+	        if (!familyEditorController.confirmDiscard()) return; // ← ajouter
+	        AppPreferences.addRecentFamily(filePath.toString());
+	        refreshRecentMenus();
+	        familyEditorController.openFile(filePath);
+	        mainTabPane.getSelectionModel().select(2);
+	    }
 	}
-
 	private void openDotInGraph(Path dotFile) {
 		mainTabPane.getSelectionModel().select(0);
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
@@ -528,14 +563,35 @@ public class MainController implements Initializable {
 		});
 		showOverlayDelayed();
 	}
-
+	/**
+	 * Retourne true si l'utilisateur accepte de perdre les modifications
+	 * (ou s'il n'y en a pas). Interroge les trois éditeurs.
+	 */
+	public boolean confirmDiscardAll() {
+	    if (contextEditorController != null
+	            && !contextEditorController.confirmDiscardChanges())
+	        return false;
+	    if (familyEditorController != null
+	            && !familyEditorController.confirmDiscard())
+	        return false;
+	    if (modelEditorController != null
+	            && !modelEditorController.confirmDiscard())
+	        return false;
+	    return true;
+	}
 	private void onStopCommand() {
 		runner.cancel();
 		renderer.cancel(); // ← ajouter
 		hideOverlay();
 		appendConsole("\n" + I18n.get("console.cancelled"));
 	}
-
+	@FXML private void onToggleMagnifier() {
+	    if (renderer.getCurrentDotFile() == null) return; // pas de graphe chargé
+	    renderer.toggleMagnifier();
+	    btnMagnifier.setStyle(renderer.isMagnifierActive()
+	        ? "-fx-background-color: #e0e0e0;"
+	        : "");
+	}
 	public void shutdown() {
 		// Arrêter le timer overlay
 		if (overlayTimer != null)
@@ -549,46 +605,59 @@ public class MainController implements Initializable {
 	// ── Exécution des commandes ───────────────────────────────────────────────
 
 	private void executeCommand(CommandBuilder builder) {
-	    if (!AppPreferences.isFca4jConfigured()) {
-	        showAlert(I18n.get("error.not.configured.title"),
-	                  I18n.get("error.not.configured.detail"));
-	        return;
-	    }
-	    final var args = builder.build();
-	    consoleArea.clear();
-	    appendConsole("$ " + builder.toDisplayString());
-	    mainTabPane.getSelectionModel().select(0);
-	    clearGraph();
-	    showOverlayDelayed();
+		if (!AppPreferences.isFca4jConfigured()) {
+			showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
+			return;
+		}
+		final var args = builder.build();
+		consoleArea.clear();
+		appendConsole("$ " + builder.toDisplayString());
+		mainTabPane.getSelectionModel().select(0);
+		clearGraph();
+		showOverlayDelayed();
 
-	    runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
-	        .thenAccept(result -> Platform.runLater(() -> {
-	            hideOverlay();
-	            if (result.isSuccess()) {
-	                appendConsole("\n" + I18n.get("console.ok"));
-	                // Enregistrer le fichier d'entrée dans les récents
-	                if (args.size() > 1) {
-	                    String inputPath = args.get(1);
-	                    // BINARIZE exclue — son input CSV n'est pas un contexte formel
-	                    if (!"BINARIZE".equals(args.get(0))
-	                            && !"FAMILY_IMPORT".equals(args.get(0))) {
-	                        AppPreferences.addRecentContext(inputPath);
-	                        refreshRecentMenus();
-	                    }
-	                }
-	                tryRenderDot(builder);
-	            } else {
-	                appendConsole("\n" + I18n.get("console.error")
-	                    + "\n" + result.stderr());
-	            }
-	        }));
+		// Limiter l'affichage console pour les commandes à sortie volumineuse
+		final int MAX_CONSOLE_LINES = 500;
+		final int[] lineCount = { 0 };
+		final boolean[] truncated = { false };
+		final long startTime = System.currentTimeMillis();
+		final String commandName = args.get(0);
+
+		runner.run(args, line -> Platform.runLater(() -> {
+			if (truncated[0])
+				return;
+			if (lineCount[0]++ < MAX_CONSOLE_LINES) {
+				appendConsole(line);
+			} else {
+				truncated[0] = true;
+				appendConsole("... [" + I18n.get("console.output.truncated") + "]");
+			}
+		})).thenAccept(result -> Platform.runLater(() -> {
+			hideOverlay();
+			long duration = System.currentTimeMillis() - startTime;
+			setLastCommandStatus(commandName, result.isSuccess(), duration);
+			if (result.isSuccess()) {
+				appendConsole("\n" + I18n.get("console.ok"));
+				if (args.size() > 1 && !"BINARIZE".equals(args.get(0)) && !"FAMILY_IMPORT".equals(args.get(0))) {
+					AppPreferences.addRecentContext(args.get(1));
+					refreshRecentMenus();
+				}
+				tryRenderDot(builder);
+			} else {
+				appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
+			}
+		}));
 	}
+
 	private void clearGraph() {
 		renderer.clear();
 		btnSaveDot.setDisable(true);
 		btnExportSvg.setDisable(true);
 		btnExportPng.setDisable(true);
 		btnExportPdf.setDisable(true);
+	    btnMagnifier.setDisable(true); 
+	    // Désactiver aussi la loupe si elle était active
+	    if (renderer.isMagnifierActive()) renderer.toggleMagnifier();
 	}
 
 	private void executeRcaCommand(CommandBuilder builder) {
@@ -600,19 +669,24 @@ public class MainController implements Initializable {
 		consoleArea.clear();
 		appendConsole("$ " + builder.toDisplayString());
 		mainTabPane.getSelectionModel().select(0);
+		final long startTime = System.currentTimeMillis();
+		final String commandName = args.get(0);
 
 		runner.run(args, line -> Platform.runLater(() -> appendConsole(line)))
 				.thenAccept(result -> Platform.runLater(() -> {
+					hideOverlay();
+					long duration = System.currentTimeMillis() - startTime;
+					setLastCommandStatus(commandName, result.isSuccess(), duration);
 					if (result.isSuccess()) {
 						appendConsole("\n" + I18n.get("console.ok"));
 						if (rcaCommandController != null)
 							rcaCommandController.scanDotFiles();
-					    // Enregistrer le fichier famille dans les récents
-					    if (args.size() > 1) {
-					        String inputPath = args.get(1);
-					        AppPreferences.addRecentFamily(inputPath);
-					        Platform.runLater(this::refreshRecentMenus);
-					    }
+						// Enregistrer le fichier famille dans les récents
+						if (args.size() > 1) {
+							String inputPath = args.get(1);
+							AppPreferences.addRecentFamily(inputPath);
+							Platform.runLater(this::refreshRecentMenus);
+						}
 
 					} else {
 						appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
@@ -665,11 +739,11 @@ public class MainController implements Initializable {
 		updateStatusBar();
 	}
 
-	@FXML
-	private void onQuit() {
-		Platform.exit();
+	@FXML private void onQuit() {
+	    if (!confirmDiscardAll()) return;
+	    shutdown();
 	}
-
+	
 	@FXML
 	private void onAbout() {
 		Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -760,18 +834,22 @@ public class MainController implements Initializable {
 		familyEditorController.onNew();
 		mainTabPane.getSelectionModel().select(2);
 	}
-	@FXML private void onNewModel() {
-	    modelEditorController.onNew();
-	    mainTabPane.getSelectionModel().select(3); // index de l'onglet Model Editor
+
+	@FXML
+	private void onNewModel() {
+		modelEditorController.onNew();
+		mainTabPane.getSelectionModel().select(3); 
 	}
 
-	@FXML private void onOpenModel() {
-	    modelEditorController.onOpen();
-	    mainTabPane.getSelectionModel().select(3);
+	@FXML
+	private void onOpenModel() {
+		modelEditorController.onOpen();
+		mainTabPane.getSelectionModel().select(3);
 	}
 
 	public void openInModelEditor(Path path) {
 	    if (modelEditorController != null) {
+	        if (!modelEditorController.confirmDiscard()) return; // ← ajouter
 	        AppPreferences.addRecentModel(path.toString());
 	        refreshRecentMenus();
 	        modelEditorController.openFile(path);
@@ -896,9 +974,7 @@ public class MainController implements Initializable {
 		buildRecentMenu(recentContextMenu, AppPreferences.getRecentContexts(), path -> openInEditor(Path.of(path)));
 		buildRecentMenu(recentFamilyMenu, AppPreferences.getRecentFamilies(),
 				path -> openInFamilyEditor(Path.of(path)));
-	    buildRecentMenu(recentModelMenu,
-	            AppPreferences.getRecentModels(),
-	            path -> openInModelEditor(Path.of(path)));
+		buildRecentMenu(recentModelMenu, AppPreferences.getRecentModels(), path -> openInModelEditor(Path.of(path)));
 	}
 
 	private void buildRecentMenu(javafx.scene.control.Menu menu, java.util.List<String> paths,
@@ -913,7 +989,7 @@ public class MainController implements Initializable {
 		for (String path : paths) {
 			java.io.File f = new java.io.File(path);
 			String parentShort = shortenPath(f.getParent(), 40);
-			String label = f.getName() + "   —   [" + parentShort+"]";
+			String label = f.getName() + "   —   [" + parentShort + "]";
 			javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
 			item.setDisable(!f.exists());
 			item.setOnAction(e -> {

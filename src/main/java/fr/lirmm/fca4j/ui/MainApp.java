@@ -69,8 +69,13 @@ public class MainApp extends Application {
         primaryStage.setTitle(I18n.get("app.title") + " " + APP_VERSION);
         primaryStage.setScene(scene);
         primaryStage.show();
-        primaryStage.setOnCloseRequest(e -> mainController.shutdown());   
-   }
+        primaryStage.setOnCloseRequest(e -> {
+            if (!mainController.confirmDiscardAll()) {
+                e.consume(); // annuler la fermeture
+                return;
+            }
+            mainController.shutdown();
+        });   }
     
     public static void main(String[] args) {
         launch(args);

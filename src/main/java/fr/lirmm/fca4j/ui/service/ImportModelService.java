@@ -120,10 +120,10 @@ public class ImportModelService {
         fc.path   = parseString(obj, "path");
         fc.attrID = parseIntArray(obj, "attrID");
         fc.attr   = parseIntArray(obj, "attr");
-        List<Integer> aq = parseIntArray(obj, "attrQuartile");
-        fc.attrQuartile = aq.isEmpty() ? List.of(-1) : aq;
-        List<Integer> aqb = parseIntArray(obj, "attrQuartileBase");
-        fc.attrQuartileBase = aqb.isEmpty() ? List.of(-1) : aqb;
+//        List<Integer> aq = parseIntArray(obj, "attrQuartile");
+        fc.attrQuartile = List.of();
+//        List<Integer> aqb = parseIntArray(obj, "attrQuartileBase");
+        fc.attrQuartileBase = List.of();
         return fc;
     }
 

@@ -197,20 +197,7 @@ public class FamilyEditorController implements Initializable {
             addContextItem.setDisable(false);
             addRelationItem.setVisible(family.getFormalContexts().size() >= 2);
 
-            // Fond vide du canvas : seulement Add Context
-/*            if (emptyCanvas) {
-                renameItem.setVisible(false);
-                removeItem.setVisible(false);
-                exportItem.setVisible(false);
-                editInEditorItem.setVisible(false);
-                addRelationItem.setVisible(false);
-                addContextItem.setVisible(true);
-            } else {
-                renameItem.setVisible(true);
-                removeItem.setVisible(true);
-                editInEditorItem.setVisible(true);
-            }
-*/            
+            
         });
     }
 
@@ -944,7 +931,7 @@ public class FamilyEditorController implements Initializable {
         return d.showAndWait().filter(s -> !s.isBlank()).orElse(null);
     }
 
-    private boolean confirmDiscard() {
+    public boolean confirmDiscard() {
         if (!modified) return true;
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
         a.setTitle(I18n.get("editor.confirm.discard.title")); a.setHeaderText(null);

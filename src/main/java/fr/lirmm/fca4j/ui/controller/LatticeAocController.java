@@ -115,11 +115,27 @@ public class LatticeAocController implements Initializable {
             dotBrowseButton.setDisable(!val);
             displayModeCombo.setDisable(!val);
             stabilityCheckBox.setDisable(!val);
-            if (val && dotFileField.getText().isBlank()
-                    && !outputFileField.getText().isBlank())
-                dotFileField.setText(outputFileField.getText() + ".dot");
+            if (val && dotFileField.getText().isBlank()) {
+                // Proposer un nom basé sur le fichier d'entrée
+                String input = inputFileField.getText().trim();
+                if (!input.isBlank()) {
+                    String base = input.replaceAll("\\.[^.]+$", "");
+                    dotFileField.setText(base + ".dot");
+                } else if (!outputFileField.getText().isBlank()) {
+                    // Fallback sur le fichier de sortie
+                    dotFileField.setText(
+                        outputFileField.getText().replaceAll("\\.[^.]+$", "") + ".dot");
+                }
+            }
         });
-
+     // Proposer le .dot automatiquement quand le fichier d'entrée change
+        inputFileField.textProperty().addListener((obs, old, val) -> {
+            if (dotCheckBox.isSelected() && !val.isBlank()
+                    && dotFileField.getText().isBlank()) {
+                String base = val.trim().replaceAll("\\.[^.]+$", "");
+                dotFileField.setText(base + ".dot");
+            }
+        });
         // Zone Iceberg visible seulement si algo = ICEBERG
         algoCombo.valueProperty().addListener((obs, old, val) -> {
             boolean isIceberg = "ICEBERG".equals(val);
@@ -202,12 +218,13 @@ public class LatticeAocController implements Initializable {
             if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
             AppPreferences.setLastDirectory(f.getParent());
             autoDetectFormat(f.getName());
-            if (outputFileField.getText().isBlank()) {
-                String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
+            String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
+            if (outputFileField.getText().isBlank())
                 outputFileField.setText(base + "-result.xml");
-            }
-        }
-    }
+            // Proposer le .dot si la case est cochée et le champ est vide
+            if (dotCheckBox.isSelected() && dotFileField.getText().isBlank())
+                dotFileField.setText(base + ".dot");
+        }    }
 
     @FXML
     private void onBrowseOutput() {

@@ -23,6 +23,7 @@ public class ImportCommandController implements Initializable {
     private BinarizeController      binarizeController;
     private FamilyImportController  familyImportController;
     private Consumer<CommandBuilder> onRun;
+    private Consumer<java.nio.file.Path> openInModelEditor;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {}
@@ -47,7 +48,12 @@ public class ImportCommandController implements Initializable {
         familyImportContainer.setVisible(false);
         familyImportContainer.setManaged(false);
     }
-
+    public void setOpenInModelEditor(Consumer<java.nio.file.Path> callback) {
+        this.openInModelEditor = callback;
+        // Relayer immédiatement si FamilyImportController déjà chargé
+        if (familyImportController != null)
+            familyImportController.setOpenInModelEditor(callback);
+    }
     private void loadBinarize() {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -68,6 +74,7 @@ public class ImportCommandController implements Initializable {
             Node panel = loader.load();
             familyImportController = loader.getController();
             familyImportController.configure(onRun);
+            familyImportController.setOpenInModelEditor(openInModelEditor); // ← ajouter
             familyImportContainer.getChildren().setAll(panel);
         } catch (Exception e) { e.printStackTrace(); }
     }

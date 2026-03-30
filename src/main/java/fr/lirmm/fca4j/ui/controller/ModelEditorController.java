@@ -17,6 +17,9 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -30,7 +33,7 @@ import java.util.function.Consumer;
  */
 public class ModelEditorController implements Initializable {
 
-    // ── Classes internes ─────────────────────────────────────────────────────
+    // ── Classes internes ──────────────────────────────────────────────────────
 
     /** Ligne de la table des attributs d'un contexte formel. */
     private static class AttrRow {
@@ -40,28 +43,35 @@ public class ModelEditorController implements Initializable {
         final SimpleBooleanProperty isBin;
 
         AttrRow(int index, String name, boolean key, boolean bin) {
-            this.index = index;
-            this.name  = name;
+            this.index = index; this.name = name;
             this.isKey = new SimpleBooleanProperty(key);
             this.isBin = new SimpleBooleanProperty(bin);
         }
     }
 
-    /** Ligne de la table des paires de clés d'une relation. */
-    private static class KeyPairRow {
-        final SimpleStringProperty source;
-        final SimpleStringProperty target;
-        int sourceIdx;
-        int targetIdx;
+    /** Ligne d'une table de sélection de clés (mode transactionnel). */
+    private static class KeyRow {
+        final int                   index;
+        final String                name;
+        final SimpleBooleanProperty selected;
 
-        KeyPairRow(int sourceIdx, String sourceName,
-                   int targetIdx, String targetName) {
-            this.sourceIdx = sourceIdx;
-            this.targetIdx = targetIdx;
-            this.source = new SimpleStringProperty(sourceIdx + " — " + sourceName);
-            this.target = new SimpleStringProperty(targetIdx + " — " + targetName);
+        KeyRow(int index, String name, boolean sel) {
+            this.index = index; this.name = name;
+            this.selected = new SimpleBooleanProperty(sel);
         }
     }
+
+    /** Paire de clés source ↔ target (mode direct). */
+    private static class PairRow {
+        int srcIdx, tgtIdx;
+        String srcName, tgtName;
+
+        PairRow(int srcIdx, String srcName, int tgtIdx, String tgtName) {
+            this.srcIdx = srcIdx; this.srcName = srcName;
+            this.tgtIdx = tgtIdx; this.tgtName = tgtName;
+        }
+    }
+
     // ── Toolbar ───────────────────────────────────────────────────────────────
     @FXML private Button btnNew;
     @FXML private Button btnOpen;
@@ -80,7 +90,7 @@ public class ModelEditorController implements Initializable {
     @FXML private TableColumn<FormalContextDef, String> ctxNomCol;
     @FXML private TableColumn<FormalContextDef, String> ctxPathCol;
 
-    // ── Zone attributs (synchronisée avec contextes) ──────────────────────────
+    // ── Zone attributs ────────────────────────────────────────────────────────
     @FXML private Label    attrPaneTitle;
     @FXML private Label    csvPathLabel;
     @FXML private Button   btnBrowseCsv;
@@ -98,27 +108,40 @@ public class ModelEditorController implements Initializable {
     @FXML private TableColumn<RelationalContextDef, String> relTargetCol;
     @FXML private TableColumn<RelationalContextDef, String> relQuantCol;
 
-    // ── Zone jointure (synchronisée avec relations) ───────────────────────────
+    // ── Zone jointure ─────────────────────────────────────────────────────────
     @FXML private Label     joinPaneTitle;
     @FXML private TextField transactionFileField;
     @FXML private Button    btnBrowseTransaction;
     @FXML private Button    btnClearTransaction;
-    @FXML private Button    btnAddKeyPair;
-    @FXML private Button    btnRemoveKeyPair;
 
-    @FXML private TableView<KeyPairRow>           keyPairsTable;
-    @FXML private TableColumn<KeyPairRow, String> keyPairSourceCol;
-    @FXML private TableColumn<KeyPairRow, String> keyPairTargetCol;
+    // Vue A : mode transactionnel
+    @FXML private HBox                        viewTransactional;
+    @FXML private Label                       sourceKeysLabel;
+    @FXML private Label                       targetKeysLabel;
+    @FXML private TableView<KeyRow>           sourceKeysTable;
+    @FXML private TableColumn<KeyRow, Number>  srcKeyIdxCol;
+    @FXML private TableColumn<KeyRow, String>  srcKeyNameCol;
+    @FXML private TableColumn<KeyRow, Boolean> srcKeySelCol;
+    @FXML private TableView<KeyRow>           targetKeysTable;
+    @FXML private TableColumn<KeyRow, Number>  tgtKeyIdxCol;
+    @FXML private TableColumn<KeyRow, String>  tgtKeyNameCol;
+    @FXML private TableColumn<KeyRow, Boolean> tgtKeySelCol;
+
+    // Vue B : mode direct
+    @FXML private VBox                          viewDirect;
+    @FXML private Button                        btnAddPair;
+    @FXML private Button                        btnRemovePair;
+    @FXML private TableView<PairRow>            pairsTable;
+    @FXML private TableColumn<PairRow, String>  pairSrcCol;
+    @FXML private TableColumn<PairRow, String>  pairTgtCol;
 
     // ── État ──────────────────────────────────────────────────────────────────
     private ImportModel          model;
     private Path                 currentFile;
-    private boolean              modified           = false;
-    private FormalContextDef     selectedFc         = null;
-    private RelationalContextDef selectedRc         = null;
-    private List<String>         currentSrcHeaders  = new ArrayList<>();
-    private List<String>         currentTgtHeaders  = new ArrayList<>();
-    private final ImportModelService service        = new ImportModelService();
+    private boolean              modified   = false;
+    private FormalContextDef     selectedFc = null;
+    private RelationalContextDef selectedRc = null;
+    private final ImportModelService service = new ImportModelService();
     private Consumer<Path>       onFileOpened;
 
     // ── Initialisation ────────────────────────────────────────────────────────
@@ -137,13 +160,13 @@ public class ModelEditorController implements Initializable {
     // ── Toolbar ───────────────────────────────────────────────────────────────
 
     private void setupToolbar() {
-        setIcon(btnNew,         new FontIcon(Material2AL.FIBER_NEW),    I18n.get("button.new"));
-        setIcon(btnOpen,        new FontIcon(Material2AL.FOLDER_OPEN),  I18n.get("button.open"));
-        setIcon(btnSave,        new FontIcon(Material2MZ.SAVE),         I18n.get("button.save"));
-        setIcon(btnSaveAs,      new FontIcon(Material2MZ.SAVE_ALT),     I18n.get("button.saveas"));
-        setIcon(btnAddContext,  new FontIcon(Material2MZ.TABLE_ROWS),   I18n.get("model.btn.add.context"));
-        setIcon(btnAddRelation, new FontIcon(Material2AL.LINK),         I18n.get("model.btn.add.relation"));
-        setIcon(btnBrowseCsv,   new FontIcon(Material2AL.FOLDER_OPEN),  I18n.get("model.btn.browse.csv"));
+        setIcon(btnNew,         new FontIcon(Material2AL.FIBER_NEW),   I18n.get("button.new"));
+        setIcon(btnOpen,        new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("button.open"));
+        setIcon(btnSave,        new FontIcon(Material2MZ.SAVE),        I18n.get("button.save"));
+        setIcon(btnSaveAs,      new FontIcon(Material2MZ.SAVE_ALT),    I18n.get("button.saveas"));
+        setIcon(btnAddContext,  new FontIcon(Material2MZ.TABLE_ROWS),  I18n.get("model.btn.add.context"));
+        setIcon(btnAddRelation, new FontIcon(Material2AL.LINK),        I18n.get("model.btn.add.relation"));
+        setIcon(btnBrowseCsv,   new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("model.btn.browse.csv"));
         btnBrowseCsv.setDisable(true);
     }
 
@@ -151,8 +174,7 @@ public class ModelEditorController implements Initializable {
         if (btn == null) return;
         icon.setIconSize(20);
         icon.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
-        btn.setGraphic(icon);
-        btn.setText("");
+        btn.setGraphic(icon); btn.setText("");
         btn.setTooltip(new Tooltip(tooltip));
     }
 
@@ -161,25 +183,22 @@ public class ModelEditorController implements Initializable {
     private void setupContextsTable() {
         ctxNomCol.setText(I18n.get("family.col.context"));
         ctxPathCol.setText(I18n.get("model.col.path"));
- 
         ctxNomCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().nom));
         ctxPathCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().path));
 
-        contextsTable.getSelectionModel().selectedItemProperty()
-            .addListener((obs, old, fc) -> {
-                selectedFc = fc;
-                refreshAttrsTable(fc);
-                btnBrowseCsv.setDisable(fc == null);
-                attrPaneTitle.setText(fc == null
-                    ? I18n.get("model.attrs.title")
-                    : I18n.get("model.attrs.title.for", fc.nom));
-            });
+        contextsTable.getSelectionModel().selectedItemProperty().addListener((obs, old, fc) -> {
+            selectedFc = fc;
+            refreshAttrsTable(fc);
+            btnBrowseCsv.setDisable(fc == null);
+            attrPaneTitle.setText(fc == null
+                ? I18n.get("model.attrs.title")
+                : I18n.get("model.attrs.title.for", fc.nom));
+        });
 
         contextsTable.setRowFactory(tv -> {
             TableRow<FormalContextDef> row = new TableRow<>();
             row.setOnMouseClicked(e -> {
-                if (e.getClickCount() == 2 && !row.isEmpty())
-                    editFormalContextMeta(row.getItem());
+                if (e.getClickCount() == 2 && !row.isEmpty()) editFormalContextMeta(row.getItem());
             });
             return row;
         });
@@ -197,11 +216,11 @@ public class ModelEditorController implements Initializable {
         attrNameCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().name));
 
         attrKeyCol.setCellValueFactory(d -> d.getValue().isKey);
-        attrKeyCol.setCellFactory(col -> { CheckBoxTableCell<AttrRow, Boolean> c = new CheckBoxTableCell<>(); c.setEditable(true); return c; });
+        attrKeyCol.setCellFactory(col -> { var c = new CheckBoxTableCell<AttrRow, Boolean>(); c.setEditable(true); return c; });
         attrKeyCol.setEditable(true);
 
         attrBinCol.setCellValueFactory(d -> d.getValue().isBin);
-        attrBinCol.setCellFactory(col -> { CheckBoxTableCell<AttrRow, Boolean> c = new CheckBoxTableCell<>(); c.setEditable(true); return c; });
+        attrBinCol.setCellFactory(col -> { var c = new CheckBoxTableCell<AttrRow, Boolean>(); c.setEditable(true); return c; });
         attrBinCol.setEditable(true);
 
         attrsTable.setEditable(true);
@@ -235,18 +254,23 @@ public class ModelEditorController implements Initializable {
         catch (Exception e) { return List.of(); }
     }
 
+    private List<String> loadCsvHeadersFromPath(String csvPath) {
+        Path resolved = resolveCsvPath(csvPath);
+        if (resolved == null || !resolved.toFile().exists()) return List.of();
+        try { return service.readCsvHeaders(resolved); }
+        catch (Exception e) { return List.of(); }
+    }
+
     private List<AttrRow> buildAttrRows(FormalContextDef fc, List<String> headers) {
         List<AttrRow> rows = new ArrayList<>();
         if (!headers.isEmpty()) {
             for (int i = 0; i < headers.size(); i++)
-                rows.add(new AttrRow(i, headers.get(i),
-                    fc.attrID.contains(i), fc.attr.contains(i)));
+                rows.add(new AttrRow(i, headers.get(i), fc.attrID.contains(i), fc.attr.contains(i)));
         } else {
             Set<Integer> all = new TreeSet<>();
             all.addAll(fc.attrID); all.addAll(fc.attr);
             for (int i : all)
-                rows.add(new AttrRow(i, "col_" + i,
-                    fc.attrID.contains(i), fc.attr.contains(i)));
+                rows.add(new AttrRow(i, "col_" + i, fc.attrID.contains(i), fc.attr.contains(i)));
         }
         return rows;
     }
@@ -258,8 +282,7 @@ public class ModelEditorController implements Initializable {
             if (row.isKey.get()) newAttrID.add(row.index);
             if (row.isBin.get()) newAttr.add(row.index);
         }
-        fc.attrID = newAttrID;
-        fc.attr   = newAttr;
+        fc.attrID = newAttrID; fc.attr = newAttr;
         contextsTable.refresh();
         markModified();
     }
@@ -274,7 +297,6 @@ public class ModelEditorController implements Initializable {
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
         File f = fc.showOpenDialog(attrsTable.getScene().getWindow());
         if (f == null) return;
-
         selectedFc.path = relativizeIfPossible(f.toPath());
         AppPreferences.setLastDirectory(f.getParent());
         contextsTable.refresh();
@@ -298,89 +320,164 @@ public class ModelEditorController implements Initializable {
         relationsTable.setRowFactory(tv -> {
             TableRow<RelationalContextDef> row = new TableRow<>();
             row.setOnMouseClicked(e -> {
-                if (e.getClickCount() == 2 && !row.isEmpty())
-                    editRelationalContext(row.getItem());
+                if (e.getClickCount() == 2 && !row.isEmpty()) editRelationalContext(row.getItem());
             });
             return row;
         });
     }
 
-    // ── Zone jointure synchronisée avec relations ─────────────────────────────
+    // ── Zone jointure ─────────────────────────────────────────────────────────
 
     private void setupJoinPane() {
         setIcon(btnBrowseTransaction, new FontIcon(Material2AL.FOLDER_OPEN),
             I18n.get("model.browse.csv.title"));
         setIcon(btnClearTransaction, new FontIcon(Material2AL.CLEAR),
             I18n.get("model.join.clear.transaction"));
-        setIcon(btnAddKeyPair,    new FontIcon(Material2AL.ADD),
+        setIcon(btnAddPair,    new FontIcon(Material2AL.ADD),
             I18n.get("model.join.add.pair"));
-        setIcon(btnRemoveKeyPair, new FontIcon(Material2MZ.REMOVE),
+        setIcon(btnRemovePair, new FontIcon(Material2MZ.REMOVE),
             I18n.get("model.join.remove.pair"));
 
-        keyPairSourceCol.setText(I18n.get("family.col.source"));
-        keyPairTargetCol.setText(I18n.get("family.col.target"));
-        keyPairSourceCol.setCellValueFactory(d -> d.getValue().source);
-        keyPairTargetCol.setCellValueFactory(d -> d.getValue().target);
+        // Vue A : colonnes des tables transactionnelles
+        srcKeyIdxCol.setText("#");
+        srcKeyNameCol.setText(I18n.get("model.col.attr.name"));
+        srcKeySelCol.setText("✓");
+        srcKeyIdxCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().index));
+        srcKeyNameCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().name));
+        srcKeySelCol.setCellValueFactory(d -> d.getValue().selected);
+        srcKeySelCol.setCellFactory(col -> new CheckBoxTableCell<>());
+        srcKeySelCol.setEditable(true);
+        sourceKeysTable.setEditable(true);
+
+        tgtKeyIdxCol.setText("#");
+        tgtKeyNameCol.setText(I18n.get("model.col.attr.name"));
+        tgtKeySelCol.setText("✓");
+        tgtKeyIdxCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().index));
+        tgtKeyNameCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().name));
+        tgtKeySelCol.setCellValueFactory(d -> d.getValue().selected);
+        tgtKeySelCol.setCellFactory(col -> new CheckBoxTableCell<>());
+        tgtKeySelCol.setEditable(true);
+        targetKeysTable.setEditable(true);
+
+        // Vue B : table des paires
+        pairSrcCol.setText(I18n.get("family.col.source"));
+        pairTgtCol.setText(I18n.get("family.col.target"));
+        pairSrcCol.setCellValueFactory(d ->
+            new SimpleStringProperty(d.getValue().srcIdx + " — " + d.getValue().srcName));
+        pairTgtCol.setCellValueFactory(d ->
+            new SimpleStringProperty(d.getValue().tgtIdx + " — " + d.getValue().tgtName));
 
         setJoinPaneDisabled(true);
+        switchJoinView(true); // Vue A par défaut
 
         relationsTable.getSelectionModel().selectedItemProperty()
-            .addListener((obs, old, rc) -> {
-                selectedRc = rc;
-                refreshJoinPane(rc);
-            });
+            .addListener((obs, old, rc) -> { selectedRc = rc; refreshJoinPane(rc); });
     }
 
     private void setJoinPaneDisabled(boolean disabled) {
         transactionFileField.setDisable(disabled);
         btnBrowseTransaction.setDisable(disabled);
         btnClearTransaction.setDisable(disabled);
-        btnAddKeyPair.setDisable(disabled);
-        btnRemoveKeyPair.setDisable(disabled);
-        keyPairsTable.setDisable(disabled);
+        sourceKeysTable.setDisable(disabled);
+        targetKeysTable.setDisable(disabled);
+        pairsTable.setDisable(disabled);
+        btnAddPair.setDisable(disabled);
+        btnRemovePair.setDisable(disabled);
+    }
+
+    /** Bascule entre Vue A (transactionnel) et Vue B (direct). */
+    private void switchJoinView(boolean transactional) {
+        viewTransactional.setVisible(transactional);
+        viewTransactional.setManaged(transactional);
+        viewDirect.setVisible(!transactional);
+        viewDirect.setManaged(!transactional);
     }
 
     private void refreshJoinPane(RelationalContextDef rc) {
-        keyPairsTable.getItems().clear();
-        currentSrcHeaders = new ArrayList<>();
-        currentTgtHeaders = new ArrayList<>();
+        sourceKeysTable.getItems().clear();
+        targetKeysTable.getItems().clear();
+        pairsTable.getItems().clear();
+
         if (rc == null) {
             joinPaneTitle.setText(I18n.get("model.join.title"));
             transactionFileField.setText("");
+            if (sourceKeysLabel != null) sourceKeysLabel.setText("");
+            if (targetKeysLabel != null) targetKeysLabel.setText("");
             setJoinPaneDisabled(true);
+            switchJoinView(true);
             return;
         }
+
         setJoinPaneDisabled(false);
         joinPaneTitle.setText(I18n.get("model.join.title.for", rc.nom));
         transactionFileField.setText(rc.path == null ? "" : rc.path);
 
-        if (rc.path != null && !rc.path.isBlank()) {
-            Path resolved = resolveCsvPath(rc.path);
-            if (resolved != null && resolved.toFile().exists()) {
-                try { currentSrcHeaders = service.readCsvHeaders(resolved); }
-                catch (Exception ignored) {}
-            }
-            currentTgtHeaders = currentSrcHeaders;
-            String fname = resolved != null ? resolved.getFileName().toString() : rc.path;
-            keyPairSourceCol.setText(I18n.get("family.col.source") + " ← " + fname);
-            keyPairTargetCol.setText(I18n.get("family.col.target") + " ← " + fname);
-        } else {
+        boolean hasTransaction = rc.path != null && !rc.path.isBlank();
+        switchJoinView(hasTransaction);
+
+        if (hasTransaction) {
+            // ── Vue A : mode transactionnel ───────────────────────────────
+            List<String> transHeaders = loadCsvHeadersFromPath(rc.path);
+
             FormalContextDef srcFc = model.getFormalContextByName(rc.source);
             FormalContextDef tgtFc = model.getFormalContextByName(rc.target);
-            if (srcFc != null) currentSrcHeaders = loadCsvHeaders(srcFc);
-            if (tgtFc != null) currentTgtHeaders = loadCsvHeaders(tgtFc);
-            keyPairSourceCol.setText(I18n.get("family.col.source") + " (" + rc.source + ")");
-            keyPairTargetCol.setText(I18n.get("family.col.target") + " (" + rc.target + ")");
-        }
+            List<String> srcH = srcFc != null ? loadCsvHeaders(srcFc) : List.of();
+            List<String> tgtH = tgtFc != null ? loadCsvHeaders(tgtFc) : List.of();
 
-        int pairCount = Math.min(rc.sourceKeys.size(), rc.targetKeys.size());
-        for (int i = 0; i < pairCount; i++) {
-            int si = rc.sourceKeys.get(i);
-            int ti = rc.targetKeys.get(i);
-            String sn = si < currentSrcHeaders.size() ? currentSrcHeaders.get(si) : "col_" + si;
-            String tn = ti < currentTgtHeaders.size() ? currentTgtHeaders.get(ti) : "col_" + ti;
-            keyPairsTable.getItems().add(new KeyPairRow(si, sn, ti, tn));
+            List<KeyRow> srcRows = new ArrayList<>();
+            List<KeyRow> tgtRows = new ArrayList<>();
+            for (int i = 0; i < transHeaders.size(); i++) {
+                String col   = transHeaders.get(i);
+                boolean inSrc = srcH.contains(col);
+                boolean inTgt = tgtH.contains(col);
+
+                KeyRow sr = new KeyRow(i, inSrc ? col : col + " ⚠", rc.sourceKeys.contains(i));
+                sr.selected.addListener((obs, old, val) -> syncRcTransactional(rc));
+                srcRows.add(sr);
+
+                KeyRow tr = new KeyRow(i, inTgt ? col : col + " ⚠", rc.targetKeys.contains(i));
+                tr.selected.addListener((obs, old, val) -> syncRcTransactional(rc));
+                tgtRows.add(tr);
+            }
+            sourceKeysTable.getItems().setAll(srcRows);
+            targetKeysTable.getItems().setAll(tgtRows);
+            sourceKeysLabel.setText(I18n.get("model.join.source.keys") + " → " + rc.source);
+            targetKeysLabel.setText(I18n.get("model.join.target.keys") + " → " + rc.target);
+
+        } else {
+            // ── Vue B : mode direct — paires source ↔ target ─────────────
+            FormalContextDef srcFc = model.getFormalContextByName(rc.source);
+            FormalContextDef tgtFc = model.getFormalContextByName(rc.target);
+            List<String> srcH = srcFc != null ? loadCsvHeaders(srcFc) : List.of();
+            List<String> tgtH = tgtFc != null ? loadCsvHeaders(tgtFc) : List.of();
+
+            int pairCount = Math.min(rc.sourceKeys.size(), rc.targetKeys.size());
+            for (int i = 0; i < pairCount; i++) {
+                int si = rc.sourceKeys.get(i);
+                int ti = rc.targetKeys.get(i);
+                pairsTable.getItems().add(new PairRow(
+                    si, si < srcH.size() ? srcH.get(si) : "col_" + si,
+                    ti, ti < tgtH.size() ? tgtH.get(ti) : "col_" + ti));
+            }
         }
+    }
+
+    private void syncRcTransactional(RelationalContextDef rc) {
+        rc.sourceKeys.clear(); rc.targetKeys.clear();
+        for (KeyRow row : sourceKeysTable.getItems())
+            if (row.selected.get()) rc.sourceKeys.add(row.index);
+        for (KeyRow row : targetKeysTable.getItems())
+            if (row.selected.get()) rc.targetKeys.add(row.index);
+        markModified();
+    }
+
+    private void syncRcDirect(RelationalContextDef rc) {
+        rc.sourceKeys.clear(); rc.targetKeys.clear();
+        for (PairRow row : pairsTable.getItems()) {
+            rc.sourceKeys.add(row.srcIdx);
+            rc.targetKeys.add(row.tgtIdx);
+        }
+        markModified();
     }
 
     @FXML private void onBrowseTransaction() {
@@ -402,15 +499,21 @@ public class ModelEditorController implements Initializable {
         if (selectedRc == null) return;
         selectedRc.path = "";
         relationsTable.refresh();
-        refreshJoinPane(selectedRc);
+        refreshJoinPane(selectedRc); // bascule automatiquement vers Vue B
         markModified();
     }
 
-    @FXML private void onAddKeyPair() {
+    @FXML private void onAddPair() {
         if (selectedRc == null) return;
-        if (currentSrcHeaders.isEmpty() && currentTgtHeaders.isEmpty()) {
+        FormalContextDef srcFc = model.getFormalContextByName(selectedRc.source);
+        FormalContextDef tgtFc = model.getFormalContextByName(selectedRc.target);
+        List<String> srcH = srcFc != null ? loadCsvHeaders(srcFc) : List.of();
+        List<String> tgtH = tgtFc != null ? loadCsvHeaders(tgtFc) : List.of();
+
+        if (srcH.isEmpty() && tgtH.isEmpty()) {
             showInfo(I18n.get("model.join.no.csv.loaded")); return;
         }
+
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(I18n.get("model.join.add.pair"));
         dialog.setHeaderText(null);
@@ -421,19 +524,17 @@ public class ModelEditorController implements Initializable {
         grid.setPadding(new javafx.geometry.Insets(12));
 
         ComboBox<String> srcCombo = new ComboBox<>();
-        for (int i = 0; i < currentSrcHeaders.size(); i++)
-            srcCombo.getItems().add(i + " — " + currentSrcHeaders.get(i));
+        for (int i = 0; i < srcH.size(); i++)
+            srcCombo.getItems().add(i + " — " + srcH.get(i));
         if (!srcCombo.getItems().isEmpty()) srcCombo.setValue(srcCombo.getItems().get(0));
 
         ComboBox<String> tgtCombo = new ComboBox<>();
-        for (int i = 0; i < currentTgtHeaders.size(); i++)
-            tgtCombo.getItems().add(i + " — " + currentTgtHeaders.get(i));
+        for (int i = 0; i < tgtH.size(); i++)
+            tgtCombo.getItems().add(i + " — " + tgtH.get(i));
         if (!tgtCombo.getItems().isEmpty()) tgtCombo.setValue(tgtCombo.getItems().get(0));
 
-        grid.add(new Label(I18n.get("family.col.source")), 0, 0);
-        grid.add(srcCombo, 1, 0);
-        grid.add(new Label(I18n.get("family.col.target")), 0, 1);
-        grid.add(tgtCombo, 1, 1);
+        grid.add(new Label(I18n.get("family.col.source")), 0, 0); grid.add(srcCombo, 1, 0);
+        grid.add(new Label(I18n.get("family.col.target")), 0, 1); grid.add(tgtCombo, 1, 1);
         dialog.getDialogPane().setContent(grid);
 
         dialog.showAndWait().ifPresent(btn -> {
@@ -441,32 +542,20 @@ public class ModelEditorController implements Initializable {
             int si = srcCombo.getSelectionModel().getSelectedIndex();
             int ti = tgtCombo.getSelectionModel().getSelectedIndex();
             if (si < 0 || ti < 0) return;
-            keyPairsTable.getItems().add(new KeyPairRow(
-                si, currentSrcHeaders.get(si),
-                ti, currentTgtHeaders.get(ti)));
-            syncRcKeys(selectedRc);
+            pairsTable.getItems().add(new PairRow(si, srcH.get(si), ti, tgtH.get(ti)));
+            syncRcDirect(selectedRc);
         });
     }
 
-    @FXML private void onRemoveKeyPair() {
-        int sel = keyPairsTable.getSelectionModel().getSelectedIndex();
+    @FXML private void onRemovePair() {
+        int sel = pairsTable.getSelectionModel().getSelectedIndex();
         if (sel >= 0) {
-            keyPairsTable.getItems().remove(sel);
-            syncRcKeys(selectedRc);
+            pairsTable.getItems().remove(sel);
+            syncRcDirect(selectedRc);
         }
     }
 
-    private void syncRcKeys(RelationalContextDef rc) {
-        rc.sourceKeys.clear();
-        rc.targetKeys.clear();
-        for (KeyPairRow row : keyPairsTable.getItems()) {
-            rc.sourceKeys.add(row.sourceIdx);
-            rc.targetKeys.add(row.targetIdx);
-        }
-        markModified();
-    }
-
-    // ── Édition contexte formel (nom + path) ──────────────────────────────────
+    // ── Édition contexte formel ───────────────────────────────────────────────
 
     private void editFormalContextMeta(FormalContextDef fc) {
         Dialog<ButtonType> dialog = new Dialog<>();
@@ -486,21 +575,17 @@ public class ModelEditorController implements Initializable {
 
         javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(fc.nom.isBlank());
-        nameField.textProperty().addListener((obs, old, val) ->
-            okBtn.setDisable(val.isBlank()));
+        nameField.textProperty().addListener((obs, old, val) -> okBtn.setDisable(val.isBlank()));
 
-        grid.add(new Label(I18n.get("model.col.name")), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label(I18n.get("model.col.path")), 0, 1);
-        grid.add(pathField, 1, 1);
+        grid.add(new Label(I18n.get("model.col.name")), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label(I18n.get("model.col.path")), 0, 1); grid.add(pathField, 1, 1);
         dialog.getDialogPane().setContent(grid);
         Platform.runLater(nameField::requestFocus);
 
         dialog.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
             String oldName = fc.nom;
-            fc.nom  = nameField.getText().trim();
-            fc.path = pathField.getText().trim();
+            fc.nom = nameField.getText().trim(); fc.path = pathField.getText().trim();
             if (!fc.nom.equals(oldName)) {
                 for (RelationalContextDef rc : model.getRelationsUsing(oldName)) {
                     if (rc.source.equals(oldName)) rc.source = fc.nom;
@@ -516,9 +601,7 @@ public class ModelEditorController implements Initializable {
 
     // ── Édition relation ──────────────────────────────────────────────────────
 
-    private void editRelationalContext(RelationalContextDef rc) {
-        showRelationalContextDialog(rc);
-    }
+    private void editRelationalContext(RelationalContextDef rc) { showRelationalContextDialog(rc); }
 
     private void showRelationalContextDialog(RelationalContextDef existing) {
         List<String> contextNames = new ArrayList<>();
@@ -526,8 +609,7 @@ public class ModelEditorController implements Initializable {
 
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle(existing == null
-            ? I18n.get("model.dialog.add.relation")
-            : I18n.get("model.menu.edit"));
+            ? I18n.get("model.dialog.add.relation") : I18n.get("model.menu.edit"));
         dialog.setHeaderText(null);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
@@ -553,7 +635,6 @@ public class ModelEditorController implements Initializable {
         quantCombo.getItems().addAll("exist", "existForall", "existContains", "equality");
         quantCombo.setValue(existing != null ? existing.quantif : "exist");
 
-
         javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(nameField.getText().isBlank()
             || srcCombo.getValue().equals(tgtCombo.getValue()));
@@ -567,27 +648,27 @@ public class ModelEditorController implements Initializable {
                 || (val != null && val.equals(srcCombo.getValue()))));
 
         int row = 0;
-        grid.add(new Label(I18n.get("model.col.name")),        0, row); grid.add(nameField,  1, row++);
-        grid.add(new Label(I18n.get("family.col.source")),     0, row); grid.add(srcCombo,   1, row++);
-        grid.add(new Label(I18n.get("family.col.target")),     0, row); grid.add(tgtCombo,   1, row++);
-        grid.add(new Label(I18n.get("family.col.operator")),   0, row); grid.add(quantCombo, 1, row++);
+        grid.add(new Label(I18n.get("model.col.name")),      0, row); grid.add(nameField,  1, row++);
+        grid.add(new Label(I18n.get("family.col.source")),   0, row); grid.add(srcCombo,   1, row++);
+        grid.add(new Label(I18n.get("family.col.target")),   0, row); grid.add(tgtCombo,   1, row++);
+        grid.add(new Label(I18n.get("family.col.operator")), 0, row); grid.add(quantCombo, 1, row);
         dialog.getDialogPane().setContent(grid);
         Platform.runLater(nameField::requestFocus);
 
         dialog.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
             if (existing != null) {
-                existing.nom                = nameField.getText().trim();
-                existing.source             = srcCombo.getValue();
-                existing.target             = tgtCombo.getValue();
-                existing.quantif            = quantCombo.getValue();
+                existing.nom = nameField.getText().trim();
+                existing.source = srcCombo.getValue();
+                existing.target = tgtCombo.getValue();
+                existing.quantif = quantCombo.getValue();
                 relationsTable.refresh();
             } else {
                 RelationalContextDef rc = new RelationalContextDef();
-                rc.nom                = nameField.getText().trim();
-                rc.source             = srcCombo.getValue();
-                rc.target             = tgtCombo.getValue();
-                rc.quantif            = quantCombo.getValue();
+                rc.nom = nameField.getText().trim();
+                rc.source = srcCombo.getValue();
+                rc.target = tgtCombo.getValue();
+                rc.quantif = quantCombo.getValue();
                 model.addRelationalContext(rc);
                 relationsTable.getItems().setAll(model.getRelationalContexts());
                 relationsTable.getSelectionModel().select(rc);
@@ -601,24 +682,30 @@ public class ModelEditorController implements Initializable {
     private void setupContextMenus() {
         ContextMenu ctxMenu = new ContextMenu();
         MenuItem editCtx   = new MenuItem(I18n.get("model.menu.edit"));
+        MenuItem addCtx    = new MenuItem(I18n.get("model.btn.add.context"));
         MenuItem removeCtx = new MenuItem(I18n.get("family.menu.remove"));
         editCtx.setOnAction(e -> {
             FormalContextDef sel = contextsTable.getSelectionModel().getSelectedItem();
             if (sel != null) editFormalContextMeta(sel);
         });
+        addCtx.setOnAction(e -> onAddContext());
         removeCtx.setOnAction(e -> removeSelectedContext());
-        ctxMenu.getItems().addAll(editCtx, new SeparatorMenuItem(), removeCtx);
+        ctxMenu.getItems().addAll(editCtx, new SeparatorMenuItem(), addCtx,
+            new SeparatorMenuItem(), removeCtx);
         contextsTable.setContextMenu(ctxMenu);
 
         ContextMenu relMenu = new ContextMenu();
         MenuItem editRel   = new MenuItem(I18n.get("model.menu.edit"));
+        MenuItem addRel    = new MenuItem(I18n.get("model.btn.add.relation"));
         MenuItem removeRel = new MenuItem(I18n.get("family.menu.remove"));
         editRel.setOnAction(e -> {
             RelationalContextDef sel = relationsTable.getSelectionModel().getSelectedItem();
             if (sel != null) editRelationalContext(sel);
         });
+        addRel.setOnAction(e -> onAddRelation());
         removeRel.setOnAction(e -> removeSelectedRelation());
-        relMenu.getItems().addAll(editRel, new SeparatorMenuItem(), removeRel);
+        relMenu.getItems().addAll(editRel, new SeparatorMenuItem(), addRel,
+            new SeparatorMenuItem(), removeRel);
         relationsTable.setContextMenu(relMenu);
     }
 
@@ -637,9 +724,7 @@ public class ModelEditorController implements Initializable {
             refreshAll();
             statusLabel.setText(I18n.get("model.status.loaded", path.getFileName()));
             if (onFileOpened != null) onFileOpened.accept(path);
-        } catch (Exception e) {
-            showError(I18n.get("model.error.read"), e.getMessage());
-        }
+        } catch (Exception e) { showError(I18n.get("model.error.read"), e.getMessage()); }
     }
 
     public void openFile(Path path) { loadModel(path); }
@@ -650,9 +735,7 @@ public class ModelEditorController implements Initializable {
             modified = false;
             modelNameLabel.setText(path.getFileName().toString());
             statusLabel.setText(I18n.get("model.status.saved", path.getFileName()));
-        } catch (Exception e) {
-            showError(I18n.get("model.error.write"), e.getMessage());
-        }
+        } catch (Exception e) { showError(I18n.get("model.error.write"), e.getMessage()); }
     }
 
     // ── Rafraîchissement ──────────────────────────────────────────────────────
@@ -663,8 +746,7 @@ public class ModelEditorController implements Initializable {
                                  : currentFile.getFileName().toString())
             + (modified ? " *" : ""));
         statsLabel.setText(I18n.get("model.stats",
-            model.getFormalContexts().size(),
-            model.getRelationalContexts().size()));
+            model.getFormalContexts().size(), model.getRelationalContexts().size()));
         contextsTable.getItems().setAll(model.getFormalContexts());
         relationsTable.getItems().setAll(model.getRelationalContexts());
         btnAddRelation.setDisable(model.getFormalContexts().size() < 2);
@@ -672,10 +754,13 @@ public class ModelEditorController implements Initializable {
         csvPathLabel.setText("");
         attrPaneTitle.setText(I18n.get("model.attrs.title"));
         btnBrowseCsv.setDisable(true);
-        keyPairsTable.getItems().clear();
         joinPaneTitle.setText(I18n.get("model.join.title"));
         transactionFileField.setText("");
+        sourceKeysTable.getItems().clear();
+        targetKeysTable.getItems().clear();
+        pairsTable.getItems().clear();
         setJoinPaneDisabled(true);
+        switchJoinView(true);
         selectedFc = null; selectedRc = null;
     }
 
@@ -699,19 +784,12 @@ public class ModelEditorController implements Initializable {
         if (f != null) { loadModel(f.toPath()); AppPreferences.setLastDirectory(f.getParent()); }
     }
 
-    @FXML public void onSave() {
-        if (currentFile == null) { onSaveAs(); return; }
-        saveToFile(currentFile);
-    }
+    @FXML public void onSave() { if (currentFile == null) { onSaveAs(); return; } saveToFile(currentFile); }
 
     @FXML public void onSaveAs() {
         FileChooser fc = buildChooser(I18n.get("model.saveas.title"));
         File f = fc.showSaveDialog(contextsTable.getScene().getWindow());
-        if (f != null) {
-            currentFile = f.toPath();
-            saveToFile(currentFile);
-            AppPreferences.setLastDirectory(f.getParent());
-        }
+        if (f != null) { currentFile = f.toPath(); saveToFile(currentFile); AppPreferences.setLastDirectory(f.getParent()); }
     }
 
     @FXML public void onAddContext() {
@@ -746,11 +824,10 @@ public class ModelEditorController implements Initializable {
 
         javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
         okBtn.setDisable(true);
-        nameField.textProperty().addListener((obs, old, val) ->
-            okBtn.setDisable(val.isBlank()));
+        nameField.textProperty().addListener((obs, old, val) -> okBtn.setDisable(val.isBlank()));
 
-        grid.add(new Label(I18n.get("model.col.name")), 0, 0); grid.add(nameField,  1, 0);
-        grid.add(new Label(I18n.get("model.col.path")), 0, 1); grid.add(pathField,  1, 1);
+        grid.add(new Label(I18n.get("model.col.name")), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label(I18n.get("model.col.path")), 0, 1); grid.add(pathField, 1, 1);
         grid.add(browseBtn, 2, 1);
         dialog.getDialogPane().setContent(grid);
         Platform.runLater(nameField::requestFocus);
@@ -758,8 +835,7 @@ public class ModelEditorController implements Initializable {
         dialog.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
             FormalContextDef fc2 = new FormalContextDef();
-            fc2.nom  = nameField.getText().trim();
-            fc2.path = pathField.getText().trim();
+            fc2.nom = nameField.getText().trim(); fc2.path = pathField.getText().trim();
             model.addFormalContext(fc2);
             markModified(); refreshAll();
             contextsTable.getSelectionModel().select(fc2);
@@ -773,30 +849,28 @@ public class ModelEditorController implements Initializable {
         showRelationalContextDialog(null);
     }
 
-    // ── Suppression ──────────────────────────────────────────────────────────
+    // ── Suppression ───────────────────────────────────────────────────────────
 
     private void removeSelectedContext() {
         FormalContextDef sel = contextsTable.getSelectionModel().getSelectedItem();
         if (sel == null) return;
         List<RelationalContextDef> deps = model.getRelationsUsing(sel.nom);
         if (!deps.isEmpty()) {
-            String names = deps.stream().map(r -> r.nom)
-                .collect(java.util.stream.Collectors.joining(", "));
             showError(I18n.get("model.error.context.used"),
-                      I18n.get("model.error.context.used.detail", names));
+                I18n.get("model.error.context.used.detail",
+                    deps.stream().map(r -> r.nom)
+                        .collect(java.util.stream.Collectors.joining(", "))));
             return;
         }
         if (!confirmDelete(I18n.get("family.confirm.delete.context", sel.nom))) return;
-        model.removeFormalContext(sel);
-        markModified(); refreshAll();
+        model.removeFormalContext(sel); markModified(); refreshAll();
     }
 
     private void removeSelectedRelation() {
         RelationalContextDef sel = relationsTable.getSelectionModel().getSelectedItem();
         if (sel == null) return;
         if (!confirmDelete(I18n.get("family.confirm.delete.relation", sel.nom))) return;
-        model.removeRelationalContext(sel);
-        markModified(); refreshAll();
+        model.removeRelationalContext(sel); markModified(); refreshAll();
     }
 
     // ── Accesseurs ────────────────────────────────────────────────────────────
@@ -804,9 +878,7 @@ public class ModelEditorController implements Initializable {
     public ImportModel getModel()       { return model; }
     public Path        getCurrentFile() { return currentFile; }
 
-    public void setOnFileOpened(Consumer<Path> callback) {
-        this.onFileOpened = callback;
-    }
+    public void setOnFileOpened(Consumer<Path> callback) { this.onFileOpened = callback; }
 
     // ── Utilitaires ───────────────────────────────────────────────────────────
 
@@ -820,10 +892,8 @@ public class ModelEditorController implements Initializable {
 
     private String relativizeIfPossible(Path absolute) {
         if (currentFile != null) {
-            try {
-                return currentFile.getParent()
-                    .relativize(absolute).toString().replace('\\', '/');
-            } catch (Exception ignored) {}
+            try { return currentFile.getParent().relativize(absolute).toString().replace('\\', '/'); }
+            catch (Exception ignored) {}
         }
         return absolute.toString();
     }
@@ -838,7 +908,7 @@ public class ModelEditorController implements Initializable {
         return fc;
     }
 
-    private boolean confirmDiscard() {
+    public boolean confirmDiscard() {
         if (!modified) return true;
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
         a.setTitle(I18n.get("editor.confirm.discard.title")); a.setHeaderText(null);

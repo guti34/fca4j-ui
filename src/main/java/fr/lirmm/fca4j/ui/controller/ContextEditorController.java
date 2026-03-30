@@ -620,7 +620,7 @@ public class ContextEditorController implements Initializable {
 		return promptText(title, prompt, defaultValue, false);
 	}
 
-	private boolean confirmDiscardChanges() {
+	public boolean confirmDiscardChanges() {
 		if (!modified)
 			return true;
 		Alert alert = new Alert(Alert.AlertType.CONFIRMATION);

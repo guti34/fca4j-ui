@@ -16,9 +16,9 @@ public class ImportModel {
         public String       path           = "";
         public List<Integer> attrID        = new ArrayList<>();
         public List<Integer> attr          = new ArrayList<>();
-        // Toujours [-1] dans notre éditeur simplifié
-        public List<Integer> attrQuartile     = List.of(-1);
-        public List<Integer> attrQuartileBase = List.of(-1);
+        // Toujours [] dans notre éditeur simplifié
+        public List<Integer> attrQuartile     = new ArrayList<>();
+        public List<Integer> attrQuartileBase = new ArrayList<>();
         // Non produit par l'éditeur
         // attrCustomInterval est omis
 

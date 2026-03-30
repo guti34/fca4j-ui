@@ -65,7 +65,7 @@
         </SplitPane>
 
         <!-- Bande basse : relations (gauche) + jointure (droite) -->
-        <SplitPane orientation="HORIZONTAL" dividerPositions="0.45">
+        <SplitPane orientation="HORIZONTAL" dividerPositions="0.40">
 
             <!-- Liste des relations -->
             <VBox spacing="4" style="-fx-padding: 6;">
@@ -84,16 +84,10 @@
 
             <!-- Détail jointure de la relation sélectionnée -->
             <VBox spacing="6" style="-fx-padding: 6;">
-                <HBox spacing="8" alignment="CENTER_LEFT">
-                    <Label fx:id="joinPaneTitle" text="%model.join.title"
-                           style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
-                    <Button fx:id="btnAddKeyPair"    styleClass="icon-btn"
-                            onAction="#onAddKeyPair"/>
-                    <Button fx:id="btnRemoveKeyPair" styleClass="icon-btn"
-                            onAction="#onRemoveKeyPair"/>
-                </HBox>
 
-                <!-- Fichier de transaction optionnel -->
+                <!-- En-tête jointure + fichier de transaction -->
+                <Label fx:id="joinPaneTitle" text="%model.join.title"
+                       style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
                 <HBox spacing="6" alignment="CENTER_LEFT">
                     <Label text="%model.join.transaction.file" minWidth="130"/>
                     <TextField fx:id="transactionFileField" HBox.hgrow="ALWAYS"
@@ -105,14 +99,58 @@
                             onAction="#onClearTransaction"/>
                 </HBox>
 
-                <!-- Table des paires de clés -->
-                <TableView fx:id="keyPairsTable" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="keyPairSourceCol" prefWidth="180"/>
-                        <TableColumn fx:id="keyPairTargetCol" prefWidth="180"/>
-                    </columns>
-                    <placeholder><Label text="%model.join.empty"/></placeholder>
-                </TableView>
+                <!-- StackPane : bascule entre vue transactionnelle et vue directe -->
+                <StackPane fx:id="joinViewStack" VBox.vgrow="ALWAYS">
+
+                    <!-- Vue A : mode transactionnel — deux listes avec cases à cocher -->
+                    <HBox fx:id="viewTransactional" spacing="8">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label fx:id="sourceKeysLabel"
+                                   style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                            <TableView fx:id="sourceKeysTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="srcKeyIdxCol"  prefWidth="40"/>
+                                    <TableColumn fx:id="srcKeyNameCol" prefWidth="130"/>
+                                    <TableColumn fx:id="srcKeySelCol"  prefWidth="50"/>
+                                </columns>
+                                <placeholder><Label text="%model.join.no.csv"/></placeholder>
+                            </TableView>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label fx:id="targetKeysLabel"
+                                   style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                            <TableView fx:id="targetKeysTable" VBox.vgrow="ALWAYS">
+                                <columns>
+                                    <TableColumn fx:id="tgtKeyIdxCol"  prefWidth="40"/>
+                                    <TableColumn fx:id="tgtKeyNameCol" prefWidth="130"/>
+                                    <TableColumn fx:id="tgtKeySelCol"  prefWidth="50"/>
+                                </columns>
+                                <placeholder><Label text="%model.join.no.csv"/></placeholder>
+                            </TableView>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Vue B : mode direct — tableau de paires -->
+                    <VBox fx:id="viewDirect" spacing="4" visible="false" managed="false">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="%model.join.pairs"
+                                   style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
+                            <Button fx:id="btnAddPair"    styleClass="icon-btn"
+                                    onAction="#onAddPair"/>
+                            <Button fx:id="btnRemovePair" styleClass="icon-btn"
+                                    onAction="#onRemovePair"/>
+                        </HBox>
+                        <TableView fx:id="pairsTable" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="pairSrcCol" prefWidth="200"/>
+                                <TableColumn fx:id="pairTgtCol" prefWidth="200"/>
+                            </columns>
+                            <placeholder><Label text="%model.join.pairs.empty"/></placeholder>
+                        </TableView>
+                    </VBox>
+
+                </StackPane>
+
             </VBox>
 
         </SplitPane>

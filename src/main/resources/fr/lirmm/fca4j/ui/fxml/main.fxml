@@ -127,7 +127,9 @@
 						    <Button fx:id="btnExportSvg" styleClass="icon-btn" onAction="#onExportSvg" disable="true"/>
 						    <Button fx:id="btnExportPng" styleClass="icon-btn" onAction="#onExportPng" disable="true"/>
 						    <Button fx:id="btnExportPdf" styleClass="icon-btn" onAction="#onExportPdf" disable="true"/>
-						</ToolBar>			        <SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
+							<Button fx:id="btnMagnifier" styleClass="icon-btn" onAction="#onToggleMagnifier" disable="true"/>
+						</ToolBar>			        
+					<SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
 			            <WebView fx:id="graphWebView"/>
 			            <VBox>
 			                <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
@@ -176,6 +178,8 @@
 	        <Label text="GraphViz:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
 	        <Label fx:id="statusGraphvizLabel" style="-fx-font-size: 11px;"/>
 	        <Pane HBox.hgrow="ALWAYS"/>
+			<Label fx:id="lastCommandLabel" style="-fx-font-size: 11px; -fx-font-weight: bold;"/>
+			<Separator orientation="VERTICAL"/>
 	        <Label fx:id="selectedNodeLabel" style="-fx-font-size: 11px;"/>
 	    </HBox>
 	</bottom>

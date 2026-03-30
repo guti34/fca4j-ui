@@ -34,12 +34,9 @@ public class Fca4jRunner {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 String jarPath = AppPreferences.getFca4jJarPath();
-                if (jarPath == null || jarPath.isBlank()) {
+                if (jarPath == null || jarPath.isBlank())
                     throw new IllegalStateException(
-                        "Chemin du JAR FCA4J non configuré. " +
-                        "Allez dans Préférences pour le définir."
-                    );
-                }
+                        "Chemin du JAR FCA4J non configuré.");
 
                 List<String> command = new ArrayList<>();
                 command.add("java");
@@ -49,11 +46,25 @@ public class Fca4jRunner {
 
                 ProcessBuilder pb = new ProcessBuilder(command);
                 pb.redirectErrorStream(false);
-
                 Process process = pb.start();
                 this.currentProcess = process;
-                // Lecture stdout
+
                 StringBuilder stdoutBuf = new StringBuilder();
+                StringBuilder stderrBuf = new StringBuilder();
+
+                // Lire stdout et stderr en parallèle pour éviter les deadlocks
+                Thread stderrThread = new Thread(() -> {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(process.getErrorStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null)
+                            stderrBuf.append(line).append("\n");
+                    } catch (Exception ignored) {}
+                }, "fca4j-stderr");
+                stderrThread.setDaemon(true);
+                stderrThread.start();
+
+                // Lire stdout sur le thread courant
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(process.getInputStream()))) {
                     String line;
@@ -66,16 +77,7 @@ public class Fca4jRunner {
                     }
                 }
 
-                // Lecture stderr
-                StringBuilder stderrBuf = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        stderrBuf.append(line).append("\n");
-                    }
-                }
-
+                stderrThread.join(); // attendre que stderr soit fini
                 int exitCode = process.waitFor();
                 this.currentProcess = null;
                 return new RunResult(exitCode, stdoutBuf.toString(), stderrBuf.toString());
