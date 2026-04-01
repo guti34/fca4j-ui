@@ -138,7 +138,11 @@ public class RuleBasisController implements Initializable {
 		implCombo.setValue("BITSET");
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
-	}
+		Utilities.bindPathTooltip(inputFileField);
+		Utilities.bindPathTooltip(outputFileField);
+		Utilities.bindPathTooltip(reportFileField);
+		Utilities.bindPathTooltip(implFolderField);
+		}
 
 	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
 			Consumer<String> onInputChanged) {
@@ -409,4 +413,8 @@ public class RuleBasisController implements Initializable {
 	            AppPreferences.loadInt(cmd + ".minSupport", 0));
 	    }
 	}
-}
+	public String getSeparator() {
+	    return "CSV".equals(inputFormatCombo.getValue())
+	        ? separatorCombo.getValue() : null;
+	}
+	}

@@ -138,6 +138,8 @@ public class RcaCommandController implements Initializable {
                 if (val != null && outputFolder != null && openInGraph != null)
                     openInGraph.accept(outputFolder.resolve(val));
             });
+        Utilities.bindPathTooltip(familyFileField);
+        Utilities.bindPathTooltip(outputFolderField);
     }
 
     private void updateNativeOnly() {

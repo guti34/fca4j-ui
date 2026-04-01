@@ -80,6 +80,9 @@ public class IrreducibleController implements Initializable {
 
         timeoutSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
+        Utilities.bindPathTooltip(inputFileField);
+        Utilities.bindPathTooltip(outputFileField);
+        
     }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
@@ -246,5 +249,9 @@ this.onInputChanged = onInputChanged;
         groupCheckBox.setSelected(AppPreferences.loadBool(P + "group",  false));
         verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
         timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
-    }    
+    }  
+    public String getSeparator() {
+        return "CSV".equals(inputFormatCombo.getValue())
+            ? separatorCombo.getValue() : null;
+    }
     }

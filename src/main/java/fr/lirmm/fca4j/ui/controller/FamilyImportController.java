@@ -63,6 +63,8 @@ public class FamilyImportController implements Initializable {
 
         timeoutSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
+        Utilities.bindPathTooltip(inputFileField);
+        Utilities.bindPathTooltip(outputFileField);        
     }
 
     public void configure(Consumer<CommandBuilder> onRun) {

@@ -62,6 +62,7 @@ public class FamilyEditorController implements Initializable {
     @FXML private TableColumn<RelationalContext, String> relSourceCol;
     @FXML private TableColumn<RelationalContext, String> relTargetCol;
     @FXML private TableColumn<RelationalContext, String> relOpCol;
+    @FXML private Label statusLabel;
 
     // ── État ──────────────────────────────────────────────────────────────────
     private ContextMenu              contextMenu;
@@ -355,6 +356,7 @@ public class FamilyEditorController implements Initializable {
             RCAFamily rcf = rcfService.read(path);
             this.currentFile = path;
             loadFamily(rcf);
+            statusLabel.setText(I18n.get("family.status.loaded", path.getFileName()));
             if (onFileOpened != null) onFileOpened.accept(path);
         } catch (Exception e) { showError(I18n.get("family.error.read"), e.getMessage()); }
     }
@@ -369,6 +371,7 @@ public class FamilyEditorController implements Initializable {
         currentFile = null; modified = false;
         nodePositions.clear(); edgeCurvatures.clear();
         refreshAll();
+        statusLabel.setText("");
     }
 
     // ── Layout automatique ────────────────────────────────────────────────────
@@ -676,12 +679,21 @@ public class FamilyEditorController implements Initializable {
         if (f != null) { loadFamily(f.toPath()); AppPreferences.setLastDirectory(f.getParent()); }
     }
 
-    @FXML private void onSave() {
+    @FXML public void onSave() {
+        if (!confirmDiscard()) return;
         if (currentFile == null) { onSaveAs(); return; }
         saveToFile(currentFile);
     }
 
-    @FXML private void onSaveAs() {
+    @FXML public void onSaveAs() {
+        FileChooser fc = buildFamilyChooser(I18n.get("family.saveas.title"));
+        File f = fc.showSaveDialog(graphCanvas.getScene().getWindow());
+        if (f == null) return;
+        String name = f.getName().toLowerCase();
+        // Ajuster le format selon l'extension choisie si nécessaire
+        saveToFile(f.toPath());
+    }
+/*    @FXML private void onSaveAs() {
         FileChooser fc = buildFamilyChooser(I18n.get("family.saveas.title"));
         fc.getExtensionFilters().clear();
         fc.getExtensionFilters().addAll(
@@ -693,11 +705,17 @@ public class FamilyEditorController implements Initializable {
             AppPreferences.setLastDirectory(f.getParent());
         }
     }
-
+*/
     private void saveToFile(Path path) {
         try {
             rcfService.write(family, path);
-            modified = false; refreshAll();
+            modified = false; 
+            currentFile = path;
+            AppPreferences.setLastDirectory(path.getParent().toString());
+            refreshAll();
+            statusLabel.setText(I18n.get("family.status.saved", path.getFileName()));
+            if (onFileOpened != null)         
+                onFileOpened.accept(path);     
         } catch (Exception e) { showError(I18n.get("family.error.write"), e.getMessage()); }
     }
 

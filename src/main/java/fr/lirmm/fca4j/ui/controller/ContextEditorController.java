@@ -182,6 +182,7 @@ public class ContextEditorController implements Initializable {
 			Platform.runLater(() -> {
 				rebuildTable();
 				updateLabels();
+				updateSaveButton();
 				if (onLoadEnd != null)
 					onLoadEnd.run();
 			});
@@ -193,6 +194,7 @@ public class ContextEditorController implements Initializable {
 		this.currentFile = null;
 		this.onSaveCallback = onSaveCallback;
 		loadContext(ctx);
+		updateSaveButton();
 	}
 
 	// ── Construction de la TableView ──────────────────────────────────────────
@@ -367,7 +369,7 @@ public class ContextEditorController implements Initializable {
 		fromFamily = false;
 		onSaveCallback = null;
 		String name = promptText(I18n.get("editor.dialog.new.title"), I18n.get("editor.dialog.new.prompt"),
-				I18n.get("editor.new.context.name"),true);
+				I18n.get("editor.new.context.name"), true);
 		if (name == null)
 			return;
 		loadContext(ioService.createEmpty(name));
@@ -401,6 +403,9 @@ public class ContextEditorController implements Initializable {
 			loadContext(ctx);
 			currentFile = path;
 			statusLabel.setText(I18n.get("editor.status.loaded", f.getName()));
+			if (onFileLoadedCallback != null)
+				onFileLoadedCallback.accept(path.toString());
+
 		})).exceptionally(ex -> {
 			Platform.runLater(() -> {
 				if (onLoadEnd != null)
@@ -420,6 +425,7 @@ public class ContextEditorController implements Initializable {
 				onSaveCallback.accept(context);
 				onSaveCallback = null;
 				fromFamily = false;
+				updateSaveButton();
 			}
 			loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
 			currentFile = null;
@@ -429,7 +435,14 @@ public class ContextEditorController implements Initializable {
 			onSaveAs();
 			return;
 		}
-		saveToFile(currentFile, ContextFormat.fromFile(currentFile.toFile()));
+		ContextFormat format = ContextFormat.fromFile(currentFile.toFile());
+		if (format == ContextFormat.CSV) {
+			String sep = askCsvSeparator();
+			if (sep == null)
+				return;
+			ioService.setSeparator(sep.charAt(0));
+		}
+		saveToFile(currentFile, format);
 	}
 
 	@FXML
@@ -442,17 +455,57 @@ public class ContextEditorController implements Initializable {
 			onSaveCallback = savedCallback;
 			return;
 		}
+
 		currentFile = f.toPath();
-		saveToFile(currentFile, ContextFormat.fromFile(f));
+		ContextFormat format = ContextFormat.fromFile(f);
+
+		// Si CSV, proposer le séparateur
+		if (format == ContextFormat.CSV) {
+			String sep = askCsvSeparator();
+			if (sep == null) {
+				onSaveCallback = savedCallback;
+				return;
+			} // annulé
+			ioService.setSeparator(sep.charAt(0));
+		}
+
+		saveToFile(currentFile, format);
 		onSaveCallback = savedCallback;
+		AppPreferences.setLastDirectory(f.getParent());
+	}
+
+	private String askCsvSeparator() {
+		ChoiceDialog<String> dialog = new ChoiceDialog<>("COMMA", "COMMA", "SEMICOLON", "TAB");
+		dialog.setTitle(I18n.get("editor.csv.separator.title"));
+		dialog.setHeaderText(null);
+		dialog.setContentText(I18n.get("editor.csv.separator.prompt"));
+
+		// Libellés plus lisibles
+		dialog.getItems().clear();
+		dialog.getItems().addAll(I18n.get("separator.comma"), I18n.get("separator.semicolon"),
+				I18n.get("separator.tab"));
+		dialog.setSelectedItem(I18n.get("separator.comma"));
+
+		return dialog.showAndWait().map(choice -> {
+			if (choice.equals(I18n.get("separator.comma")))
+				return ",";
+			if (choice.equals(I18n.get("separator.semicolon")))
+				return ";";
+			if (choice.equals(I18n.get("separator.tab")))
+				return "\t";
+			return ",";
+		}).orElse(null); // null = annulé
 	}
 
 	private void saveToFile(Path path, ContextFormat format) {
 		try {
 			ioService.write(context, path, format);
 			modified = false;
+			currentFile = path;
 			updateLabels();
-			statusLabel.setText(I18n.get("editor.status.saved", path.getFileName()));
+			AppPreferences.setLastDirectory(path.getParent().toString());
+			if (onFileLoadedCallback != null)
+				onFileLoadedCallback.accept(path.toString());
 		} catch (Exception e) {
 			showError(I18n.get("editor.error.write.title"), e.getMessage());
 		}
@@ -464,7 +517,7 @@ public class ContextEditorController implements Initializable {
 	private void onAddObject() {
 		String name = promptText(I18n.get("editor.dialog.add.object.title"),
 				I18n.get("editor.dialog.add.object.prompt"),
-				I18n.get("editor.default.object.name") + (context.getObjectCount() + 1),true);
+				I18n.get("editor.default.object.name") + (context.getObjectCount() + 1), true);
 		if (name == null)
 			return;
 		ISet emptyIntent = ioService.getFactory().createSet();
@@ -476,8 +529,9 @@ public class ContextEditorController implements Initializable {
 
 	@FXML
 	private void onAddAttribute() {
-		String name = promptText(I18n.get("editor.dialog.add.attr.title"), I18n.get("editor.dialog.add.attr.prompt",true),
-				I18n.get("editor.default.attr.name") + (context.getAttributeCount() + 1),true);
+		String name = promptText(I18n.get("editor.dialog.add.attr.title"),
+				I18n.get("editor.dialog.add.attr.prompt", true),
+				I18n.get("editor.default.attr.name") + (context.getAttributeCount() + 1), true);
 		if (name == null)
 			return;
 		ISet emptyExtent = ioService.getFactory().createSet();
@@ -539,7 +593,7 @@ public class ContextEditorController implements Initializable {
 	private void onRenameContext() {
 		String current = context.getName() != null ? context.getName() : "";
 		String newName = promptText(I18n.get("editor.dialog.rename.context"), I18n.get("editor.dialog.name.prompt"),
-				current,true);
+				current, true);
 		if (newName == null)
 			return;
 		context.setName(newName);
@@ -552,7 +606,7 @@ public class ContextEditorController implements Initializable {
 	private void promptRenameObjectRow(ContextRow row) {
 		String oldName = row.getName();
 		String newName = promptText(I18n.get("editor.dialog.rename.object"), I18n.get("editor.dialog.name.prompt"),
-				oldName,true);
+				oldName, true);
 		if (newName == null)
 			return;
 		int realIdx = context.getObjectIndex(oldName);
@@ -564,7 +618,7 @@ public class ContextEditorController implements Initializable {
 
 	private void promptRenameAttribute(int idx) {
 		String newName = promptText(I18n.get("editor.dialog.rename.attr"), I18n.get("editor.dialog.name.prompt"),
-				context.getAttributeName(idx),true);
+				context.getAttributeName(idx), true);
 		if (newName == null)
 			return;
 		context.setAttributeName(idx, newName);
@@ -654,6 +708,26 @@ public class ContextEditorController implements Initializable {
 		a.showAndWait();
 	}
 
+	private void updateSaveButton() {
+		if (fromFamily) {
+			// Mode famille : Save = "Retour à la famille"
+			FontIcon icon = new FontIcon(Material2AL.ARROW_BACK);
+			icon.setIconSize(20);
+			icon.setIconColor(javafx.scene.paint.Color.valueOf("#0047B3"));
+			btnSave.setGraphic(icon);
+			btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save.to.family")));
+			btnSave.setStyle("-fx-background-color: #e8f0fe; -fx-border-color: #0047B3; "
+					+ "-fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+		} else {
+			// Mode normal : Save standard
+			FontIcon icon = new FontIcon(Material2MZ.SAVE);
+			icon.setIconSize(20);
+			icon.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
+			btnSave.setGraphic(icon);
+			btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save")));
+			btnSave.setStyle("");
+		}
+	}
 	// ── Accesseurs ────────────────────────────────────────────────────────────
 
 	public IBinaryContext getContext() {
@@ -661,6 +735,18 @@ public class ContextEditorController implements Initializable {
 	}
 
 	public void openFile(Path path) {
+		openFile(path, "COMMA");
+	}
+
+	public void openFile(Path path, String separator) {
+		if (!"COMMA".equals(separator)) {
+			char sep = switch (separator) {
+			case "SEMICOLON" -> ';';
+			case "TAB" -> '\t';
+			default -> ',';
+			};
+			ioService.setSeparator(sep);
+		}
 		if (onLoadStart != null)
 			onLoadStart.run();
 		java.util.concurrent.CompletableFuture.supplyAsync(() -> {

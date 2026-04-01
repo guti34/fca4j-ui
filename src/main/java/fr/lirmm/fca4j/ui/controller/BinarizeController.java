@@ -98,7 +98,9 @@ public class BinarizeController implements Initializable {
         // Ajouter avec Entrée dans les champs texte
         excludeField.setOnAction(e -> addExclude());
         includeField.setOnAction(e -> addInclude());
-    }
+        Utilities.bindPathTooltip(inputFileField);
+        Utilities.bindPathTooltip(outputFileField);
+        }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
                           Consumer<Path> openInEditor) {
@@ -285,5 +287,8 @@ public class BinarizeController implements Initializable {
         includeList.getItems().clear();
         if (!incl.isBlank())
             includeList.getItems().addAll(incl.split("\\|"));
+    }
+    public String getSeparator() {
+        return separatorCombo.getValue();
     }
 }

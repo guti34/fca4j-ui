@@ -733,8 +733,11 @@ public class ModelEditorController implements Initializable {
         try {
             service.write(model, path);
             modified = false;
-            modelNameLabel.setText(path.getFileName().toString());
+            currentFile = path;
+           modelNameLabel.setText(path.getFileName().toString());
             statusLabel.setText(I18n.get("model.status.saved", path.getFileName()));
+            if (onFileOpened != null)          
+                onFileOpened.accept(path);   
         } catch (Exception e) { showError(I18n.get("model.error.write"), e.getMessage()); }
     }
 

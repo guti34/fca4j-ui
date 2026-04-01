@@ -122,7 +122,15 @@ public class AppPreferences {
         saveRecentList(KEY_RECENT_MODEL, path);
     }
     public static void addRecentContext(String path) {
-        saveRecentList(KEY_RECENT_CTX, path);
+        addRecentContext(path, null);
+    }
+
+    public static void addRecentContext(String path, String separator) {
+        String entry = (separator != null && !separator.isBlank()
+                        && !"COMMA".equals(separator))
+            ? path + "|" + separator
+            : path;
+        saveRecentList(KEY_RECENT_CTX, entry);
     }
 
     public static void addRecentFamily(String path) {
@@ -150,4 +158,33 @@ public class AppPreferences {
         for (int i = list.size(); i < MAX_RECENT; i++)
             PREFS.remove(prefix + i);
     }
+    /** Retourne le chemin seul depuis une entrée récente. */
+    public static String recentEntryPath(String entry) {
+        int idx = entry.lastIndexOf('|');
+        return idx >= 0 ? entry.substring(0, idx) : entry;
+    }
+
+    /** Retourne le séparateur depuis une entrée récente, ou "COMMA" par défaut. */
+    public static String recentEntrySeparator(String entry) {
+        int idx = entry.lastIndexOf('|');
+        return idx >= 0 ? entry.substring(idx + 1) : "COMMA";
+    }
+    public static void clearRecentContexts() {
+        clearRecentList(KEY_RECENT_CTX);
+    }
+
+    public static void clearRecentFamilies() {
+        clearRecentList(KEY_RECENT_FAMILY);
+    }
+
+    public static void clearRecentModels() {
+        clearRecentList(KEY_RECENT_MODEL);
+    }
+
+    private static void clearRecentList(String keyPrefix) {
+        java.util.prefs.Preferences prefs =
+            java.util.prefs.Preferences.userNodeForPackage(AppPreferences.class);
+        for (int i = 0; i < MAX_RECENT; i++)
+            prefs.remove(keyPrefix + i);
+    }    
 }

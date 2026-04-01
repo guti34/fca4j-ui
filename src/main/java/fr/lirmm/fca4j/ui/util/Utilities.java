@@ -1,6 +1,7 @@
 package fr.lirmm.fca4j.ui.util;
 
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 
 public class Utilities {
     /**
@@ -21,4 +22,26 @@ public class Utilities {
         if (name == null) return "";
         return name.trim().replaceAll("\\s+", "_");
     }
-}
+    /**
+     * Installe un tooltip dynamique sur un TextField qui affiche
+     * le chemin complet au survol. Se met à jour automatiquement.
+     */
+    public static void bindPathTooltip(TextField field) {
+        Tooltip tooltip = new Tooltip();
+        tooltip.setWrapText(true);
+        tooltip.setMaxWidth(600);
+        // Afficher seulement si le champ n'est pas vide
+        field.textProperty().addListener((obs, old, val) -> {
+            if (val == null || val.isBlank()) {
+                Tooltip.uninstall(field, tooltip);
+            } else {
+                tooltip.setText(val);
+                Tooltip.install(field, tooltip);
+            }
+        });
+        // Initialiser si le champ est déjà rempli
+        if (!field.getText().isBlank()) {
+            tooltip.setText(field.getText());
+            Tooltip.install(field, tooltip);
+        }
+    }}

@@ -4,6 +4,8 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
@@ -61,6 +63,7 @@ public class InspectController implements Initializable {
 
         timeoutSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
+        Utilities.bindPathTooltip(inputFileField);
     }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
@@ -160,5 +163,9 @@ this.onInputChanged = onInputChanged;
     }
     public String getInputFile() {
         return inputFileField.getText();
+    }
+    public String getSeparator() {
+        return "CSV".equals(inputFormatCombo.getValue())
+            ? separatorCombo.getValue() : null;
     }
     }

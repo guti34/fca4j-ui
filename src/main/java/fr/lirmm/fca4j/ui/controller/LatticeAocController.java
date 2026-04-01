@@ -130,8 +130,8 @@ public class LatticeAocController implements Initializable {
         });
      // Proposer le .dot automatiquement quand le fichier d'entrée change
         inputFileField.textProperty().addListener((obs, old, val) -> {
-            if (dotCheckBox.isSelected() && !val.isBlank()
-                    && dotFileField.getText().isBlank()) {
+            if (dotCheckBox.isSelected() && !val.isBlank()) {
+                // Toujours recalculer le nom du .dot depuis le nouveau fichier d'entrée
                 String base = val.trim().replaceAll("\\.[^.]+$", "");
                 dotFileField.setText(base + ".dot");
             }
@@ -149,7 +149,11 @@ public class LatticeAocController implements Initializable {
             separatorLabel.setVisible(isCsv);
             separatorCombo.setVisible(isCsv);
         });
-    }
+        Utilities.bindPathTooltip(inputFileField);
+        Utilities.bindPathTooltip(outputFileField);
+        Utilities.bindPathTooltip(dotFileField);
+        Utilities.bindPathTooltip(datalogFolderField);
+        Utilities.bindPathTooltip(datalogFileField);    }
 
     /**
      * Configure le panneau pour LATTICE ou AOCPOSET.
@@ -383,4 +387,9 @@ public class LatticeAocController implements Initializable {
         timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
         icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".iceberg", 50));
         noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
-    }}
+    }
+    public String getSeparator() {
+        return "CSV".equals(inputFormatCombo.getValue())
+            ? separatorCombo.getValue() : null;
+    }    
+    }

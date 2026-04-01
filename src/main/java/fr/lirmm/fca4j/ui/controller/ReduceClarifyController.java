@@ -99,7 +99,9 @@ public class ReduceClarifyController implements Initializable {
 
         timeoutSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
-    }
+        Utilities.bindPathTooltip(inputFileField);
+        Utilities.bindPathTooltip(outputFileField);
+        }
 
     public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
             Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
@@ -299,5 +301,9 @@ this.onInputChanged = onInputChanged;
 
         if ("REDUCE".equals(cmd))
             groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
+    }  
+    public String getSeparator() {
+        return "CSV".equals(inputFormatCombo.getValue())
+            ? separatorCombo.getValue() : null;
     }    
 }
