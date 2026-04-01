@@ -105,7 +105,8 @@ public class ContextEditorController implements Initializable {
 	private TableView<ContextRow> tableView; // colonnes attributs
 	@FXML
 	private Label statusLabel;
-
+	@FXML private Label fileNameLabel;
+	@FXML private Label separatorLabel; 
 	// ── Stockage des lignes ───────────────────────────────────────────────────
 	private final List<ContextRow> rows = new ArrayList<>();
 
@@ -342,17 +343,33 @@ public class ContextEditorController implements Initializable {
 	// ── Labels ────────────────────────────────────────────────────────────────
 
 	private void updateLabels() {
-		String name = (context.getName() != null && !context.getName().isBlank()) ? context.getName()
-				: I18n.get("editor.new.context.name");
-		contextNameLabel.setText(name + (modified ? " *" : ""));
-		statsLabel.setText(I18n.get("editor.stats", context.getObjectCount(), context.getAttributeCount()));
-		contextNameLabel.setOnMouseClicked(e -> {
-			if (e.getClickCount() == 2)
-				onRenameContext();
-		});
-		contextNameLabel.setStyle("-fx-font-weight: bold; -fx-cursor: hand;");
-	}
+	    // Nom du fichier
+	    if (currentFile != null) {
+	        fileNameLabel.setText(currentFile.getFileName().toString());
+	        separatorLabel.setVisible(true);
+	        separatorLabel.setManaged(true);
+	    } else {
+	        fileNameLabel.setText("");
+	        separatorLabel.setVisible(false);
+	        separatorLabel.setManaged(false);
+	    }
 
+	    // Nom du contexte
+	    String name = (context.getName() != null && !context.getName().isBlank())
+	        ? context.getName() : I18n.get("editor.new.context.name");
+	    contextNameLabel.setText(name + (modified ? " *" : ""));
+	    contextNameLabel.setStyle(
+	        "-fx-font-weight: bold; -fx-text-fill: #0047B3;");
+
+	    statsLabel.setText(I18n.get("editor.stats",
+	        context.getObjectCount(), context.getAttributeCount()));
+	    contextNameLabel.setOnMouseClicked(e -> {
+	        if (e.getClickCount() == 2) onRenameContext();
+	    });
+	    contextNameLabel.setStyle(
+	        "-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-cursor: hand;");
+	}
+	
 	private void markModified() {
 		if (!modified) {
 			modified = true;
@@ -374,6 +391,10 @@ public class ContextEditorController implements Initializable {
 			return;
 		loadContext(ioService.createEmpty(name));
 		currentFile = null;
+		fileNameLabel.setText("");
+		separatorLabel.setVisible(false);
+		separatorLabel.setManaged(false);		
+		statusLabel.setText("");
 	}
 
 	@FXML
@@ -429,6 +450,7 @@ public class ContextEditorController implements Initializable {
 			}
 			loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
 			currentFile = null;
+			statusLabel.setText("");
 			return;
 		}
 		if (currentFile == null) {
@@ -503,6 +525,8 @@ public class ContextEditorController implements Initializable {
 			modified = false;
 			currentFile = path;
 			updateLabels();
+			statusLabel.setText(I18n.get("editor.status.saved",
+				    path.getFileName().toString()));
 			AppPreferences.setLastDirectory(path.getParent().toString());
 			if (onFileLoadedCallback != null)
 				onFileLoadedCallback.accept(path.toString());
@@ -760,6 +784,8 @@ public class ContextEditorController implements Initializable {
 				onLoadEnd.run();
 			loadContext(ctx);
 			currentFile = path;
+		    statusLabel.setText(I18n.get("editor.status.loaded", 
+		            path.getFileName().toString()));        
 			if (onFileLoadedCallback != null)
 				onFileLoadedCallback.accept(path.toString());
 		})).exceptionally(ex -> {

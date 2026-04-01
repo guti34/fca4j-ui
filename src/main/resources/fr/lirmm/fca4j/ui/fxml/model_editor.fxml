@@ -16,7 +16,8 @@
         <Button fx:id="btnAddContext"  styleClass="icon-btn" onAction="#onAddContext"/>
         <Button fx:id="btnAddRelation" styleClass="icon-btn" onAction="#onAddRelation"/>
         <Separator orientation="VERTICAL"/>
-        <Label fx:id="modelNameLabel" style="-fx-font-weight: bold;"/>
+		<Label fx:id="modelNameLabel"
+		       style="-fx-font-weight: bold; -fx-text-fill: #0047B3;"/>
         <Label fx:id="statsLabel"
                style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
     </ToolBar>

@@ -27,8 +27,13 @@
 
         <!-- Renommer le contexte -->
 		<HBox spacing="4" alignment="CENTER_LEFT">
-		    <Label fx:id="contextNameLabel" style="-fx-font-weight: bold;"/>
-		    <Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
+		    <Label fx:id="fileNameLabel"
+		           style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
+		    <Label text=" — " style="-fx-text-fill: #0047B3;"
+		           fx:id="separatorLabel" visible="false" managed="false"/>
+		    <Label fx:id="contextNameLabel"
+		           style="-fx-font-weight: bold; -fx-text-fill: #0047B3;"/>
+    		<Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
 		</HBox>
 		<Label fx:id="statsLabel"
        style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>        

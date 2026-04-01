@@ -128,6 +128,9 @@
 						    <Button fx:id="btnExportPng" styleClass="icon-btn" onAction="#onExportPng" disable="true"/>
 						    <Button fx:id="btnExportPdf" styleClass="icon-btn" onAction="#onExportPdf" disable="true"/>
 							<Button fx:id="btnMagnifier" styleClass="icon-btn" onAction="#onToggleMagnifier" disable="true"/>
+						    <Separator orientation="VERTICAL"/>
+						    <Label fx:id="dotFileLabel"
+						           style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
 						</ToolBar>			        
 					<SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
 			            <WebView fx:id="graphWebView"/>

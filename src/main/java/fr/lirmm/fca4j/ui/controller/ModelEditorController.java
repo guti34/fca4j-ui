@@ -715,6 +715,7 @@ public class ModelEditorController implements Initializable {
         model = service.createEmpty();
         currentFile = null; modified = false; selectedFc = null; selectedRc = null;
         refreshAll();
+        statusLabel.setText(""); 
     }
 
     public void loadModel(Path path) {

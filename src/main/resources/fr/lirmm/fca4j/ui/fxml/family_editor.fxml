@@ -19,7 +19,8 @@
 	    <Separator/>
 	    <Button fx:id="btnAutoLayout"  styleClass="icon-btn" onAction="#onAutoLayout"/>
 	    <Separator/>
-	    <Label fx:id="familyNameLabel" style="-fx-font-weight: bold;"/>
+		<Label fx:id="familyNameLabel"
+		       style="-fx-font-weight: bold; -fx-text-fill: #0047B3;"/>
 	    <Label fx:id="statsLabel"
 	           style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
 	</ToolBar>

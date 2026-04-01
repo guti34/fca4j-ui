@@ -85,6 +85,8 @@ public class MainController implements Initializable {
 	private Menu recentFamilyMenu;
 	@FXML
 	private Menu recentModelMenu;
+	@FXML 
+	private Label dotFileLabel;	
 	// ── Onglet RCA Family ─────────────────────────────────────────────────────
 	@FXML
 	private TabPane commandTabPane;
@@ -690,6 +692,7 @@ public class MainController implements Initializable {
 		// Désactiver aussi la loupe si elle était active
 		if (renderer.isMagnifierActive())
 			renderer.toggleMagnifier();
+	    dotFileLabel.setText(""); // ← ajouter
 	}
 
 	private void executeRcaCommand(CommandBuilder builder) {
@@ -737,6 +740,7 @@ public class MainController implements Initializable {
 			appendConsole(I18n.get("error.graphviz.not.found", dotFile));
 			return;
 		}
+		dotFileLabel.setText(dotFile.getFileName().toString()); // ← ajouter
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
 		renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
 			hideOverlay();
