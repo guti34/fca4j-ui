@@ -145,6 +145,9 @@ public class MainController implements Initializable {
 	private ModelEditorController modelEditorController;
 	@FXML
 	private Label lastCommandLabel;
+	// ── Serveur HTTP local pour RCAViz ────────────────────────────────────────
+	private com.sun.net.httpserver.HttpServer rcavizServer;
+	private int rcavizPort = 0;
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
@@ -186,6 +189,7 @@ public class MainController implements Initializable {
 	        familyEditorController.setOnFileOpened(path -> {
 	            AppPreferences.addRecentFamily(path.toString());
 	            refreshRecentMenus();
+	            selectCommandTabFor(path.toString());
 	        });
 	    }
 
@@ -206,6 +210,7 @@ public class MainController implements Initializable {
 	        String sep = getSeparatorFromCurrentPanel();
 	        AppPreferences.addRecentContext(path, sep);
 	        refreshRecentMenus();
+	        selectCommandTabFor(path); 
 	    });
 	    contextEditorController.setOnLoadCallbacks(
 	        this::showLoadingOverlay, this::hideLoadingOverlay);
@@ -217,6 +222,7 @@ public class MainController implements Initializable {
 	        modelEditorController.setOnFileOpened(path -> {
 	            AppPreferences.addRecentModel(path.toString());
 	            refreshRecentMenus();
+	            selectCommandTabFor(path.toString());
 	        });
 	    }
 
@@ -224,6 +230,36 @@ public class MainController implements Initializable {
 	    setupGraphToolbar();
 	    updateStatusBar();
 	}
+	private void startRcavizServer(Path jsonFile) throws Exception {
+	    // Arrêter le serveur précédent si actif
+	    if (rcavizServer != null) rcavizServer.stop(0);
+
+	    rcavizServer = com.sun.net.httpserver.HttpServer.create(
+	        new java.net.InetSocketAddress(0), 0); // port 0 = port libre automatique
+	    rcavizPort = rcavizServer.getAddress().getPort();
+
+	    rcavizServer.createContext("/", exchange -> {
+	        // Headers CORS pour autoriser rcaviz.lirmm.fr à lire le fichier
+	        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+	        exchange.getResponseHeaders().add("Content-Type", "application/json");
+	        byte[] bytes = java.nio.file.Files.readAllBytes(jsonFile);
+	        exchange.sendResponseHeaders(200, bytes.length);
+	        try (var os = exchange.getResponseBody()) { os.write(bytes); }
+	    });
+	    rcavizServer.setExecutor(null);
+	    rcavizServer.start();
+	}
+	public void openInRcaviz(Path jsonFile) {
+	    try {
+	        startRcavizServer(jsonFile);
+	        String url = "https://rcaviz.lirmm.fr/?data=http://localhost:"
+	            + rcavizPort + "/" + jsonFile.getFileName();
+	        java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	    } catch (Exception e) {
+	        showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
+	    }
+	}
+
 	private String getSeparatorFromCurrentPanel() {
 	    if (currentCommandController instanceof LatticeAocController c)
 	        return c.getSeparator();
@@ -499,7 +535,7 @@ public class MainController implements Initializable {
 					I18n.getBundle());
 			Node panel = loader.load();
 			rcaCommandController = loader.getController();
-			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph);
+			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph, this::openInRcaviz);
 			if (rcaCommandContainer != null)
 				rcaCommandContainer.getChildren().setAll(panel);
 		} catch (Exception e) {
@@ -563,19 +599,19 @@ public class MainController implements Initializable {
 	        refreshRecentMenus();
 	        contextEditorController.openFile(filePath, separator);
 	        mainTabPane.getSelectionModel().select(1);
+	        selectCommandTabFor(filePath.toString()); // ← ajouter
+	    }
+	}	
+	public void openInFamilyEditor(Path filePath) {
+	    if (familyEditorController != null) {
+	        if (!familyEditorController.confirmDiscard()) return;
+	        AppPreferences.addRecentFamily(filePath.toString());
+	        refreshRecentMenus();
+	        familyEditorController.openFile(filePath);
+	        mainTabPane.getSelectionModel().select(2);
+	        selectCommandTabFor(filePath.toString()); // ← ajouter
 	    }
 	}
-	public void openInFamilyEditor(Path filePath) {
-		if (familyEditorController != null) {
-			if (!familyEditorController.confirmDiscard())
-				return; // ← ajouter
-			AppPreferences.addRecentFamily(filePath.toString());
-			refreshRecentMenus();
-			familyEditorController.openFile(filePath);
-			mainTabPane.getSelectionModel().select(2);
-		}
-	}
-
 	private void openDotInGraph(Path dotFile) {
 		mainTabPane.getSelectionModel().select(0);
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
@@ -622,6 +658,8 @@ public class MainController implements Initializable {
 	}
 
 	public void shutdown() {
+		// Arrêter le serveur
+	    if (rcavizServer != null) rcavizServer.stop(0);
 		// Arrêter le timer overlay
 		if (overlayTimer != null)
 			overlayTimer.cancel(false);
@@ -704,6 +742,7 @@ public class MainController implements Initializable {
 		consoleArea.clear();
 		appendConsole("$ " + builder.toDisplayString());
 		mainTabPane.getSelectionModel().select(0);
+		showOverlayDelayed();
 		final long startTime = System.currentTimeMillis();
 		final String commandName = args.get(0);
 
@@ -886,16 +925,15 @@ public class MainController implements Initializable {
 	}
 
 	public void openInModelEditor(Path path) {
-		if (modelEditorController != null) {
-			if (!modelEditorController.confirmDiscard())
-				return; // ← ajouter
-			AppPreferences.addRecentModel(path.toString());
-			refreshRecentMenus();
-			modelEditorController.openFile(path);
-			mainTabPane.getSelectionModel().select(3);
-		}
+	    if (modelEditorController != null) {
+	        if (!modelEditorController.confirmDiscard()) return;
+	        AppPreferences.addRecentModel(path.toString());
+	        refreshRecentMenus();
+	        modelEditorController.openFile(path);
+	        mainTabPane.getSelectionModel().select(3);
+	        selectCommandTabFor(path.toString()); // ← ajouter
+	    }
 	}
-
 	@FXML
 	private void onOpenContext() {
 		contextEditorController.onOpen();
@@ -1078,4 +1116,20 @@ public class MainController implements Initializable {
 		alert.setContentText(message);
 		alert.showAndWait();
 	}
-}
+	/** Sélectionne le bon onglet de commande selon le type de fichier ouvert. */
+	private void selectCommandTabFor(String filePath) {
+	    if (filePath == null || commandTabPane == null) return;
+	    String lower = filePath.toLowerCase();
+	    if (lower.endsWith(".rcft") || lower.endsWith(".rcfgz") || lower.endsWith(".rcfal")) {
+	        commandTabPane.getSelectionModel().select(rcaTab);
+	        if (rcaCommandController != null)
+	            rcaCommandController.setFamilyFile(Path.of(filePath));
+	    } else if (lower.endsWith(".json")) {
+	        commandTabPane.getSelectionModel().select(importTab);
+	        // Sélectionner FAMILY_IMPORT et pré-remplir le fichier modèle
+	        if (importCommandController != null)
+	            importCommandController.selectFamilyImportAndSetInput(filePath);
+	    } else {
+	        commandTabPane.getSelectionModel().select(contextTab);
+	    }
+	}}

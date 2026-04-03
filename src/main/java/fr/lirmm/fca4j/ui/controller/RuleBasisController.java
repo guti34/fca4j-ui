@@ -323,6 +323,11 @@ public class RuleBasisController implements Initializable {
 			if (!reportFileField.getText().isBlank())
 				builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
 		}
+    	if (!outputFileField.getText().isBlank())
+    	    AppPreferences.saveOutputForInput(
+    	        descriptor.getName(),
+    	        inputFileField.getText().trim(),
+    	        outputFileField.getText().trim());
 
 		if (onRun != null)
 			onRun.accept(builder);
@@ -353,8 +358,16 @@ public class RuleBasisController implements Initializable {
 	}
 
 	public void setInputFile(String path) {
-		if (path != null && !path.isBlank())
-			inputFileField.setText(path);
+	    if (path == null || path.isBlank()) return;
+	    inputFileField.setText(path);
+	    autoDetectFormat(new File(path).getName());
+
+	    String cmd  = descriptor != null ? descriptor.getName() : "RULEBASIS";
+	    String base = path.replaceAll("\\.[^.]+$", "");
+
+	    String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+	    outputFileField.setText(savedOutput.isBlank()
+	        ? base + "-rules.txt" : savedOutput);
 	}
 
 	public String getInputFile() {

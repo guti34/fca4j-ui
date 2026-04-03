@@ -13,116 +13,116 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
- * Orchestre le rendu d'un fichier .dot en SVG interactif via GraphViz,
- * puis l'injecte dans un WebEngine JavaFX avec support des clics sur les nœuds.
+ * Orchestre le rendu d'un fichier .dot en SVG interactif via GraphViz, puis
+ * l'injecte dans un WebEngine JavaFX avec support des clics sur les nœuds.
  */
 public class GraphRenderer {
 
-    private final WebEngine      webEngine;
-    private Consumer<String>     onNodeClick;
-    private Path                 currentDotFile = null;
-    private volatile Process currentDotProcess = null;
-    private boolean magnifierActive = false;
-    
-    public GraphRenderer(WebEngine webEngine) {
-        this.webEngine = webEngine;
-    }
-    public void cancel() {
-        Process p = currentDotProcess;
-        if (p != null && p.isAlive()) {
-            p.descendants().forEach(ProcessHandle::destroyForcibly);
-            p.destroyForcibly();
-            currentDotProcess = null;
-        }
-    }
-    public boolean isRendering() {
-        return currentDotProcess != null && currentDotProcess.isAlive();
-    }
-    public Path getCurrentDotFile() { return currentDotFile; }
+	private final WebEngine webEngine;
+	private Consumer<String> onNodeClick;
+	private Path currentDotFile = null;
+	private volatile Process currentDotProcess = null;
+	private boolean magnifierActive = false;
 
-    public void setOnNodeClick(Consumer<String> handler) {
-        this.onNodeClick = handler;
-    }
-    public void toggleMagnifier() {
-        Platform.runLater(() -> {
-            try {
-                // Vérifier que la fonction existe avant de l'appeler
-                Object exists = webEngine.executeScript(
-                    "typeof toggleMagnifier === 'function'");
-                if (Boolean.TRUE.equals(exists)) {
-                    magnifierActive = (boolean) webEngine.executeScript("toggleMagnifier()");
-                }
-            } catch (Exception e) {
-                System.err.println("[GraphRenderer] toggleMagnifier: " + e.getMessage());
-            }
-        });
-    }
-    public boolean isMagnifierActive() { return magnifierActive; }
-    public CompletableFuture<Void> render(Path dotFile) {
-        this.currentDotFile = dotFile;
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
-                svgFile.toFile().deleteOnExit();
+	public GraphRenderer(WebEngine webEngine) {
+		this.webEngine = webEngine;
+	}
 
-                String dotExecutable = AppPreferences.getDotPath();
-                Process proc = new ProcessBuilder(
-                    dotExecutable, "-Tsvg",
-                    dotFile.toString(),
-                    "-o", svgFile.toString()
-                ).start();
-                this.currentDotProcess = proc;
-                int exit = proc.waitFor();
-                this.currentDotProcess = null;
-                if (exit != 0) {
-                    throw new RuntimeException(
-                        "GraphViz a retourné le code " + exit +
-                        ". Vérifiez le chemin de `dot` dans les préférences."
-                    );
-                }
+	public void cancel() {
+		Process p = currentDotProcess;
+		if (p != null && p.isAlive()) {
+			p.descendants().forEach(ProcessHandle::destroyForcibly);
+			p.destroyForcibly();
+			currentDotProcess = null;
+		}
+	}
 
-                return Files.readString(svgFile);
+	public boolean isRendering() {
+		return currentDotProcess != null && currentDotProcess.isAlive();
+	}
 
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }).thenAccept(svgContent ->
-            Platform.runLater(() -> loadSvgInWebEngine(svgContent))
-        );
-    }
+	public Path getCurrentDotFile() {
+		return currentDotFile;
+	}
 
-    private void loadSvgInWebEngine(String svgContent) {
-        String html = buildHtml(svgContent);
+	public void setOnNodeClick(Consumer<String> handler) {
+		this.onNodeClick = handler;
+	}
 
-        // Listener à usage unique — retiré dès le premier SUCCEEDED
-        // Évite l'accumulation de listeners et les appels parasites
-        ChangeListener<Worker.State>[] listenerHolder = new ChangeListener[1];
-        listenerHolder[0] = (obs, oldState, newState) -> {
-            if (newState == Worker.State.SUCCEEDED) {
-                webEngine.getLoadWorker().stateProperty()
-                    .removeListener(listenerHolder[0]);
-                installJsBridge();
-            } else if (newState == Worker.State.FAILED) {
-                webEngine.getLoadWorker().stateProperty()
-                    .removeListener(listenerHolder[0]);
-            }
-        };
-        webEngine.getLoadWorker().stateProperty().addListener(listenerHolder[0]);
+	public void toggleMagnifier() {
+		Platform.runLater(() -> {
+			try {
+				// Vérifier que la fonction existe avant de l'appeler
+				Object exists = webEngine.executeScript("typeof toggleMagnifier === 'function'");
+				if (Boolean.TRUE.equals(exists)) {
+					magnifierActive = (boolean) webEngine.executeScript("toggleMagnifier()");
+				}
+			} catch (Exception e) {
+				System.err.println("[GraphRenderer] toggleMagnifier: " + e.getMessage());
+			}
+		});
+	}
 
-        webEngine.loadContent(html, "text/html");
-    }
+	public boolean isMagnifierActive() {
+		return magnifierActive;
+	}
 
-    private void installJsBridge() {
-        try {
-            JSObject window = (JSObject) webEngine.executeScript("window");
-            window.setMember("javaApp", new JsBridge());
-            webEngine.executeScript("initNodeClicks()");
-        } catch (Exception e) {
-            System.err.println("[GraphRenderer] installJsBridge error: " + e.getMessage());
-        }
-    }
+	public CompletableFuture<Void> render(Path dotFile) {
+		this.currentDotFile = dotFile;
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
+				svgFile.toFile().deleteOnExit();
 
-    private String buildHtml(String svgContent) {
+				String dotExecutable = AppPreferences.getDotPath();
+				Process proc = new ProcessBuilder(dotExecutable, "-Tsvg", dotFile.toString(), "-o", svgFile.toString())
+						.start();
+				this.currentDotProcess = proc;
+				int exit = proc.waitFor();
+				this.currentDotProcess = null;
+				if (exit != 0) {
+					throw new RuntimeException("GraphViz a retourné le code " + exit
+							+ ". Vérifiez le chemin de `dot` dans les préférences.");
+				}
+
+				return Files.readString(svgFile);
+
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}).thenAccept(svgContent -> Platform.runLater(() -> loadSvgInWebEngine(svgContent)));
+	}
+
+	private void loadSvgInWebEngine(String svgContent) {
+		String html = buildHtml(svgContent);
+
+		// Listener à usage unique — retiré dès le premier SUCCEEDED
+		// Évite l'accumulation de listeners et les appels parasites
+		ChangeListener<Worker.State>[] listenerHolder = new ChangeListener[1];
+		listenerHolder[0] = (obs, oldState, newState) -> {
+			if (newState == Worker.State.SUCCEEDED) {
+				webEngine.getLoadWorker().stateProperty().removeListener(listenerHolder[0]);
+				installJsBridge();
+			} else if (newState == Worker.State.FAILED) {
+				webEngine.getLoadWorker().stateProperty().removeListener(listenerHolder[0]);
+			}
+		};
+		webEngine.getLoadWorker().stateProperty().addListener(listenerHolder[0]);
+
+		webEngine.loadContent(html, "text/html");
+	}
+
+	private void installJsBridge() {
+		try {
+			JSObject window = (JSObject) webEngine.executeScript("window");
+			window.setMember("javaApp", new JsBridge());
+			webEngine.executeScript("initNodeClicks()");
+		} catch (Exception e) {
+			System.err.println("[GraphRenderer] installJsBridge error: " + e.getMessage());
+		}
+	}
+
+	private String buildHtml(String svgContent) {
         return """
             <!DOCTYPE html>
             <html>
@@ -260,7 +260,7 @@ public class GraphRenderer {
               svg.addEventListener('wheel', function(e) {
                 e.preventDefault();
                 var delta = e.deltaY > 0 ? 0.9 : 1.1;
-                scale = Math.min(Math.max(scale * delta, 0.1), 10);
+                scale = Math.max(scale * delta, 0.05);
                 applyTransform();
               });
 
@@ -283,17 +283,17 @@ public class GraphRenderer {
             """.formatted(svgContent);
     }
 
-    public class JsBridge {
-        public void onNodeClick(String nodeLabel) {
-            Platform.runLater(() -> {
-                if (onNodeClick != null) onNodeClick.accept(nodeLabel);
-            });
-        }
-    }
+	public class JsBridge {
+		public void onNodeClick(String nodeLabel) {
+			Platform.runLater(() -> {
+				if (onNodeClick != null)
+					onNodeClick.accept(nodeLabel);
+			});
+		}
+	}
 
-    public void clear() {
-        currentDotFile = null;
-        webEngine.loadContent(
-            "<html><body style='background:#f8f9fa;'></body></html>");
-    }
+	public void clear() {
+		currentDotFile = null;
+		webEngine.loadContent("<html><body style='background:#f8f9fa;'></body></html>");
+	}
 }

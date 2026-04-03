@@ -77,6 +77,13 @@ public class FamilyEditorController implements Initializable {
     private String selectedEdge = null;
     private String dragNode     = null;
     private double dragOffX, dragOffY;
+    // ── Zoom / Pan ────────────────────────────────────────────────────────────
+    private double zoom    = 1.0;
+    private double offsetX = 0.0;
+    private double offsetY = 0.0;
+    // Drag de pan (clic sur zone vide)
+    private boolean panning = false;
+    private double panStartX, panStartY, panStartOffX, panStartOffY;
 
     // ── Couleurs ──────────────────────────────────────────────────────────────
     private static final Color  COLOR_NODE_FILL     = Color.web("#4A90E2");
@@ -339,9 +346,22 @@ public class FamilyEditorController implements Initializable {
         graphCanvas.heightProperty().bind(graphPane.heightProperty());
         graphCanvas.widthProperty().addListener(e -> redrawGraph());
         graphCanvas.heightProperty().addListener(e -> redrawGraph());
+
         graphCanvas.setOnMousePressed(this::onCanvasMousePressed);
         graphCanvas.setOnMouseDragged(this::onCanvasMouseDragged);
         graphCanvas.setOnMouseReleased(this::onCanvasMouseReleased);
+
+        // Zoom centré sur la position de la souris
+        graphCanvas.setOnScroll(e -> {
+            double factor   = e.getDeltaY() > 0 ? 1.1 : 0.9;
+            double mouseX   = e.getX();
+            double mouseY   = e.getY();
+            offsetX = mouseX - factor * (mouseX - offsetX);
+            offsetY = mouseY - factor * (mouseY - offsetY);
+            zoom    = Math.max(zoom * factor, 0.05);
+            redrawGraph();
+            e.consume();
+        });
     }
 
     // ── Chargement ────────────────────────────────────────────────────────────
@@ -358,6 +378,9 @@ public class FamilyEditorController implements Initializable {
             loadFamily(rcf);
             statusLabel.setText(I18n.get("family.status.loaded", path.getFileName()));
             if (onFileOpened != null) onFileOpened.accept(path);
+            zoom = 1.0; 
+            offsetX = 0.0; 
+            offsetY = 0.0;
         } catch (Exception e) { showError(I18n.get("family.error.read"), e.getMessage()); }
     }
 
@@ -372,6 +395,9 @@ public class FamilyEditorController implements Initializable {
         nodePositions.clear(); edgeCurvatures.clear();
         refreshAll();
         statusLabel.setText("");
+        zoom = 1.0; 
+        offsetX = 0.0; 
+        offsetY = 0.0;
     }
 
     // ── Layout automatique ────────────────────────────────────────────────────
@@ -399,7 +425,11 @@ public class FamilyEditorController implements Initializable {
         gc.clearRect(0, 0, graphCanvas.getWidth(), graphCanvas.getHeight());
         if (family == null) return;
 
-        // Arêtes
+        gc.save();
+        gc.translate(offsetX, offsetY);
+        gc.scale(zoom, zoom);
+
+        // ── Arêtes ──────────────────────────────────────────────────────────
         gc.setFont(Font.font(11));
         for (RelationalContext rc : family.getRelationalContexts()) {
             FormalContext src = family.getSourceOf(rc);
@@ -412,7 +442,7 @@ public class FamilyEditorController implements Initializable {
             double curvature = getCurvature(rc);
             boolean selEdge  = rc.getName().equals(selectedEdge);
             gc.setStroke(selEdge ? COLOR_EDGE_SELECTED : COLOR_EDGE);
-            gc.setLineWidth(selEdge ? 3.0 : 1.5);
+            gc.setLineWidth(selEdge ? 3.0 / zoom : 1.5 / zoom);
 
             Point2D[] norm = normalizedPoints(rc);
             Point2D ctrl   = controlPoint(norm[0], norm[1], curvature);
@@ -425,7 +455,7 @@ public class FamilyEditorController implements Initializable {
                 mid.getX() + 4, mid.getY() - 4);
         }
 
-        // Nœuds (rectangles arrondis)
+        // ── Nœuds ───────────────────────────────────────────────────────────
         gc.setFont(Font.font(12));
         for (FormalContext fc : family.getFormalContexts()) {
             Point2D p = nodePositions.get(fc.getName());
@@ -435,7 +465,7 @@ public class FamilyEditorController implements Initializable {
 
             gc.setFill(sel ? COLOR_NODE_SELECTED : COLOR_NODE_FILL);
             gc.setStroke(COLOR_NODE_STROKE);
-            gc.setLineWidth(sel ? 2.5 : 1.5);
+            gc.setLineWidth(sel ? 2.5 / zoom : 1.5 / zoom);
             gc.fillRoundRect(p.getX() - nw/2, p.getY() - NODE_H/2, nw, NODE_H, NODE_ARC, NODE_ARC);
             gc.strokeRoundRect(p.getX() - nw/2, p.getY() - NODE_H/2, nw, NODE_H, NODE_ARC, NODE_ARC);
 
@@ -447,7 +477,10 @@ public class FamilyEditorController implements Initializable {
                 + fc.getContext().getAttributeCount() + " attr", p.getX(), p.getY() + 10);
             gc.setFont(Font.font(12));
         }
+
+        gc.restore();
     }
+
 
     // ── Courbures ─────────────────────────────────────────────────────────────
 
@@ -565,21 +598,35 @@ public class FamilyEditorController implements Initializable {
                 contextMenuEditInEditor(); return;
             }
             selectedNode = dragNode = hit; selectedEdge = null;
+            panning = false;
+            // Stocker l'offset en coordonnées monde
             Point2D p = nodePositions.get(hit);
-            dragOffX = e.getX() - p.getX(); dragOffY = e.getY() - p.getY();
+            double worldX = (e.getX() - offsetX) / zoom;
+            double worldY = (e.getY() - offsetY) / zoom;
+            dragOffX = worldX - p.getX();
+            dragOffY = worldY - p.getY();
             syncTableSelection(hit);
             relationsTable.getSelectionModel().clearSelection();
         } else {
             String edgeHit = edgeHitTest(e.getX(), e.getY());
             if (edgeHit != null) {
                 selectedEdge = edgeHit; selectedNode = null; dragNode = null;
+                panning = false;
                 syncEdgeTableSelection(edgeHit);
                 contextsTable.getSelectionModel().clearSelection();
             } else {
                 selectedNode = selectedEdge = dragNode = null;
                 contextsTable.getSelectionModel().clearSelection();
                 relationsTable.getSelectionModel().clearSelection();
-                if (e.getClickCount() == 2) onAddContext();
+                if (e.getClickCount() == 2) {
+                    onAddContext();
+                } else {
+                    // Démarrer le pan
+                    panning = true;
+                    panStartX   = e.getX(); panStartY   = e.getY();
+                    panStartOffX = offsetX; panStartOffY = offsetY;
+                    graphCanvas.setCursor(javafx.scene.Cursor.CLOSED_HAND);
+                }
             }
         }
         redrawGraph();
@@ -587,18 +634,34 @@ public class FamilyEditorController implements Initializable {
 
     private void onCanvasMouseDragged(MouseEvent e) {
         if (dragNode != null) {
-            nodePositions.put(dragNode, new Point2D(e.getX() - dragOffX, e.getY() - dragOffY));
+            // Déplacer le nœud en coordonnées monde
+            double worldX = (e.getX() - offsetX) / zoom;
+            double worldY = (e.getY() - offsetY) / zoom;
+            nodePositions.put(dragNode, new Point2D(worldX - dragOffX, worldY - dragOffY));
+            redrawGraph();
+        } else if (panning) {
+            offsetX = panStartOffX + (e.getX() - panStartX);
+            offsetY = panStartOffY + (e.getY() - panStartY);
             redrawGraph();
         }
     }
 
-    private void onCanvasMouseReleased(MouseEvent e) { dragNode = null; }
+    private void onCanvasMouseReleased(MouseEvent e) {
+        dragNode = null;
+        if (panning) {
+            panning = false;
+            graphCanvas.setCursor(javafx.scene.Cursor.DEFAULT);
+        }
+    }
 
-    private String hitTest(double x, double y) {
+    private String hitTest(double screenX, double screenY) {
+        double worldX = (screenX - offsetX) / zoom;
+        double worldY = (screenY - offsetY) / zoom;
         for (Map.Entry<String, Point2D> entry : nodePositions.entrySet()) {
             Point2D p = entry.getValue();
             double nw = nodeWidth(entry.getKey());
-            if (Math.abs(x - p.getX()) <= nw / 2 && Math.abs(y - p.getY()) <= NODE_H / 2)
+            if (Math.abs(worldX - p.getX()) <= nw / 2
+                    && Math.abs(worldY - p.getY()) <= NODE_H / 2)
                 return entry.getKey();
         }
         return null;
@@ -622,7 +685,9 @@ public class FamilyEditorController implements Initializable {
         }
     }
 
-    private String edgeHitTest(double x, double y) {
+    private String edgeHitTest(double screenX, double screenY) {
+        double worldX = (screenX - offsetX) / zoom;
+        double worldY = (screenY - offsetY) / zoom;
         for (RelationalContext rc : family.getRelationalContexts()) {
             FormalContext src = family.getSourceOf(rc);
             FormalContext tgt = family.getTargetOf(rc);
@@ -635,12 +700,13 @@ public class FamilyEditorController implements Initializable {
             Point2D ctrl = controlPoint(norm[0], norm[1], curvature);
             double minDist = Double.MAX_VALUE;
             for (int i = 0; i <= 20; i++) {
-                double t = i / 20.0;
+                double t  = i / 20.0;
                 double bx = (1-t)*(1-t)*ps.getX() + 2*(1-t)*t*ctrl.getX() + t*t*pt.getX();
                 double by = (1-t)*(1-t)*ps.getY() + 2*(1-t)*t*ctrl.getY() + t*t*pt.getY();
-                minDist = Math.min(minDist, Math.sqrt((x-bx)*(x-bx) + (y-by)*(y-by)));
+                minDist = Math.min(minDist,
+                    Math.sqrt((worldX-bx)*(worldX-bx) + (worldY-by)*(worldY-by)));
             }
-            if (minDist < 8.0) return rc.getName();
+            if (minDist < 8.0 / zoom) return rc.getName();
         }
         return null;
     }

@@ -187,4 +187,14 @@ public class AppPreferences {
         for (int i = 0; i < MAX_RECENT; i++)
             prefs.remove(keyPrefix + i);
     }    
+ // Clé : "CMD.output.for." + inputPath (hashé pour éviter les chemins longs)
+    public static void saveOutputForInput(String cmd, String inputPath, String outputPath) {
+        String key = cmd + ".out." + Integer.toHexString(inputPath.hashCode());
+        saveString(key, outputPath);
+    }
+
+    public static String loadOutputForInput(String cmd, String inputPath) {
+        String key = cmd + ".out." + Integer.toHexString(inputPath.hashCode());
+        return loadString(key, "");
+    }
 }

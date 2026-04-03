@@ -224,6 +224,11 @@ this.onInputChanged = onInputChanged;
         int to = timeoutSpinner.getValue();
         if (to > 0) builder.timeout(to);
 
+    	if (!outputFileField.getText().isBlank())
+    	    AppPreferences.saveOutputForInput(
+    	        descriptor.getName(),
+    	        inputFileField.getText().trim(),
+    	        outputFileField.getText().trim());
         if (onRun != null) onRun.accept(builder);
     }
 
@@ -260,7 +265,16 @@ this.onInputChanged = onInputChanged;
         a.showAndWait();
     }
     public void setInputFile(String path) {
-        if (path!=null && !path.isBlank()) inputFileField.setText(path);
+        if (path == null || path.isBlank()) return;
+        inputFileField.setText(path);
+        autoDetectFormat(new File(path).getName(), inputFormatCombo);
+
+        String cmd  = descriptor != null ? descriptor.getName() : "CLARIFY";
+        String base = path.replaceAll("\\.[^.]+$", "");
+
+        String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+        outputFileField.setText(savedOutput.isBlank()
+            ? base + "-" + cmd.toLowerCase() + ".cxt" : savedOutput);
     }
     public String getInputFile() {
         return inputFileField.getText();

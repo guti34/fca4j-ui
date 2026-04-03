@@ -159,7 +159,10 @@ this.onInputChanged = onInputChanged;
         a.showAndWait();
     }
     public void setInputFile(String path) {
-        if (path!=null && !path.isBlank()) inputFileField.setText(path);
+        if (path == null || path.isBlank()) return;
+        inputFileField.setText(path);
+        autoDetectFormat(new File(path).getName());
+        // Pas d'output pour INSPECT
     }
     public String getInputFile() {
         return inputFileField.getText();

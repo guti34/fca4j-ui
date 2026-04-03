@@ -74,6 +74,7 @@ public class RcaCommandController implements Initializable {
     @FXML private CheckBox         verboseCheckBox;
 
     // Résultats
+    @FXML private Label rcavizFileLabel;
     @FXML private Label            resultsFolderLabel;
     @FXML private ListView<String> dotFilesList;
 
@@ -81,7 +82,8 @@ public class RcaCommandController implements Initializable {
     private Consumer<Path>           openInFamilyEditor;
     private Consumer<Path>           openInGraph;
     private Path                     outputFolder;
-
+    private Consumer<Path> openInRcaviz;
+    
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         familyFormatCombo.getItems().addAll("RCFT", "RCFGZ", "RCFAL");
@@ -150,10 +152,12 @@ public class RcaCommandController implements Initializable {
 
     public void configure(Consumer<CommandBuilder> onRun,
                           Consumer<Path> openInFamilyEditor,
-                          Consumer<Path> openInGraph) {
+                          Consumer<Path> openInGraph,
+                          Consumer<Path> openInRcaviz) {
         this.onRun              = onRun;
         this.openInFamilyEditor = openInFamilyEditor;
         this.openInGraph        = openInGraph;
+        this.openInRcaviz = openInRcaviz;
 
         inputPane.setText(I18n.get("section.input"));
         outputPane.setText(I18n.get("rca.section.output"));
@@ -171,7 +175,35 @@ public class RcaCommandController implements Initializable {
         editFamilyButton.setTooltip(new Tooltip(I18n.get("rca.btn.open.family.editor")));
         loadPrefs();
     }
-
+    @FXML private void onOpenInRcaviz() {
+        if (outputFolder == null || !buildJson.isSelected()) {
+            Alert a = new Alert(Alert.AlertType.WARNING);
+            a.setHeaderText(null);
+            a.setContentText(I18n.get("rcaviz.no.json.file"));
+            a.showAndWait();
+            return;
+        }
+        // Chercher le fichier JSON dans outputFolder
+        try {
+            java.util.Optional<Path> jsonFile = java.nio.file.Files.list(outputFolder)
+                .filter(p -> p.toString().endsWith(".json"))
+                .sorted()
+                .reduce((a, b) -> b); // prendre le dernier
+            if (jsonFile.isPresent() && openInRcaviz != null) {
+                rcavizFileLabel.setText(jsonFile.get().getFileName().toString());
+               openInRcaviz.accept(jsonFile.get());
+            }
+            else {
+                rcavizFileLabel.setText("");
+               Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setHeaderText(null);
+                a.setContentText(I18n.get("rcaviz.no.json.file"));
+                a.showAndWait();
+            }
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, e.getMessage()).showAndWait();
+        }
+    }
     @FXML private void onBrowseFamily() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("rca.browse.family"));
@@ -294,10 +326,13 @@ public class RcaCommandController implements Initializable {
 
         int to = timeoutSpinner.getValue();
         if (to > 0) builder.timeout(to);
-
+        
+        if (!outputFolderField.getText().isBlank())
+            AppPreferences.saveOutputForInput("RCA",
+                familyFileField.getText().trim(),
+                outputFolderField.getText().trim());
         if (onRun != null) onRun.accept(builder);
     }
-
     public void scanDotFiles() {
         dotFilesList.getItems().clear();
         if (outputFolder == null || !outputFolder.toFile().exists()) return;
@@ -312,6 +347,14 @@ public class RcaCommandController implements Initializable {
                 resultsPane.setExpanded(true);
                 resultsFolderLabel.setText(outputFolder.toString());
             }
+            // Mettre à jour le label JSON si un fichier existe
+            java.nio.file.Files.list(outputFolder)
+                .filter(p -> p.toString().endsWith(".json"))
+                .sorted()
+                .reduce((a, b) -> b)
+                .ifPresentOrElse(
+                    p -> rcavizFileLabel.setText(p.getFileName().toString()),
+                    () -> rcavizFileLabel.setText(""));
         } catch (Exception e) {
             resultsFolderLabel.setText(I18n.get("rca.results.error", e.getMessage()));
         }
@@ -329,6 +372,13 @@ public class RcaCommandController implements Initializable {
         if      (name.endsWith(".rcfgz")) familyFormatCombo.setValue("RCFGZ");
         else if (name.endsWith(".rcfal")) familyFormatCombo.setValue("RCFAL");
         else                              familyFormatCombo.setValue("RCFT");
+        String savedFolder = AppPreferences.loadOutputForInput("RCA", path.toString());
+        if (!savedFolder.isBlank())
+            outputFolderField.setText(savedFolder);
+        else if (outputFolderField.getText().isBlank()) {
+            Path def = defaultOutputFolder();
+            if (def != null) outputFolderField.setText(def.toString());
+        }
     }
 
     private Path defaultOutputFolder() {

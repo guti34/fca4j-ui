@@ -85,4 +85,15 @@ public class ImportCommandController implements Initializable {
         else if (familyImportController != null)
             familyImportController.onRun();
     }
-}
+    public void selectFamilyImportAndSetInput(String path) {
+        // Sélectionner le bouton FAMILY_IMPORT
+        btnFamilyImport.setSelected(true);
+        binarizeContainer.setVisible(false);
+        binarizeContainer.setManaged(false);
+        familyImportContainer.setVisible(true);
+        familyImportContainer.setManaged(true);
+        // Pré-remplir le champ input
+        if (familyImportController != null)
+            familyImportController.setInputFile(path);
+    }
+    }

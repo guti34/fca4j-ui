@@ -159,7 +159,10 @@ public class FamilyImportController implements Initializable {
             .verbose(verboseCheckBox.isSelected());
 
         if (!outputFileField.getText().isBlank())
-            builder.outputFile(
+            AppPreferences.saveOutputForInput("FAMILY_IMPORT",
+                    inputFileField.getText().trim(),
+                    outputFileField.getText().trim());
+        builder.outputFile(
                 Utilities.resolveOutput(outputFileField.getText().trim(), inputFileField));
 
         String fmt = familyFormatCombo.getValue();
@@ -168,6 +171,11 @@ public class FamilyImportController implements Initializable {
         int to = timeoutSpinner.getValue();
         if (to > 0) builder.timeout(to);
 
+    	if (!outputFileField.getText().isBlank())
+    	    AppPreferences.saveOutputForInput(
+    	        "FAMILY_IMPORT",
+    	        inputFileField.getText().trim(),
+    	        outputFileField.getText().trim());
         if (onRun != null) onRun.accept(builder);
     }
 
@@ -188,4 +196,17 @@ public class FamilyImportController implements Initializable {
         verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
         timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
     }
-}
+    public void setInputFile(String path) {
+        if (path == null || path.isBlank()) return;
+        inputFileField.setText(path);
+
+        if (path.toLowerCase().endsWith(".xml"))
+            modelFormatCombo.setValue("XML");
+        else
+            modelFormatCombo.setValue("JSON");
+
+        String savedOutput = AppPreferences.loadOutputForInput("FAMILY_IMPORT", path);
+        outputFileField.setText(savedOutput.isBlank()
+            ? path.replaceAll("\\.[^.]+$", "") + ".rcft" : savedOutput);
+    }
+    }
