@@ -31,23 +31,29 @@
                            promptText="%rca.output.folder.prompt"/>
                 <Button text="%button.browse" onAction="#onBrowseOutputFolder"/>
             </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%rca.limit.steps"/>
-                <Spinner fx:id="limitStepsSpinner" prefWidth="75"/>
-                <Label text="%rca.limit.steps.hint"
-                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
-            </HBox>
-            <CheckBox fx:id="storeExtendedFamily"   text="%rca.store.extended"/>
-            <CheckBox fx:id="storeExtendedEachStep" text="%rca.store.extended.steps"/>
-            <CheckBox fx:id="buildXml"              text="%rca.build.xml"/>
-            <CheckBox fx:id="addFullExtents"        text="%rca.full.extents"/>
-            <CheckBox fx:id="addFullIntents"        text="%rca.full.intents"/>
-			<CheckBox fx:id="buildJson"       text="%rca.build.json"/>            
+        <!-- Options de sortie dépliables -->
+        <TitledPane text="%rca.output.options" collapsible="true" expanded="false"
+                    style="-fx-font-size: 11px;">
+            <VBox spacing="6" style="-fx-padding: 6;">
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Label text="%rca.limit.steps"/>
+                    <Spinner fx:id="limitStepsSpinner" prefWidth="75"/>
+                    <Label text="%rca.limit.steps.hint"
+                           style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+                </HBox>
+                <CheckBox fx:id="storeExtendedFamily"   text="%rca.store.extended"/>
+                <CheckBox fx:id="storeExtendedEachStep" text="%rca.store.extended.steps"/>
+                <CheckBox fx:id="buildXml"              text="%rca.build.xml"/>
+                <CheckBox fx:id="addFullExtents"        text="%rca.full.extents"/>
+                <CheckBox fx:id="addFullIntents"        text="%rca.full.intents"/>
+                <CheckBox fx:id="buildJson"             text="%rca.build.json"/>
+            </VBox>
+        </TitledPane>
         </VBox>
     </TitledPane>
 
     <!-- Algorithme -->
-    <TitledPane fx:id="algoPane" collapsible="false">
+    <TitledPane fx:id="algoPane" collapsible="true" expanded="false">
         <VBox spacing="6" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.algorithm"/>

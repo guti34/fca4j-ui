@@ -102,9 +102,9 @@ this.onInputChanged = onInputChanged;
         fc.setTitle(I18n.get("label.input.file"));
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
             new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
             new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
-            new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
             new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
             new FileChooser.ExtensionFilter("CSV",              "*.csv"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*")

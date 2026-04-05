@@ -71,7 +71,7 @@ public class BinarizeController implements Initializable {
         separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
         separatorCombo.setValue("COMMA");
 
-        outputFormatCombo.getItems().addAll("CXT", "SLF", "XML", "CEX", "CSV");
+        outputFormatCombo.getItems().addAll("CXT (Burmeister)", "SLF (HTK)", "CEX (ConExp)","XML (Galicia)",  "CSV");
         outputFormatCombo.setValue("CXT");
 
         outSeparatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
@@ -150,10 +150,10 @@ public class BinarizeController implements Initializable {
         fc.setTitle(I18n.get("label.output.file"));
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
-            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
-            new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
+           new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
+            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
+             new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
             new FileChooser.ExtensionFilter("CSV",              "*.csv")
         );
         File f = fc.showSaveDialog(outputFileField.getScene().getWindow());

@@ -38,7 +38,9 @@ public class CommandBuilder {
     private boolean sortBySupport  = false; // -b
     private String  reportFile;             // -r
     private String  implFolder;             // -folder
-
+    public String getOutputFile() { return outputFile; }
+    public String getCommand()    { return command; }
+    public String getImplFolder() { return implFolder; }
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
 

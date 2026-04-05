@@ -668,9 +668,10 @@ public class ContextEditorController implements Initializable {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(title);
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("SLF (HTK)", "*.slf"),
-				new FileChooser.ExtensionFilter("CEX (ConExp)", "*.cex"),
+		fc.getExtensionFilters().addAll(
 				new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
+				new FileChooser.ExtensionFilter("SLF (HTK)", "*.slf"),
+				new FileChooser.ExtensionFilter("CEX (ConExp)", "*.cex"),
 				new FileChooser.ExtensionFilter("XML (Galicia)", "*.xml"),
 				new FileChooser.ExtensionFilter("CSV", "*.csv"),
 				new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));

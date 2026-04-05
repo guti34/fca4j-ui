@@ -8,6 +8,7 @@ import java.util.ResourceBundle;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
+import org.kordamp.ikonli.Ikon;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
@@ -41,7 +42,9 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
@@ -85,8 +88,10 @@ public class MainController implements Initializable {
 	private Menu recentFamilyMenu;
 	@FXML
 	private Menu recentModelMenu;
-	@FXML 
-	private Label dotFileLabel;	
+	@FXML
+	private Label dotFileLabel;
+	@FXML
+	private Button btnOpenDot;
 	// ── Onglet RCA Family ─────────────────────────────────────────────────────
 	@FXML
 	private TabPane commandTabPane;
@@ -98,6 +103,11 @@ public class MainController implements Initializable {
 	private StackPane rcaCommandContainer;
 	@FXML
 	private Tab familyEditorTab;
+	@FXML
+	private Tab contextEditorTab;
+	@FXML
+	private Tab conceptStructureTab;
+
 	@FXML
 	private FamilyEditorController familyEditorController;
 	private RcaCommandController rcaCommandController;
@@ -117,6 +127,12 @@ public class MainController implements Initializable {
 	private Button contextRunButton;
 	@FXML
 	private Button rcaRunButton;
+
+	@FXML
+	private Tab rulesViewerTab;
+	@FXML
+	private RulesViewerController rulesViewerController;
+
 	// ── Services ──────────────────────────────────────────────────────────────
 	private final Fca4jRunner runner = new Fca4jRunner();
 	private GraphRenderer renderer;
@@ -151,130 +167,136 @@ public class MainController implements Initializable {
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-	    renderer = new GraphRenderer(graphWebView.getEngine());
-	    renderer.setOnNodeClick(this::onNodeSelected);
+		renderer = new GraphRenderer(graphWebView.getEngine());
+		renderer.setOnNodeClick(this::onNodeSelected);
+		setTabGraphic(conceptStructureTab, Material2MZ.VISIBILITY, I18n.get("tab.graph"), "#3B6D11");
+		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
+				"INSPECT");
+		commandCombo.setValue("LATTICE");
+		commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
 
-	    commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS",
-	        "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT");
-	    commandCombo.setValue("LATTICE");
-	    commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
+		selectedNodeLabel.setText(I18n.get("panel.node.none"));
+		loadCommandPanel("LATTICE");
+		contextRunButton.setText(I18n.get("button.run"));
+		rcaRunButton.setText(I18n.get("button.run"));
 
-	    selectedNodeLabel.setText(I18n.get("panel.node.none"));
-	    loadCommandPanel("LATTICE");
-	    contextRunButton.setText(I18n.get("button.run"));
-	    rcaRunButton.setText(I18n.get("button.run"));
+		if (commandTabPane != null) {
+			contextTab.setText(I18n.get("tab.context.commands"));
+			rcaTab.setText(I18n.get("tab.rca.family"));
+		}
 
-	    if (commandTabPane != null) {
-	        contextTab.setText(I18n.get("tab.context.commands"));
-	        rcaTab.setText(I18n.get("tab.rca.family"));
-	    }
+		// ── Overlays — à construire AVANT tout appel à showOverlayDelayed ────────
+		buildLoadingOverlay();
 
-	    // ── Overlays — à construire AVANT tout appel à showOverlayDelayed ────────
-	    buildLoadingOverlay();
+		// ── Menus récents ─────────────────────────────────────────────────────────
+		refreshRecentMenus();
 
-	    // ── Menus récents ─────────────────────────────────────────────────────────
-	    refreshRecentMenus();
+		// ── Panneaux RCA et Import ────────────────────────────────────────────────
+		loadRcaPanel();
+		importTab.setText(I18n.get("tab.import.commands"));
+		importRunButton.setText(I18n.get("button.run"));
+		loadImportPanel();
 
-	    // ── Panneaux RCA et Import ────────────────────────────────────────────────
-	    loadRcaPanel();
-	    importTab.setText(I18n.get("tab.import.commands"));
-	    importRunButton.setText(I18n.get("button.run"));
-	    loadImportPanel();
+		// ── Éditeur de famille ────────────────────────────────────────────────────
+		if (familyEditorTab != null)
+			setTabGraphic(familyEditorTab, Material2AL.EDIT, I18n.get("tab.family"), "#185FA5");
+		if (familyEditorController != null) {
+			familyEditorController.setOpenInContextEditor(this::openContextInEditor);
+			familyEditorController.setOnFileOpened(path -> {
+				AppPreferences.addRecentFamily(path.toString());
+				refreshRecentMenus();
+				selectCommandTabFor(path.toString());
+			});
+		}
 
-	    // ── Éditeur de famille ────────────────────────────────────────────────────
-	    if (familyEditorTab != null)
-	        familyEditorTab.setText(I18n.get("tab.family.editor"));
-	    if (familyEditorController != null) {
-	        familyEditorController.setOpenInContextEditor(this::openContextInEditor);
-	        familyEditorController.setOnFileOpened(path -> {
-	            AppPreferences.addRecentFamily(path.toString());
-	            refreshRecentMenus();
-	            selectCommandTabFor(path.toString());
-	        });
-	    }
+		// ── Synchronisation famille → panneau RCA ─────────────────────────────────
+		if (commandTabPane != null) {
+			rcaTab.selectedProperty().addListener((obs, old, selected) -> {
+				if (selected && rcaCommandController != null && familyEditorController != null
+						&& familyEditorController.getCurrentFile() != null)
+					rcaCommandController.setFamilyFile(familyEditorController.getCurrentFile());
+			});
+		}
 
-	    // ── Synchronisation famille → panneau RCA ─────────────────────────────────
-	    if (commandTabPane != null) {
-	        rcaTab.selectedProperty().addListener((obs, old, selected) -> {
-	            if (selected && rcaCommandController != null
-	                    && familyEditorController != null
-	                    && familyEditorController.getCurrentFile() != null)
-	                rcaCommandController.setFamilyFile(familyEditorController.getCurrentFile());
-	        });
-	    }
+		// ── Éditeur de contexte ───────────────────────────────────────────────────
+		setTabGraphic(contextEditorTab, Material2AL.EDIT, I18n.get("tab.context"), "#185FA5");
+		contextEditorController.setOnFileLoaded(path -> {
+			lastInputFile = path;
+			propagateInputFile(path);
+			String sep = getSeparatorFromCurrentPanel();
+			AppPreferences.addRecentContext(path, sep);
+			refreshRecentMenus();
+			selectCommandTabFor(path);
+		});
+		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 
-	    // ── Éditeur de contexte ───────────────────────────────────────────────────
-	    contextEditorController.setOnFileLoaded(path -> {
-	        lastInputFile = path;
-	        propagateInputFile(path);
-	        String sep = getSeparatorFromCurrentPanel();
-	        AppPreferences.addRecentContext(path, sep);
-	        refreshRecentMenus();
-	        selectCommandTabFor(path); 
-	    });
-	    contextEditorController.setOnLoadCallbacks(
-	        this::showLoadingOverlay, this::hideLoadingOverlay);
-
-	    // ── Éditeur de modèle ─────────────────────────────────────────────────────
-	    if (modelEditorTab != null)
-	        modelEditorTab.setText(I18n.get("tab.model.editor"));
-	    if (modelEditorController != null) {
-	        modelEditorController.setOnFileOpened(path -> {
-	            AppPreferences.addRecentModel(path.toString());
-	            refreshRecentMenus();
-	            selectCommandTabFor(path.toString());
-	        });
-	    }
-
-	    // ── Toolbar graphe + status bar ───────────────────────────────────────────
-	    setupGraphToolbar();
-	    updateStatusBar();
+		// ── Éditeur de modèle ─────────────────────────────────────────────────────
+		if (modelEditorTab != null)
+			setTabGraphic(modelEditorTab, Material2AL.EDIT, I18n.get("tab.model"), "#185FA5");
+		if (modelEditorController != null) {
+			modelEditorController.setOnFileOpened(path -> {
+				AppPreferences.addRecentModel(path.toString());
+				refreshRecentMenus();
+				selectCommandTabFor(path.toString());
+			});
+		}
+		// rule viewer
+		setTabGraphic(rulesViewerTab, Material2MZ.VISIBILITY, I18n.get("tab.rules"), "#3B6D11");
+		// ── Toolbar graphe + status bar ───────────────────────────────────────────
+		setupGraphToolbar();
+		updateStatusBar();
 	}
+
 	private void startRcavizServer(Path jsonFile) throws Exception {
-	    // Arrêter le serveur précédent si actif
-	    if (rcavizServer != null) rcavizServer.stop(0);
+		// Arrêter le serveur précédent si actif
+		if (rcavizServer != null)
+			rcavizServer.stop(0);
 
-	    rcavizServer = com.sun.net.httpserver.HttpServer.create(
-	        new java.net.InetSocketAddress(0), 0); // port 0 = port libre automatique
-	    rcavizPort = rcavizServer.getAddress().getPort();
+		rcavizServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(0), 0); // port 0 = port
+																										// libre
+																										// automatique
+		rcavizPort = rcavizServer.getAddress().getPort();
 
-	    rcavizServer.createContext("/", exchange -> {
-	        // Headers CORS pour autoriser rcaviz.lirmm.fr à lire le fichier
-	        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-	        exchange.getResponseHeaders().add("Content-Type", "application/json");
-	        byte[] bytes = java.nio.file.Files.readAllBytes(jsonFile);
-	        exchange.sendResponseHeaders(200, bytes.length);
-	        try (var os = exchange.getResponseBody()) { os.write(bytes); }
-	    });
-	    rcavizServer.setExecutor(null);
-	    rcavizServer.start();
+		rcavizServer.createContext("/", exchange -> {
+			// Headers CORS pour autoriser rcaviz.lirmm.fr à lire le fichier
+			exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+			exchange.getResponseHeaders().add("Content-Type", "application/json");
+			byte[] bytes = java.nio.file.Files.readAllBytes(jsonFile);
+			exchange.sendResponseHeaders(200, bytes.length);
+			try (var os = exchange.getResponseBody()) {
+				os.write(bytes);
+			}
+		});
+		rcavizServer.setExecutor(null);
+		rcavizServer.start();
 	}
+
 	public void openInRcaviz(Path jsonFile) {
-	    try {
-	        startRcavizServer(jsonFile);
-	        String url = "https://rcaviz.lirmm.fr/?data=http://localhost:"
-	            + rcavizPort + "/" + jsonFile.getFileName();
-	        java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-	    } catch (Exception e) {
-	        showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
-	    }
+		try {
+			startRcavizServer(jsonFile);
+			String url = "https://rcaviz.lirmm.fr/?data=http://localhost:" + rcavizPort + "/" + jsonFile.getFileName();
+			java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+		} catch (Exception e) {
+			showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
+		}
 	}
 
 	private String getSeparatorFromCurrentPanel() {
-	    if (currentCommandController instanceof LatticeAocController c)
-	        return c.getSeparator();
-	    if (currentCommandController instanceof RuleBasisController c)
-	        return c.getSeparator();
-	    if (currentCommandController instanceof ReduceClarifyController c)
-	        return c.getSeparator();
-	    if (currentCommandController instanceof IrreducibleController c)
-	        return c.getSeparator();
-	    if (currentCommandController instanceof InspectController c)
-	        return c.getSeparator();
-	    if (currentCommandController instanceof BinarizeController c)
-	        return c.getSeparator();
-	    return null;
+		if (currentCommandController instanceof LatticeAocController c)
+			return c.getSeparator();
+		if (currentCommandController instanceof RuleBasisController c)
+			return c.getSeparator();
+		if (currentCommandController instanceof ReduceClarifyController c)
+			return c.getSeparator();
+		if (currentCommandController instanceof IrreducibleController c)
+			return c.getSeparator();
+		if (currentCommandController instanceof InspectController c)
+			return c.getSeparator();
+		if (currentCommandController instanceof BinarizeController c)
+			return c.getSeparator();
+		return null;
 	}
+
 	private void setLastCommandStatus(String command, boolean success, long durationMs) {
 		String text;
 		String color;
@@ -404,6 +426,7 @@ public class MainController implements Initializable {
 	// ── Toolbar Graph ─────────────────────────────────────────────────────────
 
 	private void setupGraphToolbar() {
+		setGraphToolbarBtn(btnOpenDot,   new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("graph.btn.open.dot"));
 		setGraphToolbarBtn(btnSaveDot, new FontIcon(Material2MZ.SAVE), I18n.get("graph.btn.save.dot"));
 		setGraphToolbarBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.svg"));
 		setGraphToolbarBtn(btnExportPng, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.png"));
@@ -472,6 +495,10 @@ public class MainController implements Initializable {
 				LatticeAocController ctrl = loader.getController();
 				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
 					lastInputFile = path;
+					propagateInputFile(path); // ← rafraîchir tous les panneaux
+					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
+					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
+					refreshRecentMenus(); // ← rafraîchir les menus
 				});
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
@@ -480,6 +507,10 @@ public class MainController implements Initializable {
 				RuleBasisController ctrl = loader.getController();
 				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
 					lastInputFile = path;
+					propagateInputFile(path); // ← rafraîchir tous les panneaux
+					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
+					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
+					refreshRecentMenus(); // ← rafraîchir les menus
 				});
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
@@ -488,6 +519,10 @@ public class MainController implements Initializable {
 				ReduceClarifyController ctrl = loader.getController();
 				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
 					lastInputFile = path;
+					propagateInputFile(path); // ← rafraîchir tous les panneaux
+					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
+					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
+					refreshRecentMenus(); // ← rafraîchir les menus
 				});
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
@@ -496,6 +531,10 @@ public class MainController implements Initializable {
 				IrreducibleController ctrl = loader.getController();
 				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
 					lastInputFile = path;
+					propagateInputFile(path); // ← rafraîchir tous les panneaux
+					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
+					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
+					refreshRecentMenus(); // ← rafraîchir les menus
 				});
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
@@ -504,6 +543,10 @@ public class MainController implements Initializable {
 				InspectController ctrl = loader.getController();
 				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
 					lastInputFile = path;
+					propagateInputFile(path); // ← rafraîchir tous les panneaux
+					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
+					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
+					refreshRecentMenus(); // ← rafraîchir les menus
 				});
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
@@ -527,6 +570,17 @@ public class MainController implements Initializable {
 		}
 	}
 
+	private void setTabGraphic(Tab tab, Ikon icon, String text, String colorHex) {
+		FontIcon fi = new FontIcon(icon);
+		fi.setIconSize(14);
+		fi.setIconColor(Color.valueOf(colorHex));
+		Label lbl = new Label(text);
+		lbl.setStyle("-fx-font-size: 12px;");
+		HBox box = new HBox(5, fi, lbl);
+		box.setAlignment(javafx.geometry.Pos.CENTER);
+		tab.setGraphic(box);
+		tab.setText("");
+	}
 	// ── Chargement du panneau RCA ─────────────────────────────────────────────
 
 	private void loadRcaPanel() {
@@ -535,7 +589,11 @@ public class MainController implements Initializable {
 					I18n.getBundle());
 			Node panel = loader.load();
 			rcaCommandController = loader.getController();
-			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph, this::openInRcaviz);
+			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph,
+					this::openInRcaviz, path -> {
+						AppPreferences.addRecentFamily(path.toString());
+						refreshRecentMenus();
+					});
 			if (rcaCommandContainer != null)
 				rcaCommandContainer.getChildren().setAll(panel);
 		} catch (Exception e) {
@@ -567,51 +625,85 @@ public class MainController implements Initializable {
 	}
 	// ── Ouverture dans les éditeurs ───────────────────────────────────────────
 
+	@FXML
+	private void onOpenDot() {
+	    FileChooser fc = new FileChooser();
+	    fc.setTitle(I18n.get("graph.btn.open.dot"));
+	    fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+	    fc.getExtensionFilters().addAll(
+	        new FileChooser.ExtensionFilter("GraphViz DOT", "*.dot"),
+	        new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*")
+	    );
+	    File f = fc.showOpenDialog(graphWebView.getScene().getWindow());
+	    if (f == null) return;
+	    AppPreferences.setLastDirectory(f.getParent());
+	    Path dot = f.toPath();
+	    dotFileLabel.setText(dot.getFileName().toString());
+	    appendConsole(I18n.get("console.graphviz.render", dot.getFileName()));
+	    clearGraph();
+	    dotFileLabel.setText(dot.getFileName().toString()); // restaurer après clearGraph
+	    renderer.render(dot).thenRun(() -> Platform.runLater(() -> {
+	        enableGraphButtons();
+	        hideOverlay();
+	    })).exceptionally(ex -> {
+	        Platform.runLater(() -> {
+	            hideOverlay();
+	            appendConsole("[GraphViz] " + ex.getCause().getMessage());
+	        });
+	        return null;
+	    });
+	    showOverlayDelayed();
+	    mainTabPane.getSelectionModel().select(conceptStructureTab);
+	}
 	private void openContextInEditor(IBinaryContext ctx) {
 		if (contextEditorController != null) {
-			mainTabPane.getSelectionModel().select(1);
+			mainTabPane.getSelectionModel().select(2);
 			contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
 				Platform.runLater(() -> {
 					RCAFamily currentFamily = familyEditorController.getFamily();
 					rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
 					familyEditorController.reloadFamily(currentFamily);
 					familyEditorController.markModified();
-					mainTabPane.getSelectionModel().select(2);
+					mainTabPane.getSelectionModel().select(3);
 				});
 			});
 		}
 	}
 
 	public void openInEditor(Path filePath) {
-	    openInEditor(filePath, "COMMA");
+		openInEditor(filePath, "COMMA");
 	}
 
 	public void openInEditor(String entry) {
-	    String path = AppPreferences.recentEntryPath(entry);
-	    String sep  = AppPreferences.recentEntrySeparator(entry);
-	    openInEditor(Path.of(path), sep);
+		String path = AppPreferences.recentEntryPath(entry);
+		String sep = AppPreferences.recentEntrySeparator(entry);
+		openInEditor(Path.of(path), sep);
 	}
 
 	private void openInEditor(Path filePath, String separator) {
-	    if (contextEditorController != null) {
-	        if (!contextEditorController.confirmDiscardChanges()) return;
-	        AppPreferences.addRecentContext(filePath.toString(), separator);
-	        refreshRecentMenus();
-	        contextEditorController.openFile(filePath, separator);
-	        mainTabPane.getSelectionModel().select(1);
-	        selectCommandTabFor(filePath.toString()); // ← ajouter
-	    }
-	}	
-	public void openInFamilyEditor(Path filePath) {
-	    if (familyEditorController != null) {
-	        if (!familyEditorController.confirmDiscard()) return;
-	        AppPreferences.addRecentFamily(filePath.toString());
-	        refreshRecentMenus();
-	        familyEditorController.openFile(filePath);
-	        mainTabPane.getSelectionModel().select(2);
-	        selectCommandTabFor(filePath.toString()); // ← ajouter
-	    }
+		if (contextEditorController != null) {
+			if (!contextEditorController.confirmDiscardChanges())
+				return;
+			AppPreferences.addRecentContext(filePath.toString(), separator);
+			refreshRecentMenus();
+			contextEditorController.openFile(filePath, separator);
+			mainTabPane.getSelectionModel().select(2);
+			selectCommandTabFor(filePath.toString()); // ← ajouter
+		}
 	}
+
+	public void openInFamilyEditor(Path filePath) {
+		if (familyEditorController != null) {
+			if (!familyEditorController.confirmDiscard())
+				return;
+			AppPreferences.addRecentFamily(filePath.toString());
+			refreshRecentMenus();
+			familyEditorController.openFile(filePath);
+			mainTabPane.getSelectionModel().select(3);
+			selectCommandTabFor(filePath.toString()); // ← ajouter
+		}
+	}
+
 	private void openDotInGraph(Path dotFile) {
 		mainTabPane.getSelectionModel().select(0);
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
@@ -659,7 +751,8 @@ public class MainController implements Initializable {
 
 	public void shutdown() {
 		// Arrêter le serveur
-	    if (rcavizServer != null) rcavizServer.stop(0);
+		if (rcavizServer != null)
+			rcavizServer.stop(0);
 		// Arrêter le timer overlay
 		if (overlayTimer != null)
 			overlayTimer.cancel(false);
@@ -709,15 +802,46 @@ public class MainController implements Initializable {
 					String sep = null;
 					int sIdx = args.indexOf("-s");
 					if (sIdx >= 0 && sIdx + 1 < args.size())
-					    sep = args.get(sIdx + 1);
+						sep = args.get(sIdx + 1);
 					AppPreferences.addRecentContext(args.get(1), sep);
 					refreshRecentMenus();
 				}
 				tryRenderDot(builder);
+				tryOpenRules(builder);
 			} else {
 				appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
 			}
 		}));
+	    final String cmd = builder.getCommand();
+	    final boolean isRules = "RULEBASIS".equals(cmd) || "DBASIS".equals(cmd);
+
+	    consoleArea.clear();
+	    appendConsole("$ " + builder.toDisplayString());
+
+	    // Basculer sur le bon onglet viewer
+	    if (isRules) {
+	        rulesViewerController.clearConsole();
+	        rulesViewerController.appendConsole("$ " + builder.toDisplayString());
+	        mainTabPane.getSelectionModel().select(rulesViewerTab);
+	    } else {
+	        mainTabPane.getSelectionModel().select(conceptStructureTab);
+	        clearGraph();
+	    }
+
+	    showOverlayDelayed();
+	    // ...
+
+	    runner.run(args, line -> Platform.runLater(() -> {
+	        appendConsole(line); // console graphe toujours alimentée
+	        if (isRules) rulesViewerController.appendConsole(line); // ← aussi dans rules
+	    })).thenAccept(result -> Platform.runLater(() -> {
+	        hideOverlay();
+	        // ...
+	        if (result.isSuccess()) {
+	            if (!isRules) tryRenderDot(builder);
+	            else          tryOpenRules(builder); // ← ouvrir le fichier rules
+	        }
+	    }));
 	}
 
 	private void clearGraph() {
@@ -730,7 +854,7 @@ public class MainController implements Initializable {
 		// Désactiver aussi la loupe si elle était active
 		if (renderer.isMagnifierActive())
 			renderer.toggleMagnifier();
-	    dotFileLabel.setText(""); // ← ajouter
+		dotFileLabel.setText(""); // ← ajouter
 	}
 
 	private void executeRcaCommand(CommandBuilder builder) {
@@ -792,6 +916,26 @@ public class MainController implements Initializable {
 			return null;
 		});
 		showOverlayDelayed();
+	}
+
+	private void tryOpenRules(CommandBuilder builder) {
+		if (!"RULEBASIS".equals(builder.getCommand()) && !"DBASIS".equals(builder.getCommand()))
+			return;
+
+		// Cas 1 : fichier unique
+		String outputFile = builder.getOutputFile();
+		if (outputFile != null && !outputFile.isBlank()) {
+			Path p = Path.of(outputFile);
+			if (p.toFile().exists()) {
+				rulesViewerController.loadFile(p);
+				mainTabPane.getSelectionModel().select(rulesViewerTab);
+				return;
+			}
+		}
+
+		// Cas 2 : implFolder (fichiers par support)
+		// → déléguer à RuleBasisController comme les .dot pour RCA
+		// (la ListView de résultats déclenchera loadFile() sur sélection)
 	}
 
 	private void onNodeSelected(String nodeLabel) {
@@ -903,47 +1047,49 @@ public class MainController implements Initializable {
 	@FXML
 	private void onNewContext() {
 		contextEditorController.onNewContext();
-		mainTabPane.getSelectionModel().select(1);
+		mainTabPane.getSelectionModel().select(2);
 	}
 
 	@FXML
 	private void onNewFamily() {
 		familyEditorController.onNew();
-		mainTabPane.getSelectionModel().select(2);
+		mainTabPane.getSelectionModel().select(3);
 	}
 
 	@FXML
 	private void onNewModel() {
 		modelEditorController.onNew();
-		mainTabPane.getSelectionModel().select(3);
+		mainTabPane.getSelectionModel().select(4);
 	}
 
 	@FXML
 	private void onOpenModel() {
 		modelEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(3);
+		mainTabPane.getSelectionModel().select(4);
 	}
 
 	public void openInModelEditor(Path path) {
-	    if (modelEditorController != null) {
-	        if (!modelEditorController.confirmDiscard()) return;
-	        AppPreferences.addRecentModel(path.toString());
-	        refreshRecentMenus();
-	        modelEditorController.openFile(path);
-	        mainTabPane.getSelectionModel().select(3);
-	        selectCommandTabFor(path.toString()); // ← ajouter
-	    }
+		if (modelEditorController != null) {
+			if (!modelEditorController.confirmDiscard())
+				return;
+			AppPreferences.addRecentModel(path.toString());
+			refreshRecentMenus();
+			modelEditorController.openFile(path);
+			mainTabPane.getSelectionModel().select(4);
+			selectCommandTabFor(path.toString()); // ← ajouter
+		}
 	}
+
 	@FXML
 	private void onOpenContext() {
 		contextEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(1);
+		mainTabPane.getSelectionModel().select(2);
 	}
 
 	@FXML
 	private void onOpenFamily() {
 		familyEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(2);
+		mainTabPane.getSelectionModel().select(3);
 	}
 
 	private javafx.scene.text.Text text(String s) {
@@ -1049,53 +1195,48 @@ public class MainController implements Initializable {
 	}
 
 	private void refreshRecentMenus() {
-	    buildRecentMenu(recentContextMenu,
-	        AppPreferences.getRecentContexts(),
-	        entry -> openInEditor(entry),
-	        () -> AppPreferences.clearRecentContexts());
-	    buildRecentMenu(recentFamilyMenu,
-	        AppPreferences.getRecentFamilies(),
-	        entry -> openInFamilyEditor(Path.of(
-	            AppPreferences.recentEntryPath(entry))),
-	        () -> AppPreferences.clearRecentFamilies());
-	    buildRecentMenu(recentModelMenu,
-	        AppPreferences.getRecentModels(),
-	        entry -> openInModelEditor(Path.of(
-	            AppPreferences.recentEntryPath(entry))),
-	        () -> AppPreferences.clearRecentModels());
-	}	
-	private void buildRecentMenu(javafx.scene.control.Menu menu,
-	        java.util.List<String> entries,
-	        Consumer<String> action,
-	        Runnable onClear) {
-	    menu.getItems().clear();
-	    if (entries.isEmpty()) {
-	        javafx.scene.control.MenuItem empty =
-	            new javafx.scene.control.MenuItem(I18n.get("menu.file.recent.empty"));
-	        empty.setDisable(true);
-	        menu.getItems().add(empty);
-	    } else {
-	        for (String entry : entries) {
-	            String path = AppPreferences.recentEntryPath(entry);
-	            java.io.File f = new java.io.File(path);
-	            String label = f.getName() + "   —   [" + shortenPath(f.getParent(), 40) + "]";
-	            javafx.scene.control.MenuItem item =
-	                new javafx.scene.control.MenuItem(label);
-	            item.setDisable(!f.exists());
-	            item.setOnAction(e -> {
-	                action.accept(entry);
-	                AppPreferences.setLastDirectory(f.getParent());
-	            });
-	            menu.getItems().add(item);
-	        }
-	        // Séparateur + action vider
-	        menu.getItems().add(new SeparatorMenuItem());
-	        javafx.scene.control.MenuItem clearItem =
-	            new javafx.scene.control.MenuItem(I18n.get("menu.file.recent.clear"));
-	        clearItem.setOnAction(e -> { onClear.run(); refreshRecentMenus(); });
-	        menu.getItems().add(clearItem);
-	    }
+		buildRecentMenu(recentContextMenu, AppPreferences.getRecentContexts(), entry -> openInEditor(entry),
+				() -> AppPreferences.clearRecentContexts());
+		buildRecentMenu(recentFamilyMenu, AppPreferences.getRecentFamilies(),
+				entry -> openInFamilyEditor(Path.of(AppPreferences.recentEntryPath(entry))),
+				() -> AppPreferences.clearRecentFamilies());
+		buildRecentMenu(recentModelMenu, AppPreferences.getRecentModels(),
+				entry -> openInModelEditor(Path.of(AppPreferences.recentEntryPath(entry))),
+				() -> AppPreferences.clearRecentModels());
 	}
+
+	private void buildRecentMenu(javafx.scene.control.Menu menu, java.util.List<String> entries,
+			Consumer<String> action, Runnable onClear) {
+		menu.getItems().clear();
+		if (entries.isEmpty()) {
+			javafx.scene.control.MenuItem empty = new javafx.scene.control.MenuItem(I18n.get("menu.file.recent.empty"));
+			empty.setDisable(true);
+			menu.getItems().add(empty);
+		} else {
+			for (String entry : entries) {
+				String path = AppPreferences.recentEntryPath(entry);
+				java.io.File f = new java.io.File(path);
+				String label = f.getName() + "   —   [" + shortenPath(f.getParent(), 40) + "]";
+				javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
+				item.setDisable(!f.exists());
+				item.setOnAction(e -> {
+					action.accept(entry);
+					AppPreferences.setLastDirectory(f.getParent());
+				});
+				menu.getItems().add(item);
+			}
+			// Séparateur + action vider
+			menu.getItems().add(new SeparatorMenuItem());
+			javafx.scene.control.MenuItem clearItem = new javafx.scene.control.MenuItem(
+					I18n.get("menu.file.recent.clear"));
+			clearItem.setOnAction(e -> {
+				onClear.run();
+				refreshRecentMenus();
+			});
+			menu.getItems().add(clearItem);
+		}
+	}
+
 	private String shortenPath(String path, int maxLen) {
 		if (path == null)
 			return "";
@@ -1116,20 +1257,23 @@ public class MainController implements Initializable {
 		alert.setContentText(message);
 		alert.showAndWait();
 	}
+
 	/** Sélectionne le bon onglet de commande selon le type de fichier ouvert. */
 	private void selectCommandTabFor(String filePath) {
-	    if (filePath == null || commandTabPane == null) return;
-	    String lower = filePath.toLowerCase();
-	    if (lower.endsWith(".rcft") || lower.endsWith(".rcfgz") || lower.endsWith(".rcfal")) {
-	        commandTabPane.getSelectionModel().select(rcaTab);
-	        if (rcaCommandController != null)
-	            rcaCommandController.setFamilyFile(Path.of(filePath));
-	    } else if (lower.endsWith(".json")) {
-	        commandTabPane.getSelectionModel().select(importTab);
-	        // Sélectionner FAMILY_IMPORT et pré-remplir le fichier modèle
-	        if (importCommandController != null)
-	            importCommandController.selectFamilyImportAndSetInput(filePath);
-	    } else {
-	        commandTabPane.getSelectionModel().select(contextTab);
-	    }
-	}}
+		if (filePath == null || commandTabPane == null)
+			return;
+		String lower = filePath.toLowerCase();
+		if (lower.endsWith(".rcft") || lower.endsWith(".rcfgz") || lower.endsWith(".rcfal")) {
+			commandTabPane.getSelectionModel().select(rcaTab);
+			if (rcaCommandController != null)
+				rcaCommandController.setFamilyFile(Path.of(filePath));
+		} else if (lower.endsWith(".json")) {
+			commandTabPane.getSelectionModel().select(importTab);
+			// Sélectionner FAMILY_IMPORT et pré-remplir le fichier modèle
+			if (importCommandController != null)
+				importCommandController.selectFamilyImportAndSetInput(filePath);
+		} else {
+			commandTabPane.getSelectionModel().select(contextTab);
+		}
+	}
+}

@@ -40,7 +40,7 @@
     </TitledPane>
 
     <!-- Filtres attributs -->
-    <TitledPane fx:id="filterPane" collapsible="true" expanded="true">
+    <TitledPane fx:id="filterPane" collapsible="true" expanded="false">
         <VBox spacing="10" style="-fx-padding: 8;">
 
             <Label fx:id="filterHintLabel"

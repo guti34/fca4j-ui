@@ -118,10 +118,11 @@
             <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
 
                 <!-- Onglet Graphe -->
-			<Tab text="%tab.graph">
+			<Tab fx:id="conceptStructureTab" styleClass="concept-tab">
 			    <VBox>
 			        <!-- Toolbar export -->
 						<ToolBar styleClass="editor-toolbar">
+							<Button fx:id="btnOpenDot"   styleClass="icon-btn" onAction="#onOpenDot"/>
 						    <Button fx:id="btnSaveDot"   styleClass="icon-btn" onAction="#onSaveDot"   disable="true"/>
 						    <Separator/>
 						    <Button fx:id="btnExportSvg" styleClass="icon-btn" onAction="#onExportSvg" disable="true"/>
@@ -150,19 +151,24 @@
 			        </SplitPane>
 			    </VBox>
 			</Tab>
+			<!-- Onglet Viewer rules-->
+		 	<Tab fx:id="rulesViewerTab" styleClass="rules-tab">
+     			<fx:include fx:id="rulesViewer" source="rules_viewer.fxml"/>
+ 			</Tab>
+
                 <!-- Onglet Éditeur de contexte -->
-                <Tab text="%tab.editor">
+                <Tab fx:id="contextEditorTab" styleClass="editor-tab">
                     <fx:include fx:id="contextEditor"
                                 source="context_editor.fxml"/>
                 </Tab>
 
                 <!-- Onglet Family Editor -->
-                <Tab fx:id="familyEditorTab">
+                <Tab fx:id="familyEditorTab" styleClass="editor-tab">
                     <fx:include fx:id="familyEditor"
                                 source="family_editor.fxml"/>
                 </Tab>
 				<!-- Onglet Model Editor -->
-				<Tab fx:id="modelEditorTab">
+				<Tab fx:id="modelEditorTab" styleClass="editor-tab">
 				    <fx:include fx:id="modelEditor"
 				                source="model_editor.fxml"/>
 				</Tab>

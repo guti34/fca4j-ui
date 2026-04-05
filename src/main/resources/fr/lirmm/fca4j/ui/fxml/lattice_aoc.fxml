@@ -38,7 +38,7 @@
         </VBox>
     </TitledPane>
 
-    <TitledPane fx:id="algoPane" collapsible="false">
+    <TitledPane fx:id="algoPane" collapsible="true" expanded="false" >
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.algorithm"/>

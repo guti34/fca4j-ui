@@ -7,6 +7,8 @@ import fr.lirmm.fca4j.ui.util.Utilities;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
+
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -83,6 +85,7 @@ public class RcaCommandController implements Initializable {
     private Consumer<Path>           openInGraph;
     private Path                     outputFolder;
     private Consumer<Path> openInRcaviz;
+    private Consumer<Path> onFamilyChanged;
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -140,6 +143,19 @@ public class RcaCommandController implements Initializable {
                 if (val != null && outputFolder != null && openInGraph != null)
                     openInGraph.accept(outputFolder.resolve(val));
             });
+        algoCombo.valueProperty().addListener((obs, old, val) -> {
+            boolean iceberg = "ICEBERG".equals(val);
+            icebergLabel.setVisible(iceberg);
+            icebergSpinner.setVisible(iceberg);
+            updateAlgoTitle(); // ← ajouter
+        });
+
+        icebergSpinner.valueProperty().addListener((obs, old, val) ->
+            updateAlgoTitle()); // ← ajouter
+
+        // Appel initial pour afficher la valeur au chargement
+        Platform.runLater(this::updateAlgoTitle);        
+        
         Utilities.bindPathTooltip(familyFileField);
         Utilities.bindPathTooltip(outputFolderField);
     }
@@ -153,11 +169,13 @@ public class RcaCommandController implements Initializable {
     public void configure(Consumer<CommandBuilder> onRun,
                           Consumer<Path> openInFamilyEditor,
                           Consumer<Path> openInGraph,
-                          Consumer<Path> openInRcaviz) {
+                          Consumer<Path> openInRcaviz, 
+                          Consumer<Path> onFamilyChanged) {
         this.onRun              = onRun;
         this.openInFamilyEditor = openInFamilyEditor;
         this.openInGraph        = openInGraph;
         this.openInRcaviz = openInRcaviz;
+        this.onFamilyChanged = onFamilyChanged;
 
         inputPane.setText(I18n.get("section.input"));
         outputPane.setText(I18n.get("rca.section.output"));
@@ -218,13 +236,21 @@ public class RcaCommandController implements Initializable {
             familyFileField.setText(f.getAbsolutePath());
             AppPreferences.setLastDirectory(f.getParent());
             setFamilyFile(f.toPath());
+            if (onFamilyChanged != null) onFamilyChanged.accept(f.toPath());
             if (outputFolderField.getText().isBlank()) {
                 Path def = defaultOutputFolder();
                 if (def != null) outputFolderField.setText(def.toString());
             }
         }
     }
-
+    private void updateAlgoTitle() {
+        String algo = algoCombo.getValue();
+        if (algo == null) return;
+        String title = I18n.get("section.algorithm") + " : " + algo;
+        if ("ICEBERG".equals(algo))
+            title += " (" + icebergSpinner.getValue() + "%)";
+        algoPane.setText(title);
+    }
     @FXML private void onEditFamily() {
         String path = familyFileField.getText().trim();
         if (path.isBlank()) {
@@ -444,5 +470,6 @@ public class RcaCommandController implements Initializable {
         timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
         limitStepsSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "limit", 0));
         icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "iceberg", 50));
+        Platform.runLater(this::updateAlgoTitle);
     }    
 }

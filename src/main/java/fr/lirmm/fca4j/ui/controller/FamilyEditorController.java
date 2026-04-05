@@ -261,9 +261,9 @@ public class FamilyEditorController implements Initializable {
         fc.setInitialFileName(selFc.getName());
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("SLF",              "*.slf"),
-            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
+            new FileChooser.ExtensionFilter("SLF (HTK)",              "*.slf"),
+            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
             new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
             new FileChooser.ExtensionFilter("CSV",              "*.csv")
         );
@@ -853,10 +853,10 @@ public class FamilyEditorController implements Initializable {
         fc.setTitle(I18n.get("family.dialog.context.file"));
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("SLF",              "*.slf"),
-            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
-            new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
+           new FileChooser.ExtensionFilter("SLF (HTK)",              "*.slf"),
+            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
+             new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
             new FileChooser.ExtensionFilter("CSV",              "*.csv"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
         return fc;

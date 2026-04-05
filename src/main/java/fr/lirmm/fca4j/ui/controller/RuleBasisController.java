@@ -102,7 +102,7 @@ public class RuleBasisController implements Initializable {
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
+		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "CEX", "XML", "CSV");
 		inputFormatCombo.setValue("(auto)");
 
 		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");

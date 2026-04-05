@@ -101,3 +101,12 @@
     -fx-font-weight: bold;
     -fx-font-size: 12px;
 }
+
+.editor-tab { -fx-background-color: #B5D4F4; }
+.editor-tab:selected { -fx-background-color: white; }
+
+.concept-tab { -fx-background-color: #DCFCE7; }
+.concept-tab:selected { -fx-background-color: white; }
+
+.rules-tab { -fx-background-color: #DCFCE7; }
+.rules-tab:selected { -fx-background-color: white; }

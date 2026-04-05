@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="fr.lirmm.fca4j.ui.controller.RulesViewerController"
+      spacing="0" style="-fx-background-color: #F5F4F0;">
+
+    <!-- ── Toolbar ── -->
+    <ToolBar styleClass="editor-toolbar">
+        <Button fx:id="btnOpen" styleClass="icon-btn" onAction="#onOpen"/>
+        <Separator orientation="VERTICAL"/>
+        <Label fx:id="fileNameLabel"
+               style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="filterField" prefWidth="160"
+                   promptText="%rules.filter.prompt"
+                   style="-fx-font-size: 12px;"/>
+        <ComboBox fx:id="sortCombo" prefWidth="130"/>
+        <Button fx:id="btnCopy" styleClass="icon-btn" onAction="#onCopy"/>
+    </ToolBar>
+
+    <!-- ── Liste des règles ── -->
+<SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS" dividerPositions="0.75">
+
+    <!-- Liste des règles -->
+    <ScrollPane fitToWidth="true"
+                style="-fx-background-color: #F5F4F0; -fx-background: #F5F4F0;">
+        <VBox fx:id="rulesContainer" spacing="0" fillWidth="true"/>
+    </ScrollPane>
+
+    <!-- Console -->
+    <VBox>
+        <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
+              alignment="CENTER_LEFT">
+            <Label text="Console"
+                   style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+        </HBox>
+        <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
+                  editable="false"
+                  style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
+    </VBox>
+
+</SplitPane>
+    <!-- ── Barre de statut ── -->
+    <Label fx:id="statusLabel" styleClass="status-bar"/>
+
+</VBox>
