@@ -164,11 +164,16 @@ public class MainController implements Initializable {
 	// ── Serveur HTTP local pour RCAViz ────────────────────────────────────────
 	private com.sun.net.httpserver.HttpServer rcavizServer;
 	private int rcavizPort = 0;
-
+	private com.sun.net.httpserver.HttpServer fcavizirServer;
+	private int fcavizirPort = 0;
+	
+	private String lastGraphInputFile  = ""; // input qui a produit le graphe courant
+	private String lastRulesInputFile  = ""; // input qui a produit les règles courantes
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		renderer = new GraphRenderer(graphWebView.getEngine());
 		renderer.setOnNodeClick(this::onNodeSelected);
+		renderer.setOnConsoleMessage(this::appendConsole); 
 		setTabGraphic(conceptStructureTab, Material2MZ.VISIBILITY, I18n.get("tab.graph"), "#3B6D11");
 		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
 				"INSPECT");
@@ -221,12 +226,12 @@ public class MainController implements Initializable {
 		// ── Éditeur de contexte ───────────────────────────────────────────────────
 		setTabGraphic(contextEditorTab, Material2AL.EDIT, I18n.get("tab.context"), "#185FA5");
 		contextEditorController.setOnFileLoaded(path -> {
-			lastInputFile = path;
-			propagateInputFile(path);
-			String sep = getSeparatorFromCurrentPanel();
-			AppPreferences.addRecentContext(path, sep);
-			refreshRecentMenus();
-			selectCommandTabFor(path);
+		    onNewInputContext(path);         
+		    propagateInputFile(path);
+		    String sep = getSeparatorFromCurrentPanel();
+		    AppPreferences.addRecentContext(path, sep);
+		    refreshRecentMenus();
+		    selectCommandTabFor(path);
 		});
 		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 
@@ -242,6 +247,9 @@ public class MainController implements Initializable {
 		}
 		// rule viewer
 		setTabGraphic(rulesViewerTab, Material2MZ.VISIBILITY, I18n.get("tab.rules"), "#3B6D11");
+		if (rulesViewerController != null) {
+		    rulesViewerController.setOpenInFcavizir(this::openInFcavizir);
+		}		
 		// ── Toolbar graphe + status bar ───────────────────────────────────────────
 		setupGraphToolbar();
 		updateStatusBar();
@@ -280,7 +288,30 @@ public class MainController implements Initializable {
 			showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
 		}
 	}
-
+	public void openInFcavizir(Path txtFile) {
+	    try {
+	        if (fcavizirServer != null) fcavizirServer.stop(0);
+	        fcavizirServer = com.sun.net.httpserver.HttpServer.create(
+	            new java.net.InetSocketAddress(0), 0);
+	        fcavizirPort = fcavizirServer.getAddress().getPort();
+	        fcavizirServer.createContext("/", exchange -> {
+	            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+	            exchange.getResponseHeaders().add("Content-Type", "text/plain");
+	            byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
+	            exchange.sendResponseHeaders(200, bytes.length);
+	            try (var os = exchange.getResponseBody()) { os.write(bytes); }
+	        });
+	        fcavizirServer.setExecutor(null);
+	        fcavizirServer.start();
+	        String url_local = "http://localhost:8080/#data=http://localhost:"
+	        	    + fcavizirPort + "/" + txtFile.getFileName();	        
+	        String url = "https://fcavizir.lirmm.fr/#data=http://localhost:"
+	        	    + fcavizirPort + "/" + txtFile.getFileName();	        
+	        java.awt.Desktop.getDesktop().browse(new java.net.URI(url_local));
+	    } catch (Exception e) {
+	        showAlert("FCAvizIR", "Impossible d'ouvrir FCAvizIR : " + e.getMessage());
+	    }
+	}	
 	private String getSeparatorFromCurrentPanel() {
 		if (currentCommandController instanceof LatticeAocController c)
 			return c.getSeparator();
@@ -493,61 +524,36 @@ public class MainController implements Initializable {
 			switch (desc.getFamily()) {
 			case LATTICE_AOC -> {
 				LatticeAocController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
-					lastInputFile = path;
-					propagateInputFile(path); // ← rafraîchir tous les panneaux
-					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
-					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
-					refreshRecentMenus(); // ← rafraîchir les menus
-				});
+				ctrl.configure(desc, this::executeCommand, this::openInEditor,
+				            onInputFileChanged()); 				
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case RULE_BASIS -> {
 				RuleBasisController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
-					lastInputFile = path;
-					propagateInputFile(path); // ← rafraîchir tous les panneaux
-					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
-					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
-					refreshRecentMenus(); // ← rafraîchir les menus
-				});
+				ctrl.configure(desc, this::executeCommand, this::openInEditor,
+			            onInputFileChanged()); 				
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case REDUCE_CLARIFY -> {
 				ReduceClarifyController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
-					lastInputFile = path;
-					propagateInputFile(path); // ← rafraîchir tous les panneaux
-					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
-					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
-					refreshRecentMenus(); // ← rafraîchir les menus
-				});
+				ctrl.configure(desc, this::executeCommand, this::openInEditor,
+			            onInputFileChanged()); 				
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case IRREDUCIBLE -> {
 				IrreducibleController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
-					lastInputFile = path;
-					propagateInputFile(path); // ← rafraîchir tous les panneaux
-					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
-					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
-					refreshRecentMenus(); // ← rafraîchir les menus
-				});
+				ctrl.configure(desc, this::executeCommand, this::openInEditor,
+			            onInputFileChanged()); 				
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case INSPECT -> {
 				InspectController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor, path -> {
-					lastInputFile = path;
-					propagateInputFile(path); // ← rafraîchir tous les panneaux
-					selectCommandTabFor(path); // ← sélectionner le bon onglet commande
-					AppPreferences.addRecentContext(path, null); // ← ajouter aux récents
-					refreshRecentMenus(); // ← rafraîchir les menus
-				});
+				ctrl.configure(desc, this::executeCommand, this::openInEditor,
+			            onInputFileChanged()); 				
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
@@ -569,7 +575,29 @@ public class MainController implements Initializable {
 			e.printStackTrace();
 		}
 	}
-
+	private Consumer<String> onInputFileChanged() {
+		return path -> {
+	        onNewInputContext(path);      
+	        if (contextEditorController != null
+	                && contextEditorController.confirmDiscardChanges()) {
+	            contextEditorController.openFile(Path.of(path));
+	            mainTabPane.getSelectionModel().select(contextEditorTab);
+	        }
+	        AppPreferences.addRecentContext(path, null);
+	        refreshRecentMenus();
+	        selectCommandTabFor(path);
+	        propagateInputFile(path);
+	    };	
+	    }
+	private void onNewInputContext(String path) {
+	    if (path == null || path.equals(lastInputFile)) return;
+	    lastInputFile      = path;
+	    lastGraphInputFile = "";
+	    lastRulesInputFile = "";
+	    clearGraph();
+	    if (rulesViewerController != null)
+	        rulesViewerController.clearRules();
+	}
 	private void setTabGraphic(Tab tab, Ikon icon, String text, String colorHex) {
 		FontIcon fi = new FontIcon(icon);
 		fi.setIconSize(14);
@@ -590,10 +618,18 @@ public class MainController implements Initializable {
 			Node panel = loader.load();
 			rcaCommandController = loader.getController();
 			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph,
-					this::openInRcaviz, path -> {
-						AppPreferences.addRecentFamily(path.toString());
-						refreshRecentMenus();
-					});
+					this::openInRcaviz, 
+					path -> {
+				        AppPreferences.addRecentFamily(path.toString());
+				        refreshRecentMenus();
+				        // Charger dans l'éditeur famille
+				        if (familyEditorController != null
+				                && familyEditorController.confirmDiscard()) {
+				            familyEditorController.openFile(path);
+				            mainTabPane.getSelectionModel().select(familyEditorTab);
+				        }
+				        selectCommandTabFor(path.toString());
+				    });			
 			if (rcaCommandContainer != null)
 				rcaCommandContainer.getChildren().setAll(panel);
 		} catch (Exception e) {
@@ -681,6 +717,7 @@ public class MainController implements Initializable {
 	}
 
 	private void openInEditor(Path filePath, String separator) {
+		onNewInputContext(filePath.toString());
 		if (contextEditorController != null) {
 			if (!contextEditorController.confirmDiscardChanges())
 				return;
@@ -750,9 +787,8 @@ public class MainController implements Initializable {
 	}
 
 	public void shutdown() {
-		// Arrêter le serveur
-		if (rcavizServer != null)
-			rcavizServer.stop(0);
+	    if (rcavizServer  != null) rcavizServer.stop(0);
+	    if (fcavizirServer != null) fcavizirServer.stop(0);
 		// Arrêter le timer overlay
 		if (overlayTimer != null)
 			overlayTimer.cancel(false);
@@ -765,85 +801,93 @@ public class MainController implements Initializable {
 	// ── Exécution des commandes ───────────────────────────────────────────────
 
 	private void executeCommand(CommandBuilder builder) {
-		if (!AppPreferences.isFca4jConfigured()) {
-			showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
-			return;
-		}
-		final var args = builder.build();
-		consoleArea.clear();
-		appendConsole("$ " + builder.toDisplayString());
-		mainTabPane.getSelectionModel().select(0);
-		clearGraph();
-		showOverlayDelayed();
+	    if (!AppPreferences.isFca4jConfigured()) {
+	        showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
+	        return;
+	    }
 
-		// Limiter l'affichage console pour les commandes à sortie volumineuse
-		final int MAX_CONSOLE_LINES = 500;
-		final int[] lineCount = { 0 };
-		final boolean[] truncated = { false };
-		final long startTime = System.currentTimeMillis();
-		final String commandName = args.get(0);
+	    final var    args        = builder.build();
+	    final String commandName = args.get(0);
+	    final String inputFile   = args.size() > 1 ? args.get(1) : "";
+	    final boolean isRules    = "RULEBASIS".equals(commandName) || "DBASIS".equals(commandName);
+	    final boolean isGraph    = !isRules
+                && !"BINARIZE".equals(commandName)
+                && !"FAMILY_IMPORT".equals(commandName);
 
-		runner.run(args, line -> Platform.runLater(() -> {
-			if (truncated[0])
-				return;
-			if (lineCount[0]++ < MAX_CONSOLE_LINES) {
-				appendConsole(line);
-			} else {
-				truncated[0] = true;
-				appendConsole("... [" + I18n.get("console.output.truncated") + "]");
-			}
-		})).thenAccept(result -> Platform.runLater(() -> {
-			hideOverlay();
-			long duration = System.currentTimeMillis() - startTime;
-			setLastCommandStatus(commandName, result.isSuccess(), duration);
-			if (result.isSuccess()) {
-				appendConsole("\n" + I18n.get("console.ok"));
-				if (args.size() > 1 && !"BINARIZE".equals(args.get(0)) && !"FAMILY_IMPORT".equals(args.get(0))) {
-					String sep = null;
-					int sIdx = args.indexOf("-s");
-					if (sIdx >= 0 && sIdx + 1 < args.size())
-						sep = args.get(sIdx + 1);
-					AppPreferences.addRecentContext(args.get(1), sep);
-					refreshRecentMenus();
-				}
-				tryRenderDot(builder);
-				tryOpenRules(builder);
-			} else {
-				appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
-			}
-		}));
-	    final String cmd = builder.getCommand();
-	    final boolean isRules = "RULEBASIS".equals(cmd) || "DBASIS".equals(cmd);
-
+	    // ── Console ───────────────────────────────────────────────────────────────
 	    consoleArea.clear();
 	    appendConsole("$ " + builder.toDisplayString());
 
-	    // Basculer sur le bon onglet viewer
+	    // ── Basculer sur le bon viewer + effacer seulement si nouvel input ────────
 	    if (isRules) {
+	        if (!inputFile.equals(lastRulesInputFile)) {
+	            rulesViewerController.clearRules();
+	        }
 	        rulesViewerController.clearConsole();
 	        rulesViewerController.appendConsole("$ " + builder.toDisplayString());
 	        mainTabPane.getSelectionModel().select(rulesViewerTab);
-	    } else {
+	    } else if (isGraph) {
+	        if (!inputFile.equals(lastGraphInputFile)) {
+	            clearGraph();
+	        }
 	        mainTabPane.getSelectionModel().select(conceptStructureTab);
-	        clearGraph();
 	    }
 
 	    showOverlayDelayed();
-	    // ...
+
+	    // ── Limiter l'affichage console pour les commandes à sortie volumineuse ───
+	    final int     MAX_CONSOLE_LINES = 500;
+	    final int[]   lineCount         = { 0 };
+	    final boolean[] truncated       = { false };
+	    final long    startTime         = System.currentTimeMillis();
 
 	    runner.run(args, line -> Platform.runLater(() -> {
-	        appendConsole(line); // console graphe toujours alimentée
-	        if (isRules) rulesViewerController.appendConsole(line); // ← aussi dans rules
+	        // Console graphe — toujours alimentée
+	        if (!truncated[0]) {
+	            if (lineCount[0]++ < MAX_CONSOLE_LINES) {
+	                appendConsole(line);
+	            } else {
+	                truncated[0] = true;
+	                appendConsole("... [" + I18n.get("console.output.truncated") + "]");
+	            }
+	        }
+	        // Console rules — aussi alimentée si commande rules
+	        if (isRules) rulesViewerController.appendConsole(line);
+
 	    })).thenAccept(result -> Platform.runLater(() -> {
 	        hideOverlay();
-	        // ...
+	        long duration = System.currentTimeMillis() - startTime;
+	        setLastCommandStatus(commandName, result.isSuccess(), duration);
+
 	        if (result.isSuccess()) {
-	            if (!isRules) tryRenderDot(builder);
-	            else          tryOpenRules(builder); // ← ouvrir le fichier rules
+	            appendConsole("\n" + I18n.get("console.ok"));
+
+	            // Mémoriser l'input qui a produit ce résultat
+	            if (isRules) {
+	                lastRulesInputFile = inputFile;
+	                tryOpenRules(builder);
+	            } else if(isGraph){
+	                lastGraphInputFile = inputFile;
+	                tryRenderDot(builder);
+	            }
+
+	            // Mettre à jour les récents
+	            if (args.size() > 1
+	                    && !"BINARIZE".equals(commandName)
+	                    && !"FAMILY_IMPORT".equals(commandName)) {
+	                String sep  = null;
+	                int    sIdx = args.indexOf("-s");
+	                if (sIdx >= 0 && sIdx + 1 < args.size())
+	                    sep = args.get(sIdx + 1);
+	                AppPreferences.addRecentContext(args.get(1), sep);
+	                refreshRecentMenus();
+	            }
+
+	        } else {
+	            appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
 	        }
 	    }));
 	}
-
 	private void clearGraph() {
 		renderer.clear();
 		btnSaveDot.setDisable(true);
@@ -854,7 +898,7 @@ public class MainController implements Initializable {
 		// Désactiver aussi la loupe si elle était active
 		if (renderer.isMagnifierActive())
 			renderer.toggleMagnifier();
-		dotFileLabel.setText(""); // ← ajouter
+		dotFileLabel.setText(""); 
 	}
 
 	private void executeRcaCommand(CommandBuilder builder) {
@@ -865,7 +909,6 @@ public class MainController implements Initializable {
 		final var args = builder.build();
 		consoleArea.clear();
 		appendConsole("$ " + builder.toDisplayString());
-		mainTabPane.getSelectionModel().select(0);
 		showOverlayDelayed();
 		final long startTime = System.currentTimeMillis();
 		final String commandName = args.get(0);
@@ -1046,6 +1089,7 @@ public class MainController implements Initializable {
 
 	@FXML
 	private void onNewContext() {
+		onNewInputContext("");
 		contextEditorController.onNewContext();
 		mainTabPane.getSelectionModel().select(2);
 	}

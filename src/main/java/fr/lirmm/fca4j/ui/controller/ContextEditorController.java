@@ -54,7 +54,10 @@ public class ContextEditorController implements Initializable {
 			this.objectName = new SimpleStringProperty(name);
 			this.cells = cells;
 		}
-
+		public ContextRow(String name, SimpleBooleanProperty[] cells) {
+		    this.objectName  = new SimpleStringProperty(name);
+		    this.cells = FXCollections.observableArrayList(cells);
+		}
 		String getName() {
 			return objectName.get();
 		}
@@ -201,108 +204,100 @@ public class ContextEditorController implements Initializable {
 	// ── Construction de la TableView ──────────────────────────────────────────
 
 	private void rebuildTable() {
-		// Vider les deux tables
-		tableView.getColumns().clear();
-		tableView.getItems().clear();
-		objectsTable.getItems().clear();
-		rows.clear();
+	    tableView.getColumns().clear();
+	    tableView.getItems().clear();
+	    objectsTable.getItems().clear();
+	    rows.clear();
 
-		int nbObj = context.getObjectCount();
-		int nbAttr = context.getAttributeCount();
+	    int nbObj  = context.getObjectCount();
+	    int nbAttr = context.getAttributeCount();
 
-		// ── Colonne figée "Objet" dans objectsTable ───────────────────────────
-		frozenObjCol.setText(I18n.get("editor.col.objects"));
-		frozenObjCol.setCellValueFactory(data -> data.getValue().nameProperty());
-		frozenObjCol.setCellFactory(col -> new TableCell<>() {
-			@Override
-			protected void updateItem(String item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty || item == null) {
-					setText(null);
-					setGraphic(null);
-					return;
-				}
-				Label lbl = new Label(item);
-				lbl.setMaxWidth(Double.MAX_VALUE);
-				lbl.setOnMouseClicked(e -> {
-					if (e.getClickCount() == 2) {
-						ContextRow row = objectsTable.getItems().get(getIndex());
-						promptRenameObjectRow(row);
-					}
-				});
-				setGraphic(lbl);
-				setText(null);
-			}
-		});
+	    // ── Colonne figée inchangée ───────────────────────────────────────────
+	    frozenObjCol.setText(I18n.get("editor.col.objects"));
+	    frozenObjCol.setCellValueFactory(data -> data.getValue().nameProperty());
+	    frozenObjCol.setCellFactory(col -> new TableCell<>() {
+	        @Override
+	        protected void updateItem(String item, boolean empty) {
+	            super.updateItem(item, empty);
+	            if (empty || item == null) { setText(null); setGraphic(null); return; }
+	            Label lbl = new Label(item);
+	            lbl.setMaxWidth(Double.MAX_VALUE);
+	            lbl.setOnMouseClicked(e -> {
+	                if (e.getClickCount() == 2) {
+	                    ContextRow row = objectsTable.getItems().get(getIndex());
+	                    promptRenameObjectRow(row);
+	                }
+	            });
+	            setGraphic(lbl);
+	            setText(null);
+	        }
+	    });
 
-		// ── Colonnes attributs dans tableView ─────────────────────────────────
-		for (int a = 0; a < nbAttr; a++) {
-			final int attrIdx = a;
-			TableColumn<ContextRow, Boolean> col = new TableColumn<>();
+	    // ── Colonnes attributs ────────────────────────────────────────────────
+	    List<TableColumn<ContextRow, Boolean>> cols = new ArrayList<>(nbAttr);
+	    for (int a = 0; a < nbAttr; a++) {
+	        final int attrIdx = a;
+	        TableColumn<ContextRow, Boolean> col = new TableColumn<>();
+	        double prefWidth = Math.max(50.0, Math.min(160.0, context.getAttributeName(a).length() * 8.0 + 16));
+	        col.setPrefWidth(prefWidth);
+	        col.setMinWidth(50.0);
+	        col.setMaxWidth(160.0);
+	        col.setEditable(true);
 
-			double prefWidth = Math.max(50.0, Math.min(160.0, context.getAttributeName(a).length() * 8.0 + 16));
-			col.setPrefWidth(prefWidth);
-			col.setMinWidth(50.0);
-			col.setMaxWidth(160.0);
-			col.setEditable(true);
-			col.setResizable(true);
+	        String attrName = context.getAttributeName(a);
+	        Label header = new Label(attrName);
+	        header.setMaxWidth(Double.MAX_VALUE);
+	        if (attrName.length() > 15)
+	            header.setTooltip(new Tooltip(attrName));
 
-			String attrName = context.getAttributeName(a);
-			Label header = new Label(attrName);
-			header.setMaxWidth(Double.MAX_VALUE);
-			if (attrName.length() > 15)
-				header.setTooltip(new Tooltip(attrName));
+	        MenuItem renameItem = new MenuItem(I18n.get("editor.menu.rename.attr"));
+	        MenuItem deleteItem  = new MenuItem(I18n.get("editor.menu.delete.attr"));
+	        renameItem.setOnAction(e -> promptRenameAttribute(attrIdx));
+	        deleteItem.setOnAction(e -> deleteAttribute(attrIdx));
+	        ContextMenu ctxMenu = new ContextMenu(renameItem, deleteItem);
+	        header.setOnMouseClicked(e -> {
+	            if (e.getClickCount() == 2)
+	                promptRenameAttribute(attrIdx);
+	            else if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY)
+	                ctxMenu.show(header, e.getScreenX(), e.getScreenY());
+	        });
+	        col.setGraphic(header);
+	        col.setCellValueFactory(data -> data.getValue().getCells().get(attrIdx));
+	        col.setCellFactory(CheckBoxTableCell.forTableColumn(col));
+	        cols.add(col);
+	    }
+	    // Ajouter toutes les colonnes en une seule opération
+	    tableView.getColumns().addAll(cols);
 
-			MenuItem renameItem = new MenuItem(I18n.get("editor.menu.rename.attr"));
-			MenuItem deleteItem = new MenuItem(I18n.get("editor.menu.delete.attr"));
-			renameItem.setOnAction(e -> promptRenameAttribute(attrIdx));
-			deleteItem.setOnAction(e -> deleteAttribute(attrIdx));
-			ContextMenu ctxMenu = new ContextMenu(renameItem, deleteItem);
+	    // ── Construction des lignes ───────────────────────────────────────────
+	    // Pré-allouer la liste finale — évite les réallocations
+	    List<ContextRow> items = new ArrayList<>(nbObj);
+	    for (int o = 0; o < nbObj; o++) {
+	        final int objIdx = o;
+	        // Tableau simple plutôt que ObservableList — plus léger
+	        SimpleBooleanProperty[] cells = new SimpleBooleanProperty[nbAttr];
+	        for (int a = 0; a < nbAttr; a++) {
+	            final int ai = a;
+	            SimpleBooleanProperty prop = new SimpleBooleanProperty(context.get(o, a));
+	            // Listener O(1) : on capture objIdx et ai directement
+	            prop.addListener((obs, oldVal, newVal) -> {
+	                context.set(objIdx, ai, newVal);
+	                markModified();
+	            });
+	            cells[a] = prop;
+	        }
+	        ContextRow cr = new ContextRow(context.getObjectName(o), cells);
+	        rows.add(cr);
+	        items.add(cr);
+	    }
 
-			header.setOnMouseClicked(e -> {
-				if (e.getClickCount() == 2) {
-					promptRenameAttribute(attrIdx);
-				} else if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
-					ctxMenu.show(header, e.getScreenX(), e.getScreenY());
-				}
-			});
-			col.setGraphic(header);
+	    // Convertir en ObservableList une seule fois au moment du setItems
+	    ObservableList<ContextRow> obsItems = FXCollections.observableList(items);
+	    tableView.setItems(obsItems);
+	    objectsTable.setItems(obsItems);
 
-			col.setCellValueFactory(data -> data.getValue().getCells().get(attrIdx));
-			col.setCellFactory(CheckBoxTableCell.forTableColumn(col));
-
-			tableView.getColumns().add(col);
-		}
-
-		// ── Construction des lignes ───────────────────────────────────────────
-		ObservableList<ContextRow> items = FXCollections.observableArrayList();
-		for (int o = 0; o < nbObj; o++) {
-			ObservableList<SimpleBooleanProperty> cells = FXCollections.observableArrayList();
-			for (int a = 0; a < nbAttr; a++) {
-				final int ai = a;
-				SimpleBooleanProperty prop = new SimpleBooleanProperty(context.get(o, a));
-				prop.addListener((obs, oldVal, newVal) -> {
-					int realObj = context.getObjectIndex(rows.stream().filter(r -> r.getCells().get(ai) == prop)
-							.findFirst().map(ContextRow::getName).orElse(""));
-					if (realObj >= 0)
-						context.set(realObj, ai, newVal);
-					markModified();
-				});
-				cells.add(prop);
-			}
-			ContextRow cr = new ContextRow(context.getObjectName(o), cells);
-			rows.add(cr);
-			items.add(cr);
-		}
-
-		// Les deux tables partagent la même liste d'items
-		tableView.setItems(items);
-		objectsTable.setItems(items);
-
-		// Synchroniser les scrollbars verticaux après rendu
-		Platform.runLater(this::syncScrollBars);
+	    Platform.runLater(this::syncScrollBars);
 	}
-
 	// ── Synchronisation du scroll vertical entre les deux tables ─────────────
 
 	private void syncScrollBars() {

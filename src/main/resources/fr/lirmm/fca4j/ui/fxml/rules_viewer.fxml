@@ -18,6 +18,8 @@
                    style="-fx-font-size: 12px;"/>
         <ComboBox fx:id="sortCombo" prefWidth="130"/>
         <Button fx:id="btnCopy" styleClass="icon-btn" onAction="#onCopy"/>
+		<Separator orientation="VERTICAL"/>
+		<Button fx:id="btnFcavizir" onAction="#onOpenInFcavizir" disable="true" />
     </ToolBar>
 
     <!-- ── Liste des règles ── -->

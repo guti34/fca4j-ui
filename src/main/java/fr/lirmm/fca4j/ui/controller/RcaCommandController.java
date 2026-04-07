@@ -1,25 +1,36 @@
 package fr.lirmm.fca4j.ui.controller;
 
-import fr.lirmm.fca4j.ui.model.CommandBuilder;
-import fr.lirmm.fca4j.ui.util.AppPreferences;
-import fr.lirmm.fca4j.ui.util.I18n;
-import fr.lirmm.fca4j.ui.util.Utilities;
-
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
-
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
-
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
+import org.kordamp.ikonli.material2.Material2MZ;
+
+import fr.lirmm.fca4j.ui.model.CommandBuilder;
+import fr.lirmm.fca4j.ui.util.AppPreferences;
+import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.Tooltip;
+import javafx.scene.paint.Color;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 
 public class RcaCommandController implements Initializable {
 	private static final String P = "RCA.";
@@ -32,6 +43,7 @@ public class RcaCommandController implements Initializable {
     @FXML private TitledPane datalogPane;
     @FXML private TitledPane advancedPane;
     @FXML private TitledPane resultsPane;
+    @FXML private TitledPane rcavizPane;
     @FXML private Button     editFamilyButton;
 
     // Entrée
@@ -77,6 +89,7 @@ public class RcaCommandController implements Initializable {
 
     // Résultats
     @FXML private Label rcavizFileLabel;
+    @FXML private Button           btnRcaviz; 
     @FXML private Label            resultsFolderLabel;
     @FXML private ListView<String> dotFilesList;
 
@@ -151,14 +164,23 @@ public class RcaCommandController implements Initializable {
         });
 
         icebergSpinner.valueProperty().addListener((obs, old, val) ->
-            updateAlgoTitle()); // ← ajouter
+            updateAlgoTitle()); 
 
         // Appel initial pour afficher la valeur au chargement
         Platform.runLater(this::updateAlgoTitle);        
         
         Utilities.bindPathTooltip(familyFileField);
         Utilities.bindPathTooltip(outputFolderField);
-    }
+     // Bouton RCAViz — icône + texte
+        FontIcon iconRcaviz = new FontIcon(Material2MZ.OPEN_IN_BROWSER);
+        iconRcaviz.setIconSize(16);
+        iconRcaviz.setIconColor(Color.WHITE);
+        btnRcaviz.setGraphic(iconRcaviz);
+        btnRcaviz.setText(I18n.get("rca.btn.rcaviz"));
+        btnRcaviz.setStyle(
+            "-fx-background-color: #0047B3; -fx-text-fill: white;" +
+            "-fx-font-weight: bold; -fx-cursor: hand;" +
+            "-fx-padding: 6 16; -fx-background-radius: 4;");    }
 
     private void updateNativeOnly() {
         boolean any = renameRA.isSelected() || renameRAI.isSelected() || renameRI.isSelected();
@@ -185,6 +207,7 @@ public class RcaCommandController implements Initializable {
         datalogPane.setText(I18n.get("rca.section.datalog"));
         advancedPane.setText(I18n.get("section.advanced"));
         resultsPane.setText(I18n.get("rca.section.results"));
+        rcavizPane.setText(I18n.get("rca.section.rcaviz"));
 
         FontIcon editIcon = new FontIcon(Material2AL.EDIT);
         editIcon.setIconSize(14);
@@ -373,15 +396,18 @@ public class RcaCommandController implements Initializable {
                 resultsPane.setExpanded(true);
                 resultsFolderLabel.setText(outputFolder.toString());
             }
-            // Mettre à jour le label JSON si un fichier existe
-            java.nio.file.Files.list(outputFolder)
+            // ── Fichier JSON pour RCAViz ──────────────────────────────────────
+            java.util.Optional<Path> jsonFile = java.nio.file.Files.list(outputFolder)
                 .filter(p -> p.toString().endsWith(".json"))
-                .sorted()
-                .reduce((a, b) -> b)
-                .ifPresentOrElse(
-                    p -> rcavizFileLabel.setText(p.getFileName().toString()),
-                    () -> rcavizFileLabel.setText(""));
-        } catch (Exception e) {
+                .findFirst();
+            if (jsonFile.isPresent()) {
+                rcavizFileLabel.setText(jsonFile.get().getFileName().toString());
+                rcavizPane.setExpanded(true);
+            } else {
+                rcavizFileLabel.setText("");
+                rcavizPane.setExpanded(false);
+            }
+         } catch (Exception e) {
             resultsFolderLabel.setText(I18n.get("rca.results.error", e.getMessage()));
         }
     }

@@ -20,10 +20,12 @@ import org.kordamp.ikonli.material2.Material2MZ;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -43,11 +45,13 @@ public class RulesViewerController implements Initializable {
     @FXML private VBox       rulesContainer;
     @FXML private Label      statusLabel;
     @FXML private TextArea consoleArea;
-
+    @FXML private Button btnFcavizir;
     // ── État ──────────────────────────────────────────────────────────────────
     private final List<Rule> allRules     = new ArrayList<>();
     private final List<Rule> filteredRules = new ArrayList<>();
     private Path currentFile;
+
+    private Consumer<Path> openInFcavizir;
 
     // ── Modèle ────────────────────────────────────────────────────────────────
 
@@ -73,7 +77,15 @@ public class RulesViewerController implements Initializable {
         // Toolbar
         setIcon(btnOpen, new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("editor.tooltip.open"));
         setIcon(btnCopy, new FontIcon(Material2AL.CONTENT_COPY), I18n.get("rules.tooltip.copy"));
-
+        FontIcon iconFcavizir = new FontIcon(Material2MZ.OPEN_IN_BROWSER);
+        iconFcavizir.setIconSize(16);
+        iconFcavizir.setIconColor(Color.WHITE);
+        btnFcavizir.setGraphic(iconFcavizir);
+        btnFcavizir.setText(I18n.get("rules.btn.fcavizir"));
+        btnFcavizir.setStyle(
+            "-fx-background-color: #0047B3; -fx-text-fill: white;" +
+            "-fx-font-weight: bold; -fx-cursor: hand;" +
+            "-fx-padding: 6 16; -fx-background-radius: 4;");
         // Tri
         sortCombo.getItems().addAll(
             I18n.get("rules.sort.original"),
@@ -116,7 +128,27 @@ public class RulesViewerController implements Initializable {
             loadFile(f.toPath());
         }
     }
-    public void clearConsole() {
+    @FXML
+    private void onOpenInFcavizir() {
+        if (allRules.isEmpty()) return;
+        try {
+            // Écrire le fichier converti dans un temp
+            String content = convertToFcavizirFormat();
+            Path tmp = Files.createTempFile("fcavizir-", ".txt");
+            tmp.toFile().deleteOnExit();
+            byte[] bytes = convertToFcavizirFormat()
+            	    .getBytes(StandardCharsets.UTF_8);
+            	Files.write(tmp, bytes);            // Ouvrir via le même mécanisme que RCAViz
+                
+           if (openInFcavizir != null) openInFcavizir.accept(tmp);
+        } catch (Exception e) {
+            statusLabel.setText("Erreur export FCAvizIR : " + e.getMessage());
+        }
+    }
+
+    public void setOpenInFcavizir(Consumer<Path> callback) {
+        this.openInFcavizir = callback;
+    }    public void clearConsole() {
         consoleArea.clear();
     }
 
@@ -130,8 +162,10 @@ public class RulesViewerController implements Initializable {
         fileNameLabel.setText(path.getFileName().toString());
         CompletableFuture.supplyAsync(() -> {
             try {
-                String content = Files.readString(path);
-                String name = path.getFileName().toString().toLowerCase();
+            	String content = Files.readString(path, java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("\r\n", "\n")
+                        .replace("\r", "\n");
+            	String name = path.getFileName().toString().toLowerCase();
                 if (name.endsWith(".json"))  return parseJson(content);
                 if (name.endsWith(".xml"))   return parseXml(content);
                 if (name.endsWith(".dlgp"))  return parseDlgp(content);
@@ -327,8 +361,15 @@ public class RulesViewerController implements Initializable {
         for (int i = 0; i < filteredRules.size(); i++) {
             rulesContainer.getChildren().add(buildRuleRow(filteredRules.get(i), i));
         }
+        btnFcavizir.setDisable(false);
     }
-
+    public void clearRules() {
+        allRules.clear();
+        filteredRules.clear();
+        rulesContainer.getChildren().clear();
+        fileNameLabel.setText("");
+        btnFcavizir.setDisable(true);
+    }
     private HBox buildRuleRow(Rule rule, int index) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -406,4 +447,50 @@ public class RulesViewerController implements Initializable {
                 filteredRules.size(), allRules.size()));
         }
     }
-}
+    public String convertToFcavizirFormat() {
+        if (allRules.isEmpty()) return "";
+
+        // Extraire les noms de relations uniques (partie avant '(')
+        Set<String> relations = new LinkedHashSet<>();
+        for (Rule rule : allRules) {
+            for (String attr : rule.premises())
+                if (attr.contains("("))
+                    relations.add(attr.substring(0, attr.indexOf('(')));
+            for (String attr : rule.conclusions())
+                if (attr.contains("("))
+                    relations.add(attr.substring(0, attr.indexOf('(')));
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        // Ligne source
+        if (currentFile != null)
+            sb.append("Rules calculated from file: ")
+              .append(currentFile.toAbsolutePath()).append("\n");
+        sb.append("\n");
+
+        // Section relation_description
+        sb.append("#relation_description#\n");
+        for (String rel : relations)
+            sb.append("  ").append(rel).append(":\n");
+        sb.append("\n");
+
+        // Section métriques
+        sb.append("#metrics_ordered#\n");
+        sb.append("  support\n");
+        // sb.append("  confidence\n"); // pour le futur
+        sb.append("\n");
+
+        sb.append("#rules#\n");
+
+        for (Rule rule : allRules) {
+            String support = String.format("%03d", rule.support());
+            sb.append("<").append(support).append("> ")
+              .append(String.join(",", rule.premises()))
+              .append(" => ")
+              .append(String.join(",", rule.conclusions()))
+              .append("\n");
+        }
+        // Normaliser les fins de ligne en LF (Unix) — requis par FCAvizIR
+        return sb.toString().replace("\r\n", "\n").replace("\r", "\n");
+    }    }

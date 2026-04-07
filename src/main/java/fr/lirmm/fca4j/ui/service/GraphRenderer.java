@@ -9,6 +9,8 @@ import fr.lirmm.fca4j.ui.util.AppPreferences;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -23,7 +25,8 @@ public class GraphRenderer {
 	private Path currentDotFile = null;
 	private volatile Process currentDotProcess = null;
 	private boolean magnifierActive = false;
-
+	private Consumer<String> onConsoleMessage;
+	
 	public GraphRenderer(WebEngine webEngine) {
 		this.webEngine = webEngine;
 	}
@@ -36,7 +39,14 @@ public class GraphRenderer {
 			currentDotProcess = null;
 		}
 	}
+	public void setOnConsoleMessage(Consumer<String> handler) {
+	    this.onConsoleMessage = handler;
+	}
 
+	private void log(String msg) {
+	    if (onConsoleMessage != null)
+	        Platform.runLater(() -> onConsoleMessage.accept(msg));
+	}
 	public boolean isRendering() {
 		return currentDotProcess != null && currentDotProcess.isAlive();
 	}
@@ -68,31 +78,56 @@ public class GraphRenderer {
 	}
 
 	public CompletableFuture<Void> render(Path dotFile) {
-		this.currentDotFile = dotFile;
-		return CompletableFuture.supplyAsync(() -> {
-			try {
-				Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
-				svgFile.toFile().deleteOnExit();
-
-				String dotExecutable = AppPreferences.getDotPath();
-				Process proc = new ProcessBuilder(dotExecutable, "-Tsvg", dotFile.toString(), "-o", svgFile.toString())
-						.start();
-				this.currentDotProcess = proc;
-				int exit = proc.waitFor();
-				this.currentDotProcess = null;
-				if (exit != 0) {
-					throw new RuntimeException("GraphViz a retourné le code " + exit
-							+ ". Vérifiez le chemin de `dot` dans les préférences.");
-				}
-
-				return Files.readString(svgFile);
-
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}).thenAccept(svgContent -> Platform.runLater(() -> loadSvgInWebEngine(svgContent)));
+	    this.currentDotFile = dotFile;
+	    return renderWithOptions(dotFile, false)
+	        .exceptionally(ex -> {
+	            String msg = ex.getCause() != null
+	                ? ex.getCause().getMessage() : ex.getMessage();
+	            if (msg != null && msg.contains("code 3")) {
+	                log("[GraphViz] Graphe complexe — nouvel essai en mode mémoire réduite...");
+	                renderWithOptions(dotFile, true)
+	                    .exceptionally(ex2 -> {
+	                        log("[GraphViz] " + ex2.getCause().getMessage());
+	                        return null;
+	                    });
+	            } else {
+	                log("[GraphViz] " + msg);
+	            }
+	            return null;
+	        });
 	}
+	private CompletableFuture<Void> renderWithOptions(Path dotFile, boolean largeMode) {
+	    return CompletableFuture.supplyAsync(() -> {
+	        try {
+	            Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
+	            svgFile.toFile().deleteOnExit();
 
+	            List<String> cmd = new ArrayList<>();
+	            cmd.add(AppPreferences.getDotPath());
+	            cmd.add("-Tsvg");
+	            if (largeMode) {
+	                cmd.add("-Gnslimit=2");
+	                cmd.add("-Gnslimit1=2");
+	                cmd.add("-Gmaxiter=500");
+	            }
+	            cmd.add(dotFile.toString());
+	            cmd.add("-o");
+	            cmd.add(svgFile.toString());
+
+	            Process proc = new ProcessBuilder(cmd).start();
+	            this.currentDotProcess = proc;
+	            int exit = proc.waitFor();
+	            this.currentDotProcess = null;
+	            if (exit != 0) throw new RuntimeException(
+	                "GraphViz a retourné le code " + exit
+	                + (exit == 3 ? " — mémoire insuffisante." 
+	                             : ". Vérifiez le chemin de `dot` dans les préférences."));
+	            return Files.readString(svgFile);
+	        } catch (Exception e) {
+	            throw new RuntimeException(e);
+	        }
+	    }).thenAccept(svg -> Platform.runLater(() -> loadSvgInWebEngine(svg)));
+	}
 	private void loadSvgInWebEngine(String svgContent) {
 		String html = buildHtml(svgContent);
 

@@ -127,26 +127,23 @@
         </VBox>
     </TitledPane>
 
-	<!-- Résultats -->
+	<!-- Résultats RCAViz -->
+	<TitledPane fx:id="rcavizPane" collapsible="true" expanded="false">
+	    <VBox spacing="6" style="-fx-padding: 8;">
+	        <Label fx:id="rcavizFileLabel"
+	               style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-font-style: italic;"
+	               wrapText="true"/>
+	        <Button fx:id="btnRcaviz" onAction="#onOpenInRcaviz"/>
+	    </VBox>
+	</TitledPane>
+	<!-- Résultats DOT -->
 	<TitledPane fx:id="resultsPane" collapsible="true" expanded="false">
 	    <VBox spacing="6" style="-fx-padding: 8;">
 	        <Label fx:id="resultsFolderLabel"
 	               style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
 	        <ListView fx:id="dotFilesList" prefHeight="130"/>
-	
-	        <!-- Bouton RCAViz avec nom de fichier -->
-	        <VBox spacing="3" alignment="CENTER_LEFT">
-	            <Label fx:id="rcavizFileLabel"
-	                   style="-fx-text-fill: gray; -fx-font-size: 10px; -fx-font-style: italic;"
-	                   wrapText="true"/>
-	            <Button onAction="#onOpenInRcaviz"
-	                    text="▶  Open in RCAViz"
-	                    style="-fx-background-color: #0047B3; -fx-text-fill: white;
-	                           -fx-font-weight: bold; -fx-cursor: hand;
-	                           -fx-padding: 6 16; -fx-background-radius: 4;"/>
-	        </VBox>
-	
 	    </VBox>
 	</TitledPane>
+	
 </VBox>
 </ScrollPane>
