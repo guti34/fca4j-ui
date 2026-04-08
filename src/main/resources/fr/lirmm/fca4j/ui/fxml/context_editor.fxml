@@ -9,7 +9,6 @@
     <!-- ── Toolbar ── -->
     <ToolBar styleClass="editor-toolbar">
 
-        <!-- Groupe Fichier -->
         <Button fx:id="btnNew"    styleClass="icon-btn" onAction="#onNewContext"/>
         <Button fx:id="btnOpen"   styleClass="icon-btn" onAction="#onOpen"/>
         <Button fx:id="btnSave"   styleClass="icon-btn" onAction="#onSave"/>
@@ -17,48 +16,62 @@
 
         <Separator orientation="VERTICAL"/>
 
-        <!-- Groupe Structure -->
         <Button fx:id="btnAddObject" styleClass="icon-btn" onAction="#onAddObject"/>
         <Button fx:id="btnDelObject" styleClass="icon-btn" onAction="#onRemoveObject"/>
         <Button fx:id="btnAddAttr"   styleClass="icon-btn" onAction="#onAddAttribute"/>
         <Button fx:id="btnDelAttr"   styleClass="icon-btn" onAction="#onRemoveAttribute"/>
+        <Button fx:id="btnRename"    styleClass="icon-btn" onAction="#onRename"/>
 
         <Separator orientation="VERTICAL"/>
 
-        <!-- Renommer le contexte -->
-		<HBox spacing="4" alignment="CENTER_LEFT">
-		    <Label fx:id="fileNameLabel"
-		           style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
-		    <Label text=" — " style="-fx-text-fill: #0047B3;"
-		           fx:id="separatorLabel" visible="false" managed="false"/>
-		    <Label fx:id="contextNameLabel"
-		           style="-fx-font-weight: bold; -fx-text-fill: #0047B3;"/>
-    		<Button fx:id="btnRename" styleClass="icon-btn" onAction="#onRenameContext"/>
-		</HBox>
-		<Label fx:id="statsLabel"
-       style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>        
-       <Separator/>
+        <HBox spacing="4" alignment="CENTER_LEFT">
+            <Label fx:id="fileNameLabel"
+                   style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
+            <Label fx:id="separatorLabel" text=" — "
+                   style="-fx-text-fill: #0047B3;" visible="false" managed="false"/>
+            <Label fx:id="contextNameLabel"
+                   style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-cursor: hand;"/>
+        </HBox>
+        <Label fx:id="statsLabel"
+               style="-fx-text-fill: gray; -fx-font-size: 11px; -fx-padding: 0 0 0 12;"/>
         <Pane HBox.hgrow="ALWAYS"/>
 
     </ToolBar>
 
-    <!-- ── Tableau : colonne objets figée + colonnes attributs scrollables ── -->
+    <!-- ── Corps : double Canvas + scrollbars ── -->
     <HBox VBox.vgrow="ALWAYS" spacing="0">
 
-        <!-- Colonne objets figée (largeur fixe, pas de scroll horizontal) -->
-        <TableView fx:id="objectsTable"
-                   minWidth="155" maxWidth="155" prefWidth="155"
-                   style="-fx-border-width: 0 1 0 0; -fx-border-color: #cccccc;">
-            <columns>
-                <TableColumn fx:id="frozenObjCol" minWidth="154" maxWidth="154" prefWidth="154"/>
-            </columns>
-            <placeholder><Label text=""/></placeholder>
-        </TableView>
+        <!--
+            Canvas gauche — noms des objets.
+            Même HEADER_H que le canvas principal => alignement pixel-perfect.
+            Largeur fixe, hauteur suit le panneau.
+        -->
+        <Pane fx:id="objCanvasPane"
+              minWidth="155" maxWidth="155" prefWidth="155"
+              style="-fx-background-color: white;"/>
 
-        <!-- Colonnes attributs scrollables -->
-        <TableView fx:id="tableView" HBox.hgrow="ALWAYS">
-            <placeholder><Label text=""/></placeholder>
-        </TableView>
+        <!--
+            Canvas principal + scrollbars manuelles.
+            BorderPane pour positionner les barres à droite et en bas.
+        -->
+        <BorderPane HBox.hgrow="ALWAYS">
+            <center>
+                <Pane fx:id="mainCanvasPane"
+                      style="-fx-background-color: white;"/>
+            </center>
+            <right>
+                <ScrollBar fx:id="vScrollBar"
+                           orientation="VERTICAL"
+                           unitIncrement="24"
+                           blockIncrement="120"/>
+            </right>
+            <bottom>
+                <ScrollBar fx:id="hScrollBar"
+                           orientation="HORIZONTAL"
+                           unitIncrement="28"
+                           blockIncrement="140"/>
+            </bottom>
+        </BorderPane>
 
     </HBox>
 

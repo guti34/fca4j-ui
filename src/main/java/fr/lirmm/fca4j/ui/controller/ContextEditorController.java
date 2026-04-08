@@ -1,796 +1,773 @@
 package fr.lirmm.fca4j.ui.controller;
 
-import fr.lirmm.fca4j.core.BinaryContext;
-import fr.lirmm.fca4j.iset.ISet;
 import fr.lirmm.fca4j.core.IBinaryContext;
-import fr.lirmm.fca4j.iset.std.BitSetFactory;
 import fr.lirmm.fca4j.ui.service.ContextIOService;
 import fr.lirmm.fca4j.ui.service.ContextIOService.ContextFormat;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.geometry.VPos;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
-import javafx.application.Platform;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.geometry.Orientation;
-import javafx.scene.Node;
-import javafx.scene.control.*;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.ScrollBar;
-import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
- * Contrôleur de l'éditeur de contexte formel binaire. La colonne "Objets" est
- * figée dans une TableView séparée à gauche. La TableView droite contient les
- * colonnes attributs et scroll horizontalement.
+ * Éditeur de contexte formel binaire — double Canvas virtuel.
+ *
+ * Deux Canvas côte à côte partagent le même offY :
+ *  - objCanvas  : noms des objets (colonne gauche figée)
+ *  - mainCanvas : matrice des attributs (zone droite scrollable)
+ *
+ * Alignement pixel-perfect garanti : les deux Canvas démarrent
+ * leurs lignes exactement à Y = HEADER_H.
+ * Aucune texture GPU de la taille totale du contexte.
  */
 public class ContextEditorController implements Initializable {
 
-	/**
-	 * Représente une ligne de la TableView.
-	 */
-	private static class ContextRow {
-		private final SimpleStringProperty objectName;
-		private final ObservableList<SimpleBooleanProperty> cells;
-
-		ContextRow(String name, ObservableList<SimpleBooleanProperty> cells) {
-			this.objectName = new SimpleStringProperty(name);
-			this.cells = cells;
-		}
-		public ContextRow(String name, SimpleBooleanProperty[] cells) {
-		    this.objectName  = new SimpleStringProperty(name);
-		    this.cells = FXCollections.observableArrayList(cells);
-		}
-		String getName() {
-			return objectName.get();
-		}
-
-		void setName(String n) {
-			objectName.set(n);
-		}
-
-		SimpleStringProperty nameProperty() {
-			return objectName;
-		}
-
-		ObservableList<SimpleBooleanProperty> getCells() {
-			return cells;
-		}
-	}
-
-	// ── Boutons toolbar ───────────────────────────────────────────────────────
-	@FXML
-	private Button btnNew;
-	@FXML
-	private Button btnOpen;
-	@FXML
-	private Button btnSave;
-	@FXML
-	private Button btnSaveAs;
-	@FXML
-	private Button btnAddObject;
-	@FXML
-	private Button btnAddAttr;
-	@FXML
-	private Button btnDelObject;
-	@FXML
-	private Button btnDelAttr;
-	@FXML
-	private Button btnRename;
-
-	// ── Widgets FXML ──────────────────────────────────────────────────────────
-	@FXML
-	private Label contextNameLabel;
-	@FXML
-	private Label statsLabel;
-	@FXML
-	private TableView<ContextRow> objectsTable; // colonne figée
-	@FXML
-	private TableColumn<ContextRow, String> frozenObjCol;
-	@FXML
-	private TableView<ContextRow> tableView; // colonnes attributs
-	@FXML
-	private Label statusLabel;
-	@FXML private Label fileNameLabel;
-	@FXML private Label separatorLabel; 
-	// ── Stockage des lignes ───────────────────────────────────────────────────
-	private final List<ContextRow> rows = new ArrayList<>();
-
-	// ── Services ──────────────────────────────────────────────────────────────
-	private final ContextIOService ioService = new ContextIOService();
-
-	private Runnable onLoadStart;
-	private Runnable onLoadEnd;
-
-	// ── État ──────────────────────────────────────────────────────────────────
-	private IBinaryContext context;
-	private Path currentFile;
-	private boolean modified = false;
-	private boolean fromFamily = false;
-	private Consumer<IBinaryContext> onSaveCallback;
-
-	@Override
-	public void initialize(URL location, ResourceBundle resources) {
-		tableView.setEditable(true);
-		tableView.getSelectionModel().setCellSelectionEnabled(true);
-		tableView.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-		tableView.setPlaceholder(new Label(I18n.get("editor.empty")));
-
-		// Table objets figée — non éditable, même sélection que tableView
-		objectsTable.setEditable(false);
-		objectsTable.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-		objectsTable.setPlaceholder(new Label(""));
-		// Masquer l'en-tête horizontal de objectsTable
-		objectsTable.widthProperty().addListener((obs, o, n) -> hideHorizontalScrollBar(objectsTable));
-
-		setupToolbar();
-		loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
-	}
-
-	// ── Toolbar ───────────────────────────────────────────────────────────────
-
-	private void setupToolbar() {
-		setIconAndTooltip(btnNew, new FontIcon(Material2AL.FIBER_NEW), I18n.get("editor.tooltip.new"));
-		setIconAndTooltip(btnOpen, new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("editor.tooltip.open"));
-		setIconAndTooltip(btnSave, new FontIcon(Material2MZ.SAVE), I18n.get("editor.tooltip.save"));
-		setIconAndTooltip(btnSaveAs, new FontIcon(Material2MZ.SAVE_ALT), I18n.get("editor.tooltip.saveas"));
-		setIconAndTooltip(btnAddObject, new FontIcon(Material2AL.ADD_BOX), I18n.get("editor.tooltip.add.object"));
-		setIconAndTooltip(btnDelObject, new FontIcon(Material2AL.CHECK_BOX_OUTLINE_BLANK),
-				I18n.get("editor.tooltip.del.object"));
-		setIconAndTooltip(btnAddAttr, new FontIcon(Material2AL.ADD_CIRCLE), I18n.get("editor.tooltip.add.attr"));
-		setIconAndTooltip(btnDelAttr, new FontIcon(Material2MZ.REMOVE_CIRCLE_OUTLINE),
-				I18n.get("editor.tooltip.del.attr"));
-		setIconAndTooltip(btnRename, new FontIcon(Material2AL.EDIT), I18n.get("editor.tooltip.rename"));
-		// Icône plus petite que les autres boutons toolbar
-//        	btnRename.getGraphic().setStyle("-fx-icon-size: 14px;");    
-	}
-
-	private void setIconAndTooltip(Button btn, FontIcon icon, String tooltipText) {
-		icon.setIconSize(20);
-		icon.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
-		btn.setGraphic(icon);
-		btn.setTooltip(new Tooltip(tooltipText));
-	}
-
-	// ── Chargement ────────────────────────────────────────────────────────────
-
-	public void setOnLoadCallbacks(Runnable onStart, Runnable onEnd) {
-		this.onLoadStart = onStart;
-		this.onLoadEnd = onEnd;
-	}
-
-	public void loadContext(IBinaryContext ctx) {
-		this.context = ctx;
-		this.modified = false;
-		if (onLoadStart != null)
-			onLoadStart.run();
-		java.util.concurrent.CompletableFuture.runAsync(() -> {
-			// rebuildTable doit se faire sur le thread JavaFX
-			Platform.runLater(() -> {
-				rebuildTable();
-				updateLabels();
-				updateSaveButton();
-				if (onLoadEnd != null)
-					onLoadEnd.run();
-			});
-		});
-	}
-
-	public void loadContextFromFamily(IBinaryContext ctx, Consumer<IBinaryContext> onSaveCallback) {
-		this.fromFamily = true;
-		this.currentFile = null;
-		this.onSaveCallback = onSaveCallback;
-		loadContext(ctx);
-		updateSaveButton();
-	}
-
-	// ── Construction de la TableView ──────────────────────────────────────────
-
-	private void rebuildTable() {
-	    tableView.getColumns().clear();
-	    tableView.getItems().clear();
-	    objectsTable.getItems().clear();
-	    rows.clear();
-
-	    int nbObj  = context.getObjectCount();
-	    int nbAttr = context.getAttributeCount();
-
-	    // ── Colonne figée inchangée ───────────────────────────────────────────
-	    frozenObjCol.setText(I18n.get("editor.col.objects"));
-	    frozenObjCol.setCellValueFactory(data -> data.getValue().nameProperty());
-	    frozenObjCol.setCellFactory(col -> new TableCell<>() {
-	        @Override
-	        protected void updateItem(String item, boolean empty) {
-	            super.updateItem(item, empty);
-	            if (empty || item == null) { setText(null); setGraphic(null); return; }
-	            Label lbl = new Label(item);
-	            lbl.setMaxWidth(Double.MAX_VALUE);
-	            lbl.setOnMouseClicked(e -> {
-	                if (e.getClickCount() == 2) {
-	                    ContextRow row = objectsTable.getItems().get(getIndex());
-	                    promptRenameObjectRow(row);
-	                }
-	            });
-	            setGraphic(lbl);
-	            setText(null);
-	        }
-	    });
-
-	    // ── Colonnes attributs ────────────────────────────────────────────────
-	    List<TableColumn<ContextRow, Boolean>> cols = new ArrayList<>(nbAttr);
-	    for (int a = 0; a < nbAttr; a++) {
-	        final int attrIdx = a;
-	        TableColumn<ContextRow, Boolean> col = new TableColumn<>();
-	        double prefWidth = Math.max(50.0, Math.min(160.0, context.getAttributeName(a).length() * 8.0 + 16));
-	        col.setPrefWidth(prefWidth);
-	        col.setMinWidth(50.0);
-	        col.setMaxWidth(160.0);
-	        col.setEditable(true);
-
-	        String attrName = context.getAttributeName(a);
-	        Label header = new Label(attrName);
-	        header.setMaxWidth(Double.MAX_VALUE);
-	        if (attrName.length() > 15)
-	            header.setTooltip(new Tooltip(attrName));
-
-	        MenuItem renameItem = new MenuItem(I18n.get("editor.menu.rename.attr"));
-	        MenuItem deleteItem  = new MenuItem(I18n.get("editor.menu.delete.attr"));
-	        renameItem.setOnAction(e -> promptRenameAttribute(attrIdx));
-	        deleteItem.setOnAction(e -> deleteAttribute(attrIdx));
-	        ContextMenu ctxMenu = new ContextMenu(renameItem, deleteItem);
-	        header.setOnMouseClicked(e -> {
-	            if (e.getClickCount() == 2)
-	                promptRenameAttribute(attrIdx);
-	            else if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY)
-	                ctxMenu.show(header, e.getScreenX(), e.getScreenY());
-	        });
-	        col.setGraphic(header);
-	        col.setCellValueFactory(data -> data.getValue().getCells().get(attrIdx));
-	        col.setCellFactory(CheckBoxTableCell.forTableColumn(col));
-	        cols.add(col);
-	    }
-	    // Ajouter toutes les colonnes en une seule opération
-	    tableView.getColumns().addAll(cols);
-
-	    // ── Construction des lignes ───────────────────────────────────────────
-	    // Pré-allouer la liste finale — évite les réallocations
-	    List<ContextRow> items = new ArrayList<>(nbObj);
-	    for (int o = 0; o < nbObj; o++) {
-	        final int objIdx = o;
-	        // Tableau simple plutôt que ObservableList — plus léger
-	        SimpleBooleanProperty[] cells = new SimpleBooleanProperty[nbAttr];
-	        for (int a = 0; a < nbAttr; a++) {
-	            final int ai = a;
-	            SimpleBooleanProperty prop = new SimpleBooleanProperty(context.get(o, a));
-	            // Listener O(1) : on capture objIdx et ai directement
-	            prop.addListener((obs, oldVal, newVal) -> {
-	                context.set(objIdx, ai, newVal);
-	                markModified();
-	            });
-	            cells[a] = prop;
-	        }
-	        ContextRow cr = new ContextRow(context.getObjectName(o), cells);
-	        rows.add(cr);
-	        items.add(cr);
-	    }
-
-	    // Convertir en ObservableList une seule fois au moment du setItems
-	    ObservableList<ContextRow> obsItems = FXCollections.observableList(items);
-	    tableView.setItems(obsItems);
-	    objectsTable.setItems(obsItems);
-
-	    Platform.runLater(this::syncScrollBars);
-	}
-	// ── Synchronisation du scroll vertical entre les deux tables ─────────────
-
-	private void syncScrollBars() {
-		ScrollBar leftScroll = getScrollBar(objectsTable, Orientation.VERTICAL);
-		ScrollBar rightScroll = getScrollBar(tableView, Orientation.VERTICAL);
-		if (leftScroll == null || rightScroll == null)
-			return;
-
-		// Liaison bidirectionnelle
-		leftScroll.valueProperty().bindBidirectional(rightScroll.valueProperty());
-
-		// Masquer la scrollbar de la table figée (inutile visuellement)
-		leftScroll.setVisible(false);
-		leftScroll.setPrefWidth(0);
-		leftScroll.setMaxWidth(0);
-
-		// Masquer aussi la scrollbar horizontale de la table figée
-		hideHorizontalScrollBar(objectsTable);
-	}
-
-	private void hideHorizontalScrollBar(TableView<?> table) {
-		ScrollBar hBar = getScrollBar(table, Orientation.HORIZONTAL);
-		if (hBar != null) {
-			hBar.setVisible(false);
-			hBar.setPrefHeight(0);
-			hBar.setMaxHeight(0);
-		}
-	}
-
-	private ScrollBar getScrollBar(TableView<?> table, Orientation orientation) {
-		for (Node node : table.lookupAll(".scroll-bar")) {
-			if (node instanceof ScrollBar sb && sb.getOrientation() == orientation)
-				return sb;
-		}
-		return null;
-	}
-
-	// ── Labels ────────────────────────────────────────────────────────────────
-
-	private void updateLabels() {
-	    // Nom du fichier
-	    if (currentFile != null) {
-	        fileNameLabel.setText(currentFile.getFileName().toString());
-	        separatorLabel.setVisible(true);
-	        separatorLabel.setManaged(true);
-	    } else {
-	        fileNameLabel.setText("");
-	        separatorLabel.setVisible(false);
-	        separatorLabel.setManaged(false);
-	    }
-
-	    // Nom du contexte
-	    String name = (context.getName() != null && !context.getName().isBlank())
-	        ? context.getName() : I18n.get("editor.new.context.name");
-	    contextNameLabel.setText(name + (modified ? " *" : ""));
-	    contextNameLabel.setStyle(
-	        "-fx-font-weight: bold; -fx-text-fill: #0047B3;");
-
-	    statsLabel.setText(I18n.get("editor.stats",
-	        context.getObjectCount(), context.getAttributeCount()));
-	    contextNameLabel.setOnMouseClicked(e -> {
-	        if (e.getClickCount() == 2) onRenameContext();
-	    });
-	    contextNameLabel.setStyle(
-	        "-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-cursor: hand;");
-	}
-	
-	private void markModified() {
-		if (!modified) {
-			modified = true;
-			Platform.runLater(this::updateLabels);
-		}
-	}
-
-	// ── Actions toolbar ───────────────────────────────────────────────────────
-
-	@FXML
-	public void onNewContext() {
-		if (!confirmDiscardChanges())
-			return;
-		fromFamily = false;
-		onSaveCallback = null;
-		String name = promptText(I18n.get("editor.dialog.new.title"), I18n.get("editor.dialog.new.prompt"),
-				I18n.get("editor.new.context.name"), true);
-		if (name == null)
-			return;
-		loadContext(ioService.createEmpty(name));
-		currentFile = null;
-		fileNameLabel.setText("");
-		separatorLabel.setVisible(false);
-		separatorLabel.setManaged(false);		
-		statusLabel.setText("");
-	}
-
-	@FXML
-	public void onOpen() {
-		if (!confirmDiscardChanges())
-			return;
-		fromFamily = false;
-		onSaveCallback = null;
-		FileChooser fc = buildFileChooser(I18n.get("editor.open.title"), false);
-		File f = fc.showOpenDialog(tableView.getScene().getWindow());
-		if (f == null)
-			return;
-		Path path = f.toPath();
-		AppPreferences.setLastDirectory(f.getParent());
-
-		if (onLoadStart != null)
-			onLoadStart.run();
-		java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-			try {
-				return ioService.read(path);
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}).thenAccept(ctx -> Platform.runLater(() -> {
-			if (onLoadEnd != null)
-				onLoadEnd.run();
-			loadContext(ctx);
-			currentFile = path;
-			statusLabel.setText(I18n.get("editor.status.loaded", f.getName()));
-			if (onFileLoadedCallback != null)
-				onFileLoadedCallback.accept(path.toString());
-
-		})).exceptionally(ex -> {
-			Platform.runLater(() -> {
-				if (onLoadEnd != null)
-					onLoadEnd.run();
-				showError(I18n.get("editor.error.read.title"), ex.getCause().getMessage());
-			});
-			return null;
-		});
-	}
-
-	@FXML
-	private void onSave() {
-		if (fromFamily) {
-			modified = false;
-			updateLabels();
-			if (onSaveCallback != null) {
-				onSaveCallback.accept(context);
-				onSaveCallback = null;
-				fromFamily = false;
-				updateSaveButton();
-			}
-			loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
-			currentFile = null;
-			statusLabel.setText("");
-			return;
-		}
-		if (currentFile == null) {
-			onSaveAs();
-			return;
-		}
-		ContextFormat format = ContextFormat.fromFile(currentFile.toFile());
-		if (format == ContextFormat.CSV) {
-			String sep = askCsvSeparator();
-			if (sep == null)
-				return;
-			ioService.setSeparator(sep.charAt(0));
-		}
-		saveToFile(currentFile, format);
-	}
-
-	@FXML
-	private void onSaveAs() {
-		Consumer<IBinaryContext> savedCallback = onSaveCallback;
-		onSaveCallback = null;
-		FileChooser fc = buildFileChooser(I18n.get("editor.saveas.title"), true);
-		File f = fc.showSaveDialog(tableView.getScene().getWindow());
-		if (f == null) {
-			onSaveCallback = savedCallback;
-			return;
-		}
-
-		currentFile = f.toPath();
-		ContextFormat format = ContextFormat.fromFile(f);
-
-		// Si CSV, proposer le séparateur
-		if (format == ContextFormat.CSV) {
-			String sep = askCsvSeparator();
-			if (sep == null) {
-				onSaveCallback = savedCallback;
-				return;
-			} // annulé
-			ioService.setSeparator(sep.charAt(0));
-		}
-
-		saveToFile(currentFile, format);
-		onSaveCallback = savedCallback;
-		AppPreferences.setLastDirectory(f.getParent());
-	}
-
-	private String askCsvSeparator() {
-		ChoiceDialog<String> dialog = new ChoiceDialog<>("COMMA", "COMMA", "SEMICOLON", "TAB");
-		dialog.setTitle(I18n.get("editor.csv.separator.title"));
-		dialog.setHeaderText(null);
-		dialog.setContentText(I18n.get("editor.csv.separator.prompt"));
-
-		// Libellés plus lisibles
-		dialog.getItems().clear();
-		dialog.getItems().addAll(I18n.get("separator.comma"), I18n.get("separator.semicolon"),
-				I18n.get("separator.tab"));
-		dialog.setSelectedItem(I18n.get("separator.comma"));
-
-		return dialog.showAndWait().map(choice -> {
-			if (choice.equals(I18n.get("separator.comma")))
-				return ",";
-			if (choice.equals(I18n.get("separator.semicolon")))
-				return ";";
-			if (choice.equals(I18n.get("separator.tab")))
-				return "\t";
-			return ",";
-		}).orElse(null); // null = annulé
-	}
-
-	private void saveToFile(Path path, ContextFormat format) {
-		try {
-			ioService.write(context, path, format);
-			modified = false;
-			currentFile = path;
-			updateLabels();
-			statusLabel.setText(I18n.get("editor.status.saved",
-				    path.getFileName().toString()));
-			AppPreferences.setLastDirectory(path.getParent().toString());
-			if (onFileLoadedCallback != null)
-				onFileLoadedCallback.accept(path.toString());
-		} catch (Exception e) {
-			showError(I18n.get("editor.error.write.title"), e.getMessage());
-		}
-	}
-
-	// ── Actions structure ─────────────────────────────────────────────────────
-
-	@FXML
-	private void onAddObject() {
-		String name = promptText(I18n.get("editor.dialog.add.object.title"),
-				I18n.get("editor.dialog.add.object.prompt"),
-				I18n.get("editor.default.object.name") + (context.getObjectCount() + 1), true);
-		if (name == null)
-			return;
-		ISet emptyIntent = ioService.getFactory().createSet();
-		context.addObject(name, emptyIntent);
-		rebuildTable();
-		markModified();
-		tableView.scrollTo(tableView.getItems().size() - 1);
-	}
-
-	@FXML
-	private void onAddAttribute() {
-		String name = promptText(I18n.get("editor.dialog.add.attr.title"),
-				I18n.get("editor.dialog.add.attr.prompt", true),
-				I18n.get("editor.default.attr.name") + (context.getAttributeCount() + 1), true);
-		if (name == null)
-			return;
-		ISet emptyExtent = ioService.getFactory().createSet();
-		context.addAttribute(name, emptyExtent);
-		rebuildTable();
-		markModified();
-		tableView.scrollToColumn(tableView.getColumns().get(tableView.getColumns().size() - 1));
-	}
-
-	@FXML
-	private void onRemoveObject() {
-		int sel = objectsTable.getSelectionModel().getSelectedIndex();
-		if (sel < 0)
-			sel = tableView.getSelectionModel().getSelectedIndex();
-		if (sel < 0) {
-			showInfo(I18n.get("editor.select.object.first"));
-			return;
-		}
-		ContextRow row = tableView.getItems().get(sel);
-		String objName = row.getName();
-		if (!confirmDelete(I18n.get("editor.confirm.delete.object", objName)))
-			return;
-		int realIdx = context.getObjectIndex(objName);
-		if (realIdx >= 0)
-			context.removeObject(realIdx);
-		rebuildTable();
-		markModified();
-	}
-
-	@FXML
-	private void onRemoveAttribute() {
-		if (context.getAttributeCount() == 0) {
-			showInfo(I18n.get("editor.select.attr.first"));
-			return;
-		}
-		javafx.scene.control.ChoiceDialog<String> dialog = new javafx.scene.control.ChoiceDialog<>(
-				context.getAttributeName(0), java.util.stream.IntStream.range(0, context.getAttributeCount())
-						.mapToObj(context::getAttributeName).collect(java.util.stream.Collectors.toList()));
-		dialog.setTitle(I18n.get("editor.dialog.del.attr.title"));
-		dialog.setHeaderText(null);
-		dialog.setContentText(I18n.get("editor.dialog.del.attr.prompt"));
-		dialog.showAndWait().ifPresent(name -> {
-			int idx = context.getAttributeIndex(name);
-			if (idx >= 0)
-				deleteAttribute(idx);
-		});
-	}
-
-	private void deleteAttribute(int attrIdx) {
-		String attrName = context.getAttributeName(attrIdx);
-		if (!confirmDelete(I18n.get("editor.confirm.delete.attr", attrName)))
-			return;
-		context.removeAttribute(attrIdx);
-		rebuildTable();
-		markModified();
-	}
-
-	@FXML
-	private void onRenameContext() {
-		String current = context.getName() != null ? context.getName() : "";
-		String newName = promptText(I18n.get("editor.dialog.rename.context"), I18n.get("editor.dialog.name.prompt"),
-				current, true);
-		if (newName == null)
-			return;
-		context.setName(newName);
-		updateLabels();
-		markModified();
-	}
-
-	// ── Renommage ─────────────────────────────────────────────────────────────
-
-	private void promptRenameObjectRow(ContextRow row) {
-		String oldName = row.getName();
-		String newName = promptText(I18n.get("editor.dialog.rename.object"), I18n.get("editor.dialog.name.prompt"),
-				oldName, true);
-		if (newName == null)
-			return;
-		int realIdx = context.getObjectIndex(oldName);
-		if (realIdx >= 0)
-			context.setObjectName(realIdx, newName);
-		row.setName(newName);
-		markModified();
-	}
-
-	private void promptRenameAttribute(int idx) {
-		String newName = promptText(I18n.get("editor.dialog.rename.attr"), I18n.get("editor.dialog.name.prompt"),
-				context.getAttributeName(idx), true);
-		if (newName == null)
-			return;
-		context.setAttributeName(idx, newName);
-		Label header = (Label) tableView.getColumns().get(idx).getGraphic();
-		if (header != null) {
-			header.setText(newName);
-			header.setTooltip(newName.length() > 15 ? new Tooltip(newName) : null);
-		}
-		markModified();
-	}
-
-	// ── Callback onFileLoaded ─────────────────────────────────────────────────
-
-	private Consumer<String> onFileLoadedCallback;
-
-	public void setOnFileLoaded(Consumer<String> callback) {
-		this.onFileLoadedCallback = callback;
-	}
-
-	// ── Utilitaires UI ────────────────────────────────────────────────────────
-
-	private FileChooser buildFileChooser(String title, boolean forSave) {
-		FileChooser fc = new FileChooser();
-		fc.setTitle(title);
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(
-				new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
-				new FileChooser.ExtensionFilter("SLF (HTK)", "*.slf"),
-				new FileChooser.ExtensionFilter("CEX (ConExp)", "*.cex"),
-				new FileChooser.ExtensionFilter("XML (Galicia)", "*.xml"),
-				new FileChooser.ExtensionFilter("CSV", "*.csv"),
-				new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
-		return fc;
-	}
-
-	private String promptText(String title, String prompt, String defaultValue, boolean sanitize) {
-		TextInputDialog dialog = new TextInputDialog(defaultValue);
-		dialog.setTitle(title);
-		dialog.setHeaderText(null);
-		dialog.setContentText(prompt);
-
-		if (sanitize) {
-// Transformer les espaces en temps réel
-			dialog.getEditor().textProperty().addListener((obs, old, val) -> {
-				if (val.contains(" "))
-					dialog.getEditor().setText(val.replace(" ", "_"));
-			});
-		}
-		return dialog.showAndWait().filter(s -> !s.isBlank()).orElse(null);
-	}
-
-//Surcharge existante inchangée pour compatibilité
-	private String promptText(String title, String prompt, String defaultValue) {
-		return promptText(title, prompt, defaultValue, false);
-	}
-
-	public boolean confirmDiscardChanges() {
-		if (!modified)
-			return true;
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-		alert.setTitle(I18n.get("editor.confirm.discard.title"));
-		alert.setHeaderText(null);
-		alert.setContentText(I18n.get("editor.confirm.discard.detail"));
-		return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
-	}
-
-	private boolean confirmDelete(String message) {
-		Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-		alert.setTitle(I18n.get("editor.confirm.delete.title"));
-		alert.setHeaderText(null);
-		alert.setContentText(message);
-		return alert.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
-	}
-
-	private void showError(String title, String msg) {
-		Alert a = new Alert(Alert.AlertType.ERROR);
-		a.setTitle(title);
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
-
-	private void showInfo(String msg) {
-		Alert a = new Alert(Alert.AlertType.INFORMATION);
-		a.setTitle(I18n.get("app.title"));
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
-
-	private void updateSaveButton() {
-		if (fromFamily) {
-			// Mode famille : Save = "Retour à la famille"
-			FontIcon icon = new FontIcon(Material2AL.ARROW_BACK);
-			icon.setIconSize(20);
-			icon.setIconColor(javafx.scene.paint.Color.valueOf("#0047B3"));
-			btnSave.setGraphic(icon);
-			btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save.to.family")));
-			btnSave.setStyle("-fx-background-color: #e8f0fe; -fx-border-color: #0047B3; "
-					+ "-fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
-		} else {
-			// Mode normal : Save standard
-			FontIcon icon = new FontIcon(Material2MZ.SAVE);
-			icon.setIconSize(20);
-			icon.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
-			btnSave.setGraphic(icon);
-			btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save")));
-			btnSave.setStyle("");
-		}
-	}
-	// ── Accesseurs ────────────────────────────────────────────────────────────
-
-	public IBinaryContext getContext() {
-		return context;
-	}
-
-	public void openFile(Path path) {
-		openFile(path, "COMMA");
-	}
-
-	public void openFile(Path path, String separator) {
-		if (!"COMMA".equals(separator)) {
-			char sep = switch (separator) {
-			case "SEMICOLON" -> ';';
-			case "TAB" -> '\t';
-			default -> ',';
-			};
-			ioService.setSeparator(sep);
-		}
-		if (onLoadStart != null)
-			onLoadStart.run();
-		java.util.concurrent.CompletableFuture.supplyAsync(() -> {
-			try {
-				return ioService.read(path);
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}).thenAccept(ctx -> Platform.runLater(() -> {
-			if (onLoadEnd != null)
-				onLoadEnd.run();
-			loadContext(ctx);
-			currentFile = path;
-		    statusLabel.setText(I18n.get("editor.status.loaded", 
-		            path.getFileName().toString()));        
-			if (onFileLoadedCallback != null)
-				onFileLoadedCallback.accept(path.toString());
-		})).exceptionally(ex -> {
-			Platform.runLater(() -> {
-				if (onLoadEnd != null)
-					onLoadEnd.run();
-				showError(I18n.get("editor.error.read.title"), ex.getCause().getMessage());
-			});
-			return null;
-		});
-	}
+    // ── Constantes visuelles ──────────────────────────────────────────────────
+    private static final double CELL_H      = 24.0;
+    private static final double HEADER_H    = 90.0;   // hauteur zone en-tête (les deux Canvas)
+    private static final double OBJ_COL_W   = 154.0;  // largeur colonne objets
+    private static final double CHECK_R     =  6.0;
+    private static final double COL_MIN_W   = 24.0;
+    private static final double COL_MAX_W   = 120.0;
+
+    // Couleurs
+    private static final Color C_BG_HEADER  = Color.web("#f0f4f8");
+    private static final Color C_BG_ODD     = Color.web("#ffffff");
+    private static final Color C_BG_EVEN    = Color.web("#f8f9fa");
+    private static final Color C_BG_HOVER   = Color.web("#e8f0fe");
+    private static final Color C_GRID       = Color.web("#dee2e6");
+    private static final Color C_CHECK_ON   = Color.web("#0047B3");
+    private static final Color C_CHECK_OFF  = Color.web("#ced4da");
+    private static final Color C_TEXT_HDR   = Color.web("#333333");
+    private static final Color C_TEXT_SEL   = Color.web("#0047B3");
+    private static final Color C_TEXT_OBJ   = Color.web("#212529");
+    private static final Color C_BORDER     = Color.web("#cccccc");
+
+    // ── FXML ──────────────────────────────────────────────────────────────────
+    @FXML private Button btnNew, btnOpen, btnSave, btnSaveAs;
+    @FXML private Button btnAddObject, btnAddAttr, btnDelObject, btnDelAttr, btnRename;
+    @FXML private Label  contextNameLabel, statsLabel, statusLabel, fileNameLabel, separatorLabel;
+
+    // Panes conteneurs des deux Canvas
+    @FXML private Pane objCanvasPane;   // colonne gauche objets (largeur fixe)
+    @FXML private Pane mainCanvasPane;  // zone droite attributs (HGrow=ALWAYS)
+    @FXML private ScrollBar vScrollBar;
+    @FXML private ScrollBar hScrollBar;
+
+    // Canvas créés en Java (pas en FXML — taille dynamique)
+    private Canvas objCanvas;
+    private Canvas mainCanvas;
+
+    // ── État scroll ───────────────────────────────────────────────────────────
+    private double offX = 0;   // offset horizontal matrice (pixels)
+    private double offY = 0;   // offset vertical partagé   (pixels)
+
+    // ── Layout colonnes ───────────────────────────────────────────────────────
+    private double[] colWidths;
+    private double[] colX;
+    private double   totalWidth;
+
+    // ── Hover ─────────────────────────────────────────────────────────────────
+    private int hoverCol = -1;
+    private int hoverRow = -1;
+
+    // ── Tooltip attribut ──────────────────────────────────────────────────────
+    private final Tooltip attrTooltip = new Tooltip();
+    private       int     tooltipCol  = -1;  // colonne dont le tooltip est affiché
+
+    // ── Services & état ───────────────────────────────────────────────────────
+    private final ContextIOService   ioService = new ContextIOService();
+    private Runnable                 onLoadStart, onLoadEnd;
+    private Consumer<String>         onFileLoadedCallback;
+    private Consumer<IBinaryContext> onSaveCallback;
+    private IBinaryContext           context;
+    private Path                     currentFile;
+    private boolean                  modified = false, fromFamily = false;
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  INITIALISATION
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        setupToolbar();
+        setupCanvases();
+        loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
+    }
+
+    private void setupCanvases() {
+        // Canvas objets (gauche)
+        objCanvas = new Canvas(OBJ_COL_W, 10);
+        objCanvasPane.getChildren().add(objCanvas);
+        objCanvasPane.widthProperty().addListener((obs, o, n) -> {
+            objCanvas.setWidth(n.doubleValue());
+            redrawAll();
+        });
+        objCanvasPane.heightProperty().addListener((obs, o, n) -> {
+            objCanvas.setHeight(n.doubleValue());
+            updateScrollBarsRange();
+            redrawAll();
+        });
+        objCanvas.setOnMouseClicked(this::onObjCanvasClicked);
+        objCanvas.setOnScroll(this::onScroll);
+
+        // Canvas principal (droite)
+        mainCanvas = new Canvas(10, 10);
+        mainCanvasPane.getChildren().add(mainCanvas);
+        mainCanvasPane.widthProperty().addListener((obs, o, n) -> {
+            mainCanvas.setWidth(n.doubleValue());
+            updateScrollBarsRange();
+            redrawAll();
+        });
+        mainCanvasPane.heightProperty().addListener((obs, o, n) -> {
+            mainCanvas.setHeight(n.doubleValue());
+            updateScrollBarsRange();
+            redrawAll();
+        });
+        mainCanvas.setOnMouseMoved(this::onMouseMoved);
+        mainCanvas.setOnMouseExited(e -> { hoverCol = -1; hoverRow = -1; redrawAll(); });
+        mainCanvas.setOnMouseClicked(this::onMainCanvasClicked);
+        mainCanvas.setOnScroll(this::onScroll);
+
+        // ScrollBar vertical
+        vScrollBar.valueProperty().addListener((obs, o, n) -> {
+            offY = n.doubleValue();
+            redrawAll();
+        });
+
+        // ScrollBar horizontal
+        hScrollBar.valueProperty().addListener((obs, o, n) -> {
+            offX = n.doubleValue();
+            redrawAll();
+        });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  LAYOUT COLONNES
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void computeColumnLayout() {
+        int n = context == null ? 0 : context.getAttributeCount();
+        colWidths = new double[n]; colX = new double[n];
+        double x = 0;
+        for (int a = 0; a < n; a++) {
+            double w = context.getAttributeName(a).length() * 6.5 + 12;
+            colWidths[a] = Math.max(COL_MIN_W, Math.min(COL_MAX_W, w));
+            colX[a] = x; x += colWidths[a];
+        }
+        totalWidth = x;
+    }
+
+    private void updateScrollBarsRange() {
+        if (context == null) return;
+        int nb   = context.getObjectCount();
+        double visH = Math.max(0, mainCanvas.getHeight() - HEADER_H);
+        double visW = mainCanvas.getWidth();
+        double maxV = Math.max(0, nb * CELL_H - visH);
+        double maxH = Math.max(0, totalWidth  - visW);
+
+        vScrollBar.setMin(0); vScrollBar.setMax(maxV);
+        vScrollBar.setVisibleAmount(Math.min(visH, nb * CELL_H));
+        if (offY > maxV) { offY = maxV; vScrollBar.setValue(offY); }
+
+        hScrollBar.setMin(0); hScrollBar.setMax(maxH);
+        hScrollBar.setVisibleAmount(Math.min(visW, totalWidth));
+        if (offX > maxH) { offX = maxH; hScrollBar.setValue(offX); }
+
+        vScrollBar.setVisible(maxV > 0);
+        hScrollBar.setVisible(maxH > 0);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  RENDU — les deux Canvas utilisent le même offY => alignement garanti
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void redrawAll() {
+        redrawObjCanvas();
+        redrawMainCanvas();
+    }
+
+    /** Canvas gauche : en-tête "Objets" + noms des objets visibles. */
+    private void redrawObjCanvas() {
+        if (context == null || objCanvas == null) return;
+        GraphicsContext gc = objCanvas.getGraphicsContext2D();
+        double cw = objCanvas.getWidth(), ch = objCanvas.getHeight();
+        gc.clearRect(0, 0, cw, ch);
+
+        int nbObj = context.getObjectCount();
+
+        // Fond en-tête
+        gc.setFill(C_BG_HEADER);
+        gc.fillRect(0, 0, cw, HEADER_H);
+
+        // Libellé "Objets" centré dans l'en-tête
+        gc.setFill(C_TEXT_HDR);
+        gc.setFont(Font.font("System", FontWeight.BOLD, 12));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.setTextBaseline(VPos.CENTER);
+        gc.fillText(I18n.get("editor.col.objects"), cw / 2, HEADER_H / 2);
+
+        // Ligne de séparation bas en-tête
+        gc.setStroke(C_GRID); gc.setLineWidth(1.0);
+        gc.strokeLine(0, HEADER_H, cw, HEADER_H);
+
+        // Ligne de séparation droite (bordure avec canvas principal)
+        gc.setStroke(C_BORDER); gc.setLineWidth(1.0);
+        gc.strokeLine(cw - 1, 0, cw - 1, ch);
+
+        if (nbObj == 0) return;
+
+        int firstRow = Math.max(0, (int)(offY / CELL_H));
+        int lastRow  = Math.min(nbObj - 1, (int)((offY + ch - HEADER_H) / CELL_H) + 1);
+
+        gc.setFont(Font.font("System", FontWeight.NORMAL, 12));
+
+        for (int o = firstRow; o <= lastRow; o++) {
+            double y = HEADER_H + o * CELL_H - offY;
+
+            // Fond de ligne
+            gc.setFill(o == hoverRow ? C_BG_HOVER : (o % 2 == 0 ? C_BG_ODD : C_BG_EVEN));
+            gc.fillRect(0, y, cw, CELL_H);
+
+            // Séparateur horizontal
+            gc.setStroke(C_GRID); gc.setLineWidth(0.5);
+            gc.strokeLine(0, y + CELL_H, cw, y + CELL_H);
+
+            // Nom de l'objet (tronqué si nécessaire)
+            String name = context.getObjectName(o);
+            gc.setFill(C_TEXT_OBJ);
+            gc.setTextAlign(TextAlignment.LEFT);
+            gc.setTextBaseline(VPos.CENTER);
+            gc.fillText(truncate(name, cw - 8), 6, y + CELL_H / 2);
+        }
+    }
+
+    /** Canvas droit : en-têtes attributs + cellules booléennes. */
+    private void redrawMainCanvas() {
+        if (context == null || mainCanvas == null) return;
+        GraphicsContext gc = mainCanvas.getGraphicsContext2D();
+        double cw = mainCanvas.getWidth(), ch = mainCanvas.getHeight();
+        gc.clearRect(0, 0, cw, ch);
+
+        int nbObj  = context.getObjectCount();
+        int nbAttr = context.getAttributeCount();
+
+        if (nbObj == 0 || nbAttr == 0 || colWidths == null) {
+            gc.setFill(Color.web("#999")); gc.setFont(Font.font("System", 13));
+            gc.setTextAlign(TextAlignment.CENTER); gc.setTextBaseline(VPos.CENTER);
+            gc.fillText(I18n.get("editor.empty"), cw / 2, ch / 2);
+            return;
+        }
+
+        int firstRow = Math.max(0, (int)(offY / CELL_H));
+        int lastRow  = Math.min(nbObj - 1, (int)((offY + ch - HEADER_H) / CELL_H) + 1);
+        int firstCol = colAtWorldX(offX);
+        int lastCol  = Math.min(nbAttr - 1, colAtWorldX(offX + cw) + 1);
+
+        // Fond stripes
+        for (int o = firstRow; o <= lastRow; o++) {
+            double y = HEADER_H + o * CELL_H - offY;
+            gc.setFill(o == hoverRow ? C_BG_HOVER : (o % 2 == 0 ? C_BG_ODD : C_BG_EVEN));
+            gc.fillRect(0, y, cw, CELL_H);
+        }
+
+        // Grille horizontale
+        gc.setStroke(C_GRID); gc.setLineWidth(0.5);
+        for (int o = firstRow; o <= lastRow + 1; o++)
+            gc.strokeLine(0, HEADER_H + o * CELL_H - offY, cw, HEADER_H + o * CELL_H - offY);
+
+        // Colonnes : grille + cellules
+        for (int a = firstCol; a <= lastCol; a++) {
+            double cx = colX[a] - offX, cw2 = colWidths[a];
+            gc.setStroke(C_GRID); gc.setLineWidth(0.5);
+            gc.strokeLine(cx,       HEADER_H, cx,       ch);
+            gc.strokeLine(cx + cw2, HEADER_H, cx + cw2, ch);
+            for (int o = firstRow; o <= lastRow; o++)
+                drawCell(gc, cx, HEADER_H + o * CELL_H - offY, cw2, CELL_H,
+                         context.get(o, a), o == hoverRow && a == hoverCol);
+        }
+
+        // En-têtes (dessinés en dernier, fond sticky)
+        gc.setFill(C_BG_HEADER); gc.fillRect(0, 0, cw, HEADER_H);
+        gc.setStroke(C_GRID); gc.setLineWidth(1.0);
+        gc.strokeLine(0, HEADER_H, cw, HEADER_H);
+
+        gc.setFont(Font.font("System", FontWeight.NORMAL, 11));
+        for (int a = firstCol; a <= lastCol; a++) {
+            double cx = colX[a] - offX, cw2 = colWidths[a];
+            if (a == hoverCol) { gc.setFill(C_BG_HOVER); gc.fillRect(cx, 0, cw2, HEADER_H - 1); }
+            gc.setStroke(C_GRID); gc.setLineWidth(0.5);
+            gc.strokeLine(cx + cw2, 0, cx + cw2, HEADER_H);
+            gc.save();
+            gc.translate(cx + cw2 / 2.0, HEADER_H - 6);
+            gc.rotate(-45);
+            gc.setFill(a == hoverCol ? C_TEXT_SEL : C_TEXT_HDR);
+            gc.setTextAlign(TextAlignment.LEFT); gc.setTextBaseline(VPos.BOTTOM);
+            gc.fillText(context.getAttributeName(a), 0, 0);
+            gc.restore();
+        }
+    }
+
+    private void drawCell(GraphicsContext gc, double x, double y,
+                          double cw, double ch, boolean checked, boolean hover) {
+        double cx = x + cw / 2.0, cy = y + ch / 2.0;
+        if (checked) {
+            gc.setFill(C_CHECK_ON);
+            gc.fillOval(cx - CHECK_R, cy - CHECK_R, CHECK_R * 2, CHECK_R * 2);
+            gc.setStroke(Color.WHITE); gc.setLineWidth(1.8);
+            gc.strokeLine(cx - CHECK_R * 0.5, cy,
+                          cx - CHECK_R * 0.1, cy + CHECK_R * 0.45);
+            gc.strokeLine(cx - CHECK_R * 0.1, cy + CHECK_R * 0.45,
+                          cx + CHECK_R * 0.5, cy - CHECK_R * 0.4);
+        } else {
+            gc.setStroke(hover ? C_CHECK_ON : C_CHECK_OFF);
+            gc.setLineWidth(1.3);
+            gc.strokeOval(cx - CHECK_R, cy - CHECK_R, CHECK_R * 2, CHECK_R * 2);
+        }
+    }
+
+    /** Tronque un texte pour qu'il tienne dans maxWidth pixels. */
+    private String truncate(String text, double maxWidth) {
+        if (text == null) return "";
+        // Estimation grossière : ~7px par caractère en police 12
+        int maxChars = (int)(maxWidth / 7.0);
+        if (text.length() <= maxChars) return text;
+        return text.substring(0, Math.max(0, maxChars - 1)) + "…";
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  INTERACTIONS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void onMouseMoved(MouseEvent e) {
+        int c = xToCol(e.getX()), r = yToRow(e.getY());
+        boolean inHeader = e.getY() < HEADER_H;
+
+        // ── Tooltip sur l'en-tête d'attribut ─────────────────────────────────
+        if (inHeader && c >= 0 && c < context.getAttributeCount()) {
+            if (c != tooltipCol) {
+                tooltipCol = c;
+                String fullName = context.getAttributeName(c);
+                attrTooltip.setText(fullName);
+                // Position : juste sous le curseur
+                attrTooltip.show(mainCanvasPane,
+                    e.getScreenX() + 12,
+                    e.getScreenY() + 16);
+            }
+        } else {
+            attrTooltip.hide();
+            tooltipCol = -1;
+        }
+
+        // ── Coordonnées dans la barre de statut ───────────────────────────────
+        if (r >= 0 && c >= 0) {
+            statusLabel.setText(
+                context.getObjectName(r) + "  /  " + context.getAttributeName(c)
+                + "  [obj " + (r + 1) + ", attr " + (c + 1) + "]"
+            );
+        } else if (inHeader && c >= 0) {
+            statusLabel.setText(context.getAttributeName(c)
+                + "  [attr " + (c + 1) + "]");
+        } else {
+            statusLabel.setText("");
+        }
+
+        if (c != hoverCol || r != hoverRow) { hoverCol = c; hoverRow = r; redrawAll(); }
+    }
+
+    private void onMainCanvasClicked(MouseEvent e) {
+        int c = xToCol(e.getX()), r = yToRow(e.getY());
+        // Double-clic sur en-tête → renommer attribut
+        if (e.getClickCount() == 2 && e.getY() < HEADER_H) {
+            if (c >= 0) promptRenameAttribute(c); return;
+        }
+        // Clic sur cellule → toggle
+        if (r >= 0 && c >= 0) { context.set(r, c, !context.get(r, c)); markModified(); redrawAll(); }
+    }
+
+    private void onObjCanvasClicked(MouseEvent e) {
+        int r = yToRow(e.getY());
+        // Double-clic sur une ligne → renommer objet
+        if (e.getClickCount() == 2 && r >= 0) promptRenameObject(r);
+        // Mettre à jour le hover row pour la sélection visuelle
+        if (r >= 0) { hoverRow = r; redrawAll(); }
+    }
+
+    private void onScroll(ScrollEvent e) {
+        double nv = Math.max(0, Math.min(vScrollBar.getMax(), offY - e.getDeltaY()));
+        vScrollBar.setValue(nv); e.consume();
+    }
+
+    private int xToCol(double px) {
+        double wx = px + offX;
+        if (colWidths == null) return -1;
+        for (int a = 0; a < colWidths.length; a++)
+            if (wx >= colX[a] && wx < colX[a] + colWidths[a]) return a;
+        return -1;
+    }
+
+    private int yToRow(double py) {
+        if (py < HEADER_H) return -1;
+        int r = (int)((py - HEADER_H + offY) / CELL_H);
+        if (context == null || r < 0 || r >= context.getObjectCount()) return -1;
+        return r;
+    }
+
+    private int colAtWorldX(double wx) {
+        if (colWidths == null || colWidths.length == 0) return 0;
+        for (int a = colWidths.length - 1; a >= 0; a--)
+            if (colX[a] <= wx) return a;
+        return 0;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  CHARGEMENT / RECONSTRUCTION
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public void setOnLoadCallbacks(Runnable start, Runnable end) { onLoadStart = start; onLoadEnd = end; }
+
+    public void loadContext(IBinaryContext ctx) {
+        context = ctx; modified = false;
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.runAsync(() -> Platform.runLater(() -> {
+            rebuildView(); updateLabels(); updateSaveButton();
+            if (onLoadEnd != null) onLoadEnd.run();
+        }));
+    }
+
+    public void loadContextFromFamily(IBinaryContext ctx, Consumer<IBinaryContext> cb) {
+        fromFamily = true; currentFile = null; onSaveCallback = cb;
+        loadContext(ctx); updateSaveButton();
+    }
+
+    private void rebuildView() {
+        offX = 0; offY = 0; hoverCol = -1; hoverRow = -1;
+        computeColumnLayout();
+        // Adapter les Canvas à la taille visible actuelle
+        if (objCanvasPane.getWidth()   > 0) objCanvas.setWidth(objCanvasPane.getWidth());
+        if (objCanvasPane.getHeight()  > 0) objCanvas.setHeight(objCanvasPane.getHeight());
+        if (mainCanvasPane.getWidth()  > 0) mainCanvas.setWidth(mainCanvasPane.getWidth());
+        if (mainCanvasPane.getHeight() > 0) mainCanvas.setHeight(mainCanvasPane.getHeight());
+        updateScrollBarsRange();
+        vScrollBar.setValue(0); hScrollBar.setValue(0);
+        redrawAll();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  TOOLBAR
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void setupToolbar() {
+        setBtn(btnNew,       new FontIcon(Material2AL.FIBER_NEW),               I18n.get("editor.tooltip.new"));
+        setBtn(btnOpen,      new FontIcon(Material2AL.FOLDER_OPEN),             I18n.get("editor.tooltip.open"));
+        setBtn(btnSave,      new FontIcon(Material2MZ.SAVE),                    I18n.get("editor.tooltip.save"));
+        setBtn(btnSaveAs,    new FontIcon(Material2MZ.SAVE_ALT),                I18n.get("editor.tooltip.saveas"));
+        setBtn(btnAddObject, new FontIcon(Material2AL.ADD_BOX),                 I18n.get("editor.tooltip.add.object"));
+        setBtn(btnDelObject, new FontIcon(Material2AL.CHECK_BOX_OUTLINE_BLANK), I18n.get("editor.tooltip.del.object"));
+        setBtn(btnAddAttr,   new FontIcon(Material2AL.ADD_CIRCLE),              I18n.get("editor.tooltip.add.attr"));
+        setBtn(btnDelAttr,   new FontIcon(Material2MZ.REMOVE_CIRCLE_OUTLINE),   I18n.get("editor.tooltip.del.attr"));
+        setBtn(btnRename,    new FontIcon(Material2AL.EDIT),                    I18n.get("editor.tooltip.rename"));
+    }
+
+    private void setBtn(Button b, FontIcon icon, String tip) {
+        icon.setIconSize(20); icon.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
+        b.setGraphic(icon); b.setTooltip(new Tooltip(tip));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  ACTIONS FXML
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @FXML public void onNewContext() {
+        if (!confirmDiscardChanges()) return;
+        fromFamily = false; onSaveCallback = null;
+        String n = promptText(I18n.get("editor.dialog.new.title"), I18n.get("editor.dialog.new.prompt"),
+                              I18n.get("editor.new.context.name"), true);
+        if (n == null) return;
+        loadContext(ioService.createEmpty(n));
+        currentFile = null; fileNameLabel.setText("");
+        separatorLabel.setVisible(false); separatorLabel.setManaged(false);
+        statusLabel.setText("");
+    }
+
+    @FXML public void onOpen() {
+        if (!confirmDiscardChanges()) return;
+        fromFamily = false; onSaveCallback = null;
+        FileChooser fc = buildFC(I18n.get("editor.open.title"));
+        File f = fc.showOpenDialog(mainCanvasPane.getScene().getWindow());
+        if (f == null) return;
+        Path path = f.toPath(); AppPreferences.setLastDirectory(f.getParent());
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return ioService.read(path); } catch (Exception e) { throw new RuntimeException(e); }
+        }).thenAccept(ctx -> Platform.runLater(() -> {
+            if (onLoadEnd != null) onLoadEnd.run();
+            loadContext(ctx); currentFile = path;
+            statusLabel.setText(I18n.get("editor.status.loaded", f.getName()));
+            if (onFileLoadedCallback != null) onFileLoadedCallback.accept(path.toString());
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> {
+                if (onLoadEnd != null) onLoadEnd.run();
+                showError(I18n.get("editor.error.read.title"), ex.getCause().getMessage());
+            }); return null;
+        });
+    }
+
+    @FXML private void onSave() {
+        if (fromFamily) {
+            modified = false; updateLabels();
+            if (onSaveCallback != null) {
+                onSaveCallback.accept(context); onSaveCallback = null;
+                fromFamily = false; updateSaveButton();
+            }
+            loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
+            currentFile = null; statusLabel.setText(""); return;
+        }
+        if (currentFile == null) { onSaveAs(); return; }
+        ContextFormat fmt = ContextFormat.fromFile(currentFile.toFile());
+        if (fmt == ContextFormat.CSV) { String s = askCsvSep(); if (s == null) return; ioService.setSeparator(s.charAt(0)); }
+        saveToFile(currentFile, fmt);
+    }
+
+    @FXML private void onSaveAs() {
+        Consumer<IBinaryContext> saved = onSaveCallback; onSaveCallback = null;
+        FileChooser fc = buildFC(I18n.get("editor.saveas.title"));
+        File f = fc.showSaveDialog(mainCanvasPane.getScene().getWindow());
+        if (f == null) { onSaveCallback = saved; return; }
+        currentFile = f.toPath();
+        ContextFormat fmt = ContextFormat.fromFile(f);
+        if (fmt == ContextFormat.CSV) { String s = askCsvSep(); if (s == null) { onSaveCallback = saved; return; } ioService.setSeparator(s.charAt(0)); }
+        saveToFile(currentFile, fmt); onSaveCallback = saved;
+        AppPreferences.setLastDirectory(f.getParent());
+    }
+
+    private void saveToFile(Path path, ContextFormat fmt) {
+        try {
+            ioService.write(context, path, fmt); modified = false; currentFile = path;
+            updateLabels(); statusLabel.setText(I18n.get("editor.status.saved", path.getFileName()));
+            AppPreferences.setLastDirectory(path.getParent().toString());
+            if (onFileLoadedCallback != null) onFileLoadedCallback.accept(path.toString());
+        } catch (Exception e) { showError(I18n.get("editor.error.write.title"), e.getMessage()); }
+    }
+
+    @FXML private void onAddObject() {
+        String n = promptText(I18n.get("editor.dialog.add.object.title"), I18n.get("editor.dialog.add.object.prompt"),
+                              I18n.get("editor.default.object.name") + (context.getObjectCount() + 1), true);
+        if (n == null) return;
+        context.addObject(n, ioService.getFactory().createSet());
+        rebuildView(); markModified();
+        Platform.runLater(() -> vScrollBar.setValue(vScrollBar.getMax()));
+    }
+
+    @FXML private void onAddAttribute() {
+        String n = promptText(I18n.get("editor.dialog.add.attr.title"), I18n.get("editor.dialog.add.attr.prompt", true),
+                              I18n.get("editor.default.attr.name") + (context.getAttributeCount() + 1), true);
+        if (n == null) return;
+        context.addAttribute(n, ioService.getFactory().createSet());
+        rebuildView(); markModified();
+        Platform.runLater(() -> hScrollBar.setValue(hScrollBar.getMax()));
+    }
+
+    @FXML private void onRemoveObject() {
+        int sel = hoverRow >= 0 ? hoverRow : -1;
+        if (sel < 0) { showInfo(I18n.get("editor.select.object.first")); return; }
+        if (!confirmDelete(I18n.get("editor.confirm.delete.object", context.getObjectName(sel)))) return;
+        context.removeObject(sel); rebuildView(); markModified();
+    }
+
+    @FXML private void onRemoveAttribute() {
+        if (context.getAttributeCount() == 0) { showInfo(I18n.get("editor.select.attr.first")); return; }
+        ChoiceDialog<String> d = new ChoiceDialog<>(context.getAttributeName(0),
+            IntStream.range(0, context.getAttributeCount()).mapToObj(context::getAttributeName).collect(Collectors.toList()));
+        d.setTitle(I18n.get("editor.dialog.del.attr.title")); d.setHeaderText(null);
+        d.setContentText(I18n.get("editor.dialog.del.attr.prompt"));
+        d.showAndWait().ifPresent(name -> { int idx = context.getAttributeIndex(name); if (idx >= 0) deleteAttr(idx); });
+    }
+
+    private void deleteAttr(int idx) {
+        if (!confirmDelete(I18n.get("editor.confirm.delete.attr", context.getAttributeName(idx)))) return;
+        context.removeAttribute(idx); rebuildView(); markModified();
+    }
+
+    @FXML private void onRenameContext() {
+        String n = promptText(I18n.get("editor.dialog.rename.context"), I18n.get("editor.dialog.name.prompt"),
+                              context.getName() != null ? context.getName() : "", true);
+        if (n == null) return; context.setName(n); updateLabels(); markModified();
+    }
+
+    @FXML private void onRename() {
+        if (hoverRow >= 0) { promptRenameObject(hoverRow); return; }
+        if (context.getAttributeCount() == 0) return;
+        ChoiceDialog<String> d = new ChoiceDialog<>(context.getAttributeName(0),
+            IntStream.range(0, context.getAttributeCount()).mapToObj(context::getAttributeName).collect(Collectors.toList()));
+        d.setTitle(I18n.get("editor.dialog.rename.attr")); d.setHeaderText(null);
+        d.setContentText(I18n.get("editor.dialog.name.prompt"));
+        d.showAndWait().ifPresent(n -> promptRenameAttribute(context.getAttributeIndex(n)));
+    }
+
+    private void promptRenameObject(int idx) {
+        if (idx < 0 || idx >= context.getObjectCount()) return;
+        String n = promptText(I18n.get("editor.dialog.rename.object"), I18n.get("editor.dialog.name.prompt"),
+                              context.getObjectName(idx), true);
+        if (n == null) return;
+        context.setObjectName(idx, n); redrawObjCanvas(); markModified();
+    }
+
+    private void promptRenameAttribute(int idx) {
+        if (idx < 0 || idx >= context.getAttributeCount()) return;
+        String n = promptText(I18n.get("editor.dialog.rename.attr"), I18n.get("editor.dialog.name.prompt"),
+                              context.getAttributeName(idx), true);
+        if (n == null) return;
+        context.setAttributeName(idx, n); computeColumnLayout(); updateScrollBarsRange(); redrawMainCanvas(); markModified();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  LABELS & STATE
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private void updateLabels() {
+        if (currentFile != null) {
+            fileNameLabel.setText(currentFile.getFileName().toString());
+            separatorLabel.setVisible(true); separatorLabel.setManaged(true);
+        } else {
+            fileNameLabel.setText(""); separatorLabel.setVisible(false); separatorLabel.setManaged(false);
+        }
+        String name = (context.getName() != null && !context.getName().isBlank())
+            ? context.getName() : I18n.get("editor.new.context.name");
+        contextNameLabel.setText(name + (modified ? " *" : ""));
+        contextNameLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-cursor: hand;");
+        statsLabel.setText(I18n.get("editor.stats", context.getObjectCount(), context.getAttributeCount()));
+        contextNameLabel.setOnMouseClicked(e -> { if (e.getClickCount() == 2) onRenameContext(); });
+    }
+
+    private void markModified() { if (!modified) { modified = true; Platform.runLater(this::updateLabels); } }
+
+    private void updateSaveButton() {
+        if (fromFamily) {
+            FontIcon ic = new FontIcon(Material2AL.ARROW_BACK);
+            ic.setIconSize(20); ic.setIconColor(javafx.scene.paint.Color.valueOf("#0047B3"));
+            btnSave.setGraphic(ic); btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save.to.family")));
+            btnSave.setStyle("-fx-background-color: #e8f0fe; -fx-border-color: #0047B3; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4;");
+        } else {
+            FontIcon ic = new FontIcon(Material2MZ.SAVE);
+            ic.setIconSize(20); ic.setIconColor(javafx.scene.paint.Color.valueOf("#333333"));
+            btnSave.setGraphic(ic); btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save"))); btnSave.setStyle("");
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  ACCESSEURS PUBLICS
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public IBinaryContext getContext() { return context; }
+    public void setOnFileLoaded(Consumer<String> cb) { onFileLoadedCallback = cb; }
+    public void openFile(Path path) { openFile(path, "COMMA"); }
+
+    public void openFile(Path path, String separator) {
+        if (!"COMMA".equals(separator)) {
+            char sep = switch (separator) { case "SEMICOLON" -> ';'; case "TAB" -> '\t'; default -> ','; };
+            ioService.setSeparator(sep);
+        }
+        if (onLoadStart != null) onLoadStart.run();
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try { return ioService.read(path); } catch (Exception e) { throw new RuntimeException(e); }
+        }).thenAccept(ctx -> Platform.runLater(() -> {
+            if (onLoadEnd != null) onLoadEnd.run();
+            loadContext(ctx); currentFile = path;
+            statusLabel.setText(I18n.get("editor.status.loaded", path.getFileName()));
+            if (onFileLoadedCallback != null) onFileLoadedCallback.accept(path.toString());
+        })).exceptionally(ex -> {
+            Platform.runLater(() -> {
+                if (onLoadEnd != null) onLoadEnd.run();
+                showError(I18n.get("editor.error.read.title"), ex.getCause().getMessage());
+            }); return null;
+        });
+    }
+
+    public boolean confirmDiscardChanges() {
+        if (!modified) return true;
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle(I18n.get("editor.confirm.discard.title")); a.setHeaderText(null);
+        a.setContentText(I18n.get("editor.confirm.discard.detail"));
+        return a.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  UTILITAIRES
+    // ──────────────────────────────────────────────────────────────────────────
+
+    private boolean confirmDelete(String msg) {
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle(I18n.get("editor.confirm.delete.title")); a.setHeaderText(null); a.setContentText(msg);
+        return a.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+    }
+
+    private void showError(String t, String m) {
+        Alert a = new Alert(Alert.AlertType.ERROR); a.setTitle(t); a.setHeaderText(null); a.setContentText(m); a.showAndWait();
+    }
+
+    private void showInfo(String m) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle(I18n.get("app.title")); a.setHeaderText(null); a.setContentText(m); a.showAndWait();
+    }
+
+    private String askCsvSep() {
+        ChoiceDialog<String> d = new ChoiceDialog<>(I18n.get("separator.comma"),
+            I18n.get("separator.comma"), I18n.get("separator.semicolon"), I18n.get("separator.tab"));
+        d.setTitle(I18n.get("editor.csv.separator.title")); d.setHeaderText(null);
+        d.setContentText(I18n.get("editor.csv.separator.prompt"));
+        return d.showAndWait().map(c -> {
+            if (c.equals(I18n.get("separator.comma")))     return ",";
+            if (c.equals(I18n.get("separator.semicolon"))) return ";";
+            if (c.equals(I18n.get("separator.tab")))       return "\t";
+            return ",";
+        }).orElse(null);
+    }
+
+    private String promptText(String title, String prompt, String def, boolean sanitize) {
+        TextInputDialog d = new TextInputDialog(def);
+        d.setTitle(title); d.setHeaderText(null); d.setContentText(prompt);
+        if (sanitize) d.getEditor().textProperty().addListener((obs, o, v) -> {
+            if (v.contains(" ")) d.getEditor().setText(v.replace(" ", "_"));
+        });
+        return d.showAndWait().filter(s -> !s.isBlank()).orElse(null);
+    }
+
+    private String promptText(String title, String prompt, String def) { return promptText(title, prompt, def, false); }
+
+    private FileChooser buildFC(String title) {
+        FileChooser fc = new FileChooser(); fc.setTitle(title);
+        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        fc.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
+            new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
+            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
+            new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
+            new FileChooser.ExtensionFilter("CSV",              "*.csv"),
+            new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+        return fc;
+    }
 }

@@ -290,28 +290,61 @@ public class MainController implements Initializable {
 	}
 	public void openInFcavizir(Path txtFile) {
 	    try {
-	        if (fcavizirServer != null) fcavizirServer.stop(0);
-	        fcavizirServer = com.sun.net.httpserver.HttpServer.create(
-	            new java.net.InetSocketAddress(0), 0);
-	        fcavizirPort = fcavizirServer.getAddress().getPort();
-	        fcavizirServer.createContext("/", exchange -> {
-	            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-	            exchange.getResponseHeaders().add("Content-Type", "text/plain");
-	            byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
-	            exchange.sendResponseHeaders(200, bytes.length);
-	            try (var os = exchange.getResponseBody()) { os.write(bytes); }
-	        });
-	        fcavizirServer.setExecutor(null);
-	        fcavizirServer.start();
-	        String url_local = "http://localhost:8080/#data=http://localhost:"
-	        	    + fcavizirPort + "/" + txtFile.getFileName();	        
-	        String url = "https://fcavizir.lirmm.fr/#data=http://localhost:"
-	        	    + fcavizirPort + "/" + txtFile.getFileName();	        
-	        java.awt.Desktop.getDesktop().browse(new java.net.URI(url_local));
+	        // Lire le fichier et encoder en base64 URL-safe (pas de + ni /)
+	        byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
+	        String b64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+	        String url = "https://fcavizir.lirmm.fr/#content=" + b64;
+
+	        // Desktop.browse() sur Windows est limité à ~2048 chars (ShellExecuteW).
+	        // On contourne en lançant le navigateur directement via ProcessBuilder.
+	        if (!openUrlInBrowser(url)) {
+	            // Fallback : Desktop.browse() (fonctionne si URL courte ou hors Windows)
+	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	        }
 	    } catch (Exception e) {
 	        showAlert("FCAvizIR", "Impossible d'ouvrir FCAvizIR : " + e.getMessage());
 	    }
-	}	
+	}
+
+	/**
+	 * Lance le navigateur directement via ProcessBuilder pour contourner la limite
+	 * de 2048 chars de ShellExecuteW (Desktop.browse sur Windows).
+	 * Tente Chrome, Firefox, Edge dans cet ordre.
+	 * @return true si un navigateur a été lancé, false sinon
+	 */
+	private boolean openUrlInBrowser(String url) {
+	    String os = System.getProperty("os.name", "").toLowerCase();
+	    java.util.List<String[]> candidates = new java.util.ArrayList<>();
+
+	    if (os.contains("win")) {
+	        String local = System.getenv("LOCALAPPDATA");
+	        candidates.add(new String[]{"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", url});
+	        candidates.add(new String[]{"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", url});
+	        if (local != null)
+	            candidates.add(new String[]{local + "\\Google\\Chrome\\Application\\chrome.exe", url});
+	        candidates.add(new String[]{"C:\\Program Files\\Mozilla Firefox\\firefox.exe", url});
+	        candidates.add(new String[]{"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe", url});
+	    } else if (os.contains("mac")) {
+	        candidates.add(new String[]{"open", "-a", "Google Chrome", url});
+	        candidates.add(new String[]{"open", url});
+	    } else {
+	        candidates.add(new String[]{"xdg-open", url});
+	        candidates.add(new String[]{"google-chrome", url});
+	        candidates.add(new String[]{"firefox", url});
+	    }
+
+	    for (String[] cmd : candidates) {
+	        try {
+	            java.io.File exe = new java.io.File(cmd[0]);
+	            if (cmd.length == 2 && !exe.exists()) continue; // chemin absolu non trouvé
+	            new ProcessBuilder(cmd)
+	                .redirectErrorStream(true)
+	                .start();
+	            return true;
+	        } catch (Exception ignored) {}
+	    }
+	    return false;
+	}
 	private String getSeparatorFromCurrentPanel() {
 		if (currentCommandController instanceof LatticeAocController c)
 			return c.getSeparator();
