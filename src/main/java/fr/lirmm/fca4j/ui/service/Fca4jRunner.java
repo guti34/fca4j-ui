@@ -39,7 +39,7 @@ public class Fca4jRunner {
                         "Chemin du JAR FCA4J non configuré.");
 
                 List<String> command = new ArrayList<>();
-                command.add("java");
+                command.add(currentJavaExe());
                 command.add("-jar");
                 command.add(jarPath);
                 command.addAll(args);
@@ -88,6 +88,23 @@ public class Fca4jRunner {
             }
         });
     }
+
+    /**
+     * Retourne le chemin absolu vers le java(.exe) qui fait tourner cette JVM.
+     * Utilise java.home (toujours défini) → pas de dépendance au PATH système.
+     * Évite l'erreur "could not find java.dll" sur Windows quand JAVA_HOME
+     * n'est pas dans les variables d'environnement système.
+     */
+    private static String currentJavaExe() {
+        String javaHome = System.getProperty("java.home");
+        String exe = System.getProperty("os.name", "").toLowerCase()
+                         .contains("win") ? "java.exe" : "java";
+        java.io.File candidate = new java.io.File(javaHome, "bin/" + exe);
+        if (candidate.exists()) return candidate.getAbsolutePath();
+        // Fallback : juste "java" (résolu via PATH)
+        return "java";
+    }
+
     public void cancel() {
         Process p = currentProcess;
         if (p != null && p.isAlive()) {

@@ -87,10 +87,12 @@ public class PreferencesController implements Initializable {
             info.setTitle(I18n.get("prefs.title"));
             info.setHeaderText(null);
             info.setContentText(
-                "en".equals(selected.getLanguage())
-                    ? "Language changed. Please restart the application."
-                    : "Langue modifiée. Veuillez redémarrer l'application."
-            );
+                    "en".equals(selected.getLanguage())
+                        ? "Language changed. Please restart the application."
+                        : "es".equals(selected.getLanguage())
+                        ? "Idioma cambiado. Por favor reinicie la aplicación."
+                        : "Langue modifiée. Veuillez redémarrer l'application."
+                );
             info.showAndWait();
         }
 

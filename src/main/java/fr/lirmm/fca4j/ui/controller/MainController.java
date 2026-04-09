@@ -49,6 +49,9 @@ import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 
 public class MainController implements Initializable {
 
@@ -253,7 +256,111 @@ public class MainController implements Initializable {
 		// ── Toolbar graphe + status bar ───────────────────────────────────────────
 		setupGraphToolbar();
 		updateStatusBar();
+
+		// ── Raccourcis clavier globaux ────────────────────────────────────────────
+		// Branchés sur la Scene après que le layout soit stable
+		javafx.application.Platform.runLater(this::setupKeyboardShortcuts);
 	}
+
+	// ── Raccourcis clavier ────────────────────────────────────────────────────
+
+	private void setupKeyboardShortcuts() {
+	    javafx.scene.Scene scene = mainTabPane.getScene();
+	    if (scene == null) return;
+	    // EventFilter : capture les touches AVANT les controles focuses
+	    // (getAccelerators ne fonctionne pas quand Canvas ou TextField a le focus)
+	    scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+	        javafx.scene.input.KeyCode code = event.getCode();
+	        boolean ctrl = event.isControlDown();
+	        if (event.isShiftDown() || event.isAltDown()) return;
+
+	        if (ctrl && code == javafx.scene.input.KeyCode.Z) {
+	            if (contextEditorController != null) contextEditorController.undo();
+	            event.consume(); return;
+	        }
+	        if (ctrl && code == javafx.scene.input.KeyCode.S) {
+	            if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
+	                    && contextEditorController != null
+	                    && !contextEditorController.isFromFamily())
+	                contextEditorController.onSave();
+	            event.consume(); return;
+	        }
+	        if (ctrl && code == javafx.scene.input.KeyCode.O) {
+	            if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
+	                    && contextEditorController != null)
+	                contextEditorController.onOpen();
+	            event.consume(); return;
+	        }
+	        if (ctrl && code == javafx.scene.input.KeyCode.L) {
+	            onClearConsole(); event.consume(); return;
+	        }
+	        if (!ctrl && code == javafx.scene.input.KeyCode.F5) {
+	            Tab left = commandTabPane.getSelectionModel().getSelectedItem();
+	            if      (left == contextTab)  onContextRun();
+	            else if (left == rcaTab)      onRcaRun();
+	            else if (left == importTab)   onImportRun();
+	            event.consume(); return;
+	        }
+	        if (!ctrl && code == javafx.scene.input.KeyCode.F1) {
+	            onShowShortcuts(); event.consume();
+	        }
+	    });
+	}
+
+	@FXML
+	public void onShowShortcuts() {
+	    javafx.stage.Stage dialog = new javafx.stage.Stage();
+	    dialog.setTitle(I18n.get("menu.help.shortcuts"));
+	    dialog.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+	    dialog.initOwner(mainTabPane.getScene().getWindow());
+
+	    javafx.scene.web.WebView wv = new javafx.scene.web.WebView();
+	    wv.getEngine().loadContent(buildShortcutsHtml());
+	    wv.setPrefSize(520, 480);
+
+	    dialog.setScene(new javafx.scene.Scene(wv));
+	    dialog.setResizable(false);
+	    dialog.show();
+	}
+
+	private String buildShortcutsHtml() {
+	    boolean isFr = "fr".equals(I18n.getLocale().getLanguage());
+	    String title   = isFr ? "Raccourcis clavier — FCA4J UI"        : "Keyboard Shortcuts — FCA4J UI";
+	    String secGen  = isFr ? "Général"                               : "General";
+	    String secEdit = isFr ? "Éditeur de contexte"                   : "Context Editor";
+	    return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"
+	        + "body{font-family:system-ui,sans-serif;font-size:13px;padding:16px;background:#f8f9fa;}"
+	        + "h1{font-size:15px;color:#0047B3;margin:0 0 14px}"
+	        + "h2{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:.04em;"
+	        +   "margin:14px 0 6px;border-bottom:1px solid #dee2e6;padding-bottom:4px}"
+	        + "table{width:100%;border-collapse:collapse}"
+	        + "td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top}"
+	        + "td:first-child{width:160px}"
+	        + "kbd{background:#e9ecef;border:1px solid #ced4da;border-radius:4px;"
+	        +   "padding:2px 7px;font-size:11px;font-family:monospace;white-space:nowrap}"
+	        + "</style></head><body>"
+	        + "<h1>" + title + "</h1>"
+	        + "<h2>" + secGen + "</h2>"
+	        + "<table>"
+	        + row("Ctrl+O",  isFr ? "Ouvrir un contexte"        : "Open context")
+	        + row("Ctrl+S",  isFr ? "Enregistrer"               : "Save")
+	        + row("F5",      isFr ? "Relancer la commande"       : "Re-run command")
+	        + row("Ctrl+L",  isFr ? "Effacer la console"         : "Clear console")
+	        + row("F1",      isFr ? "Afficher cette aide"        : "Show this help")
+	        + "</table>"
+	        + "<h2>" + secEdit + "</h2>"
+	        + "<table>"
+	        + row("Ctrl+Z",       isFr ? "Annuler (undo)"                  : "Undo")
+	        + row("Double-clic",  isFr ? "Renommer objet / attribut"        : "Rename object / attribute")
+	        + row("Clic cellule", isFr ? "Cocher / décocher"                : "Toggle cell")
+	        + "</table>"
+	        + "</body></html>";
+	}
+
+	private static String row(String key, String desc) {
+	    return "<tr><td><kbd>" + key + "</kbd></td><td>" + desc + "</td></tr>";
+	}
+
 
 	private void startRcavizServer(Path jsonFile) throws Exception {
 		// Arrêter le serveur précédent si actif
@@ -290,15 +397,32 @@ public class MainController implements Initializable {
 	}
 	public void openInFcavizir(Path txtFile) {
 	    try {
-	        // Lire le fichier et encoder en base64 URL-safe (pas de + ni /)
-	        byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
-	        String b64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-	        String url = "https://fcavizir.lirmm.fr/#content=" + b64;
+	        // Meme mecanisme que RCAViz : serveur HTTP local + ?data=
+	        // Le serveur Java envoie le fichier avec les bons headers CORS
+	        if (fcavizirServer != null) fcavizirServer.stop(0);
+	        fcavizirServer = com.sun.net.httpserver.HttpServer.create(
+	            new java.net.InetSocketAddress(0), 0);
+	        fcavizirPort = fcavizirServer.getAddress().getPort();
+	        fcavizirServer.createContext("/", exchange -> {
+	            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+	            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
+	            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
+	            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+	                exchange.sendResponseHeaders(204, -1);
+	                return;
+	            }
+	            exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+	            byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
+	            exchange.sendResponseHeaders(200, bytes.length);
+	            try (var os = exchange.getResponseBody()) { os.write(bytes); }
+	        });
+	        fcavizirServer.setExecutor(null);
+	        fcavizirServer.start();
 
-	        // Desktop.browse() sur Windows est limité à ~2048 chars (ShellExecuteW).
-	        // On contourne en lançant le navigateur directement via ProcessBuilder.
+	        String url = "https://fcavizir.lirmm.fr/?data=http://localhost:"
+	            + fcavizirPort + "/" + txtFile.getFileName();
+	        openUrlInBrowser(url);
 	        if (!openUrlInBrowser(url)) {
-	            // Fallback : Desktop.browse() (fonctionne si URL courte ou hors Windows)
 	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
 	        }
 	    } catch (Exception e) {
@@ -724,22 +848,24 @@ public class MainController implements Initializable {
 	    showOverlayDelayed();
 	    mainTabPane.getSelectionModel().select(conceptStructureTab);
 	}
-	private void openContextInEditor(IBinaryContext ctx) {
-		if (contextEditorController != null) {
-			mainTabPane.getSelectionModel().select(2);
-			contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
-				Platform.runLater(() -> {
-					RCAFamily currentFamily = familyEditorController.getFamily();
-					rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
-					familyEditorController.reloadFamily(currentFamily);
-					familyEditorController.markModified();
-					mainTabPane.getSelectionModel().select(3);
-				});
-			});
-		}
-	}
-
-	public void openInEditor(Path filePath) {
+	   private void openContextInEditor(IBinaryContext ctx) {
+	        if (contextEditorController != null) {
+	            mainTabPane.getSelectionModel().select(2);
+	            contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
+	                Platform.runLater(() -> {
+	                    RCAFamily currentFamily = familyEditorController.getFamily();
+	                    // Remplacer le contexte dans la famille par la version éditée
+	                    RCAFamily.FormalContext fc = currentFamily.getFormalContext(modifiedCtx.getName());
+	                    if (fc != null) fc.setContext(modifiedCtx);
+	                    rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
+	                    familyEditorController.reloadFamily(currentFamily);
+	                    familyEditorController.markModified();
+	                    mainTabPane.getSelectionModel().select(3);
+	                });
+	            });
+	        }
+	    }
+	   public void openInEditor(Path filePath) {
 		openInEditor(filePath, "COMMA");
 	}
 
@@ -856,8 +982,6 @@ public class MainController implements Initializable {
 	        if (!inputFile.equals(lastRulesInputFile)) {
 	            rulesViewerController.clearRules();
 	        }
-	        rulesViewerController.clearConsole();
-	        rulesViewerController.appendConsole("$ " + builder.toDisplayString());
 	        mainTabPane.getSelectionModel().select(rulesViewerTab);
 	    } else if (isGraph) {
 	        if (!inputFile.equals(lastGraphInputFile)) {
@@ -885,8 +1009,7 @@ public class MainController implements Initializable {
 	            }
 	        }
 	        // Console rules — aussi alimentée si commande rules
-	        if (isRules) rulesViewerController.appendConsole(line);
-
+	
 	    })).thenAccept(result -> Platform.runLater(() -> {
 	        hideOverlay();
 	        long duration = System.currentTimeMillis() - startTime;

@@ -36,6 +36,8 @@
 			        <MenuItem text="%menu.file.quit" onAction="#onQuit"/>
 			    </Menu>
 			    <Menu text="%menu.help">
+			        <MenuItem text="%menu.help.shortcuts" onAction="#onShowShortcuts"/>
+			        <SeparatorMenuItem/>
 			        <MenuItem text="%menu.help.about" onAction="#onAbout"/>
 			    </Menu>
 			</MenuBar>
@@ -114,8 +116,10 @@
 
             </TabPane>
 
-            <!-- Panneau droit : onglets Graph / Context Editor / Family Editor -->
-            <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE">
+            <!-- Panneau droit : onglets + console unique en bas -->
+            <VBox>
+            <SplitPane orientation="VERTICAL" dividerPositions="0.75" VBox.vgrow="ALWAYS">
+            <TabPane fx:id="mainTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
 
                 <!-- Onglet Graphe -->
 			<Tab fx:id="conceptStructureTab" styleClass="concept-tab">
@@ -133,22 +137,7 @@
 						    <Label fx:id="dotFileLabel"
 						           style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
 						</ToolBar>			        
-					<SplitPane orientation="VERTICAL" dividerPositions="0.70" VBox.vgrow="ALWAYS">
-			            <WebView fx:id="graphWebView"/>
-			            <VBox>
-			                <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
-			                      alignment="CENTER_LEFT">
-			                    <Label text="Console"
-			                           style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
-			                    <Pane HBox.hgrow="ALWAYS"/>
-			                    <Button text="%toolbar.clear" onAction="#onClearConsole"
-			                            style="-fx-font-size: 10px;"/>
-			                </HBox>
-			                <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
-			                          editable="false"
-			                          style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
-			            </VBox>
-			        </SplitPane>
+						<WebView fx:id="graphWebView" VBox.vgrow="ALWAYS"/>
 			    </VBox>
 			</Tab>
 			<!-- Onglet Viewer rules-->
@@ -173,6 +162,22 @@
 				                source="model_editor.fxml"/>
 				</Tab>
             </TabPane>
+            <!-- Console unique partagée par tous les onglets -->
+            <VBox>
+                <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
+                      alignment="CENTER_LEFT">
+                    <Label text="Console"
+                           style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
+                    <Pane HBox.hgrow="ALWAYS"/>
+                    <Button text="%toolbar.clear" onAction="#onClearConsole"
+                            style="-fx-font-size: 10px;"/>
+                </HBox>
+                <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
+                          editable="false"
+                          style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
+            </VBox>
+            </SplitPane>
+            </VBox>
         </SplitPane>
     </StackPane>
 </center>    

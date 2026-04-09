@@ -28,7 +28,8 @@ public class I18n {
 
     public static final List<Locale> SUPPORTED_LOCALES = List.of(
         Locale.ENGLISH,
-        Locale.FRENCH
+        Locale.FRENCH,
+        Locale.forLanguageTag("es")
     );
 
     /** Locale active — observable pour les bindings. */
@@ -45,10 +46,11 @@ public class I18n {
         if (saved != null && !saved.isBlank()) {
             return Locale.forLanguageTag(saved);
         }
-        // Détection automatique : français si disponible, anglais sinon
+        // Détection automatique : français ou espagnol si disponible, anglais sinon
         Locale sys = Locale.getDefault();
-        return sys.getLanguage().equals("fr") ? Locale.FRENCH : Locale.ENGLISH;
-    }
+        if (sys.getLanguage().equals("fr")) return Locale.FRENCH;
+        if (sys.getLanguage().equals("es")) return Locale.forLanguageTag("es");
+        return Locale.ENGLISH;    }
 
     private static ResourceBundle loadBundle(Locale loc) {
         return ResourceBundle.getBundle(BUNDLE_BASE, loc);

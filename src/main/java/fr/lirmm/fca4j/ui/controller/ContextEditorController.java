@@ -1,5 +1,19 @@
 package fr.lirmm.fca4j.ui.controller;
 
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.ResourceBundle;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
+import org.kordamp.ikonli.material2.Material2MZ;
+
+import fr.lirmm.fca4j.cli.io.CXTReader;
+import fr.lirmm.fca4j.cli.io.CXTWriter;
 import fr.lirmm.fca4j.core.IBinaryContext;
 import fr.lirmm.fca4j.ui.service.ContextIOService;
 import fr.lirmm.fca4j.ui.service.ContextIOService.ContextFormat;
@@ -11,7 +25,14 @@ import javafx.fxml.Initializable;
 import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollBar;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
@@ -19,18 +40,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
-import org.kordamp.ikonli.material2.Material2MZ;
 import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.net.URL;
-import java.nio.file.Path;
-import java.util.ResourceBundle;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Éditeur de contexte formel binaire — double Canvas virtuel.
@@ -106,6 +116,11 @@ public class ContextEditorController implements Initializable {
     private IBinaryContext           context;
     private Path                     currentFile;
     private boolean                  modified = false, fromFamily = false;
+
+    // ── Pile Undo ──────────────────────────────────────────────────────────────
+    private static final int         UNDO_MAX   = 15;
+    private final java.util.Deque<IBinaryContext> undoStack = new java.util.ArrayDeque<>();
+    private boolean undoing = false; 
 
     // ──────────────────────────────────────────────────────────────────────────
     //  INITIALISATION
@@ -405,7 +420,7 @@ public class ContextEditorController implements Initializable {
             if (c >= 0) promptRenameAttribute(c); return;
         }
         // Clic sur cellule → toggle
-        if (r >= 0 && c >= 0) { context.set(r, c, !context.get(r, c)); markModified(); redrawAll(); }
+        if (r >= 0 && c >= 0) { pushUndo(); context.set(r, c, !context.get(r, c)); markModified(); redrawAll(); }
     }
 
     private void onObjCanvasClicked(MouseEvent e) {
@@ -460,11 +475,11 @@ public class ContextEditorController implements Initializable {
 
     public void loadContextFromFamily(IBinaryContext ctx, Consumer<IBinaryContext> cb) {
         fromFamily = true; currentFile = null; onSaveCallback = cb;
-        loadContext(ctx); updateSaveButton();
+        loadContext(ctx.clone()); updateSaveButton();
     }
-
     private void rebuildView() {
         offX = 0; offY = 0; hoverCol = -1; hoverRow = -1;
+        if(!undoing)undoStack.clear();  
         computeColumnLayout();
         // Adapter les Canvas à la taille visible actuelle
         if (objCanvasPane.getWidth()   > 0) objCanvas.setWidth(objCanvasPane.getWidth());
@@ -503,6 +518,8 @@ public class ContextEditorController implements Initializable {
 
     @FXML public void onNewContext() {
         if (!confirmDiscardChanges()) return;
+        if (!confirmLeaveFamily()) return;
+
         fromFamily = false; onSaveCallback = null;
         String n = promptText(I18n.get("editor.dialog.new.title"), I18n.get("editor.dialog.new.prompt"),
                               I18n.get("editor.new.context.name"), true);
@@ -515,6 +532,8 @@ public class ContextEditorController implements Initializable {
 
     @FXML public void onOpen() {
         if (!confirmDiscardChanges()) return;
+        if (!confirmLeaveFamily()) return;
+
         fromFamily = false; onSaveCallback = null;
         FileChooser fc = buildFC(I18n.get("editor.open.title"));
         File f = fc.showOpenDialog(mainCanvasPane.getScene().getWindow());
@@ -536,7 +555,7 @@ public class ContextEditorController implements Initializable {
         });
     }
 
-    @FXML private void onSave() {
+    @FXML public void onSave() {
         if (fromFamily) {
             modified = false; updateLabels();
             if (onSaveCallback != null) {
@@ -577,8 +596,11 @@ public class ContextEditorController implements Initializable {
         String n = promptText(I18n.get("editor.dialog.add.object.title"), I18n.get("editor.dialog.add.object.prompt"),
                               I18n.get("editor.default.object.name") + (context.getObjectCount() + 1), true);
         if (n == null) return;
-        context.addObject(n, ioService.getFactory().createSet());
-        rebuildView(); markModified();
+        pushUndo(); context.addObject(n, ioService.getFactory().createSet());
+        undoing=true;
+        rebuildView(); 
+        undoing=false;
+        markModified();
         Platform.runLater(() -> vScrollBar.setValue(vScrollBar.getMax()));
     }
 
@@ -586,8 +608,11 @@ public class ContextEditorController implements Initializable {
         String n = promptText(I18n.get("editor.dialog.add.attr.title"), I18n.get("editor.dialog.add.attr.prompt", true),
                               I18n.get("editor.default.attr.name") + (context.getAttributeCount() + 1), true);
         if (n == null) return;
-        context.addAttribute(n, ioService.getFactory().createSet());
-        rebuildView(); markModified();
+        pushUndo(); context.addAttribute(n, ioService.getFactory().createSet());
+        undoing=true;
+        rebuildView(); 
+        undoing=false;
+        markModified();
         Platform.runLater(() -> hScrollBar.setValue(hScrollBar.getMax()));
     }
 
@@ -595,7 +620,12 @@ public class ContextEditorController implements Initializable {
         int sel = hoverRow >= 0 ? hoverRow : -1;
         if (sel < 0) { showInfo(I18n.get("editor.select.object.first")); return; }
         if (!confirmDelete(I18n.get("editor.confirm.delete.object", context.getObjectName(sel)))) return;
-        context.removeObject(sel); rebuildView(); markModified();
+        pushUndo(); 
+        context.removeObject(sel); 
+        undoing=true;
+        rebuildView(); 
+        undoing=false;
+        markModified();
     }
 
     @FXML private void onRemoveAttribute() {
@@ -609,7 +639,12 @@ public class ContextEditorController implements Initializable {
 
     private void deleteAttr(int idx) {
         if (!confirmDelete(I18n.get("editor.confirm.delete.attr", context.getAttributeName(idx)))) return;
-        context.removeAttribute(idx); rebuildView(); markModified();
+        pushUndo(); 
+        context.removeAttribute(idx); 
+        undoing=true;
+        rebuildView(); 
+        undoing=false;
+        markModified();
     }
 
     @FXML private void onRenameContext() {
@@ -633,7 +668,7 @@ public class ContextEditorController implements Initializable {
         String n = promptText(I18n.get("editor.dialog.rename.object"), I18n.get("editor.dialog.name.prompt"),
                               context.getObjectName(idx), true);
         if (n == null) return;
-        context.setObjectName(idx, n); redrawObjCanvas(); markModified();
+        pushUndo(); context.setObjectName(idx, n); redrawObjCanvas(); markModified();
     }
 
     private void promptRenameAttribute(int idx) {
@@ -641,7 +676,7 @@ public class ContextEditorController implements Initializable {
         String n = promptText(I18n.get("editor.dialog.rename.attr"), I18n.get("editor.dialog.name.prompt"),
                               context.getAttributeName(idx), true);
         if (n == null) return;
-        context.setAttributeName(idx, n); computeColumnLayout(); updateScrollBarsRange(); redrawMainCanvas(); markModified();
+        pushUndo(); context.setAttributeName(idx, n); computeColumnLayout(); updateScrollBarsRange(); redrawMainCanvas(); markModified();
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -677,7 +712,9 @@ public class ContextEditorController implements Initializable {
             btnSave.setGraphic(ic); btnSave.setTooltip(new Tooltip(I18n.get("editor.tooltip.save"))); btnSave.setStyle("");
         }
     }
-
+    public boolean isFromFamily() {
+    	return fromFamily;
+    }
     // ──────────────────────────────────────────────────────────────────────────
     //  ACCESSEURS PUBLICS
     // ──────────────────────────────────────────────────────────────────────────
@@ -714,10 +751,35 @@ public class ContextEditorController implements Initializable {
         a.setContentText(I18n.get("editor.confirm.discard.detail"));
         return a.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
     }
-
+    /** Avertit l'utilisateur s'il est en mode famille et lui demande confirmation. */
+    private boolean confirmLeaveFamily() {
+        if (!fromFamily) return true;
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle(I18n.get("editor.confirm.leave.family.title"));
+        a.setHeaderText(null);
+        a.setContentText(I18n.get("editor.confirm.leave.family.detail"));
+        return a.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
+    }
     // ──────────────────────────────────────────────────────────────────────────
     //  UTILITAIRES
     // ──────────────────────────────────────────────────────────────────────────
+
+    // ── Undo ─────────────────────────────────────────────────────────────────
+
+    /** Sauvegarde un snapshot du contexte avant une opération destructive. */
+    private void pushUndo() {
+        undoStack.push(context.clone());
+        if (undoStack.size() > UNDO_MAX) undoStack.pollLast();
+    }
+    /** Restaure le dernier snapshot (Ctrl+Z). */
+    public void undo() {
+        if (undoStack.isEmpty()) return;
+        IBinaryContext snapshot = undoStack.pop();
+        context = snapshot;
+        undoing = true; rebuildView(); undoing = false;
+        markModified();
+    }
+    public boolean canUndo() { return !undoStack.isEmpty(); }
 
     private boolean confirmDelete(String msg) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);

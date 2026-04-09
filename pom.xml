@@ -7,7 +7,7 @@
 
     <groupId>fr.lirmm.fca4j</groupId>
     <artifactId>fca4j-ui</artifactId>
-    <version>0.3.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>FCA4J UI</name>
@@ -28,7 +28,7 @@
 		<url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
 		<connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
 		<developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
-		<tag>fca4j-ui-0.3.0</tag>
+		<tag>fca4j-ui-0.4.0</tag>
 	</scm>
 	<developers>
 		<developer>
@@ -336,7 +336,7 @@
                     <icon>${jpackage.icon}</icon>
                     <javaOptions>
                         <option>--module-path=$APPDIR</option>
-                        <option>--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.base</option>
+                        <option>--add-modules=javafx.controls,javafx.fxml,javafx.web,javafx.graphics,javafx.base,jdk.httpserver,java.desktop,java.prefs</option>
                         <option>--add-opens=java.base/java.lang.reflect=ALL-UNNAMED</option>
                         <option>--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED</option>
                         <option>--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED</option>

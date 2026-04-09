@@ -444,16 +444,24 @@ public class FamilyEditorController implements Initializable {
             gc.setStroke(selEdge ? COLOR_EDGE_SELECTED : COLOR_EDGE);
             gc.setLineWidth(selEdge ? 3.0 / zoom : 1.5 / zoom);
 
-            Point2D[] norm = normalizedPoints(rc);
-            Point2D ctrl   = controlPoint(norm[0], norm[1], curvature);
-            Point2D mid    = bezierMidpoint(norm[0], norm[1], ctrl);
-
-            drawArrow(gc, ps, pt, ctrl, src.getName(), tgt.getName());
-
-            gc.setFill(selEdge ? COLOR_EDGE_SELECTED : Color.web("#333333"));
-            gc.fillText(rc.getRelationName() + "\n[" + rc.getOperator().getName() + "]",
-                mid.getX() + 4, mid.getY() - 4);
-        }
+            if (src.getName().equals(tgt.getName())) {
+                // ── Boucle réflexive ─────────────────────────────────────
+                drawLoop(gc, ps, src.getName(), curvature);
+                double loopR = Math.abs(curvature) * 0.5;
+                gc.setFill(selEdge ? COLOR_EDGE_SELECTED : Color.web("#333333"));
+                gc.fillText(rc.getRelationName() + "\n[" + rc.getOperator().getName() + "]",
+                    ps.getX() + nodeWidth(src.getName()) / 2 + 4,
+                    ps.getY() - Math.abs(curvature) * 0.5 - 4);
+            } else {
+                // ── Arc normal ────────────────────────────────────────────
+                Point2D[] norm = normalizedPoints(rc);
+                Point2D ctrl   = controlPoint(norm[0], norm[1], curvature);
+                Point2D mid    = bezierMidpoint(norm[0], norm[1], ctrl);
+                drawArrow(gc, ps, pt, ctrl, src.getName(), tgt.getName());
+                gc.setFill(selEdge ? COLOR_EDGE_SELECTED : Color.web("#333333"));
+                gc.fillText(rc.getRelationName() + "\n[" + rc.getOperator().getName() + "]",
+                    mid.getX() + 4, mid.getY() - 4);
+            }        }
 
         // ── Nœuds ───────────────────────────────────────────────────────────
         gc.setFont(Font.font(12));
@@ -486,15 +494,32 @@ public class FamilyEditorController implements Initializable {
 
     private void recomputeCurvatures() {
         edgeCurvatures.clear();
+        // ── Relations réflexives (boucles) ────────────────────────────────────
+        Map<String, List<RelationalContext>> loops = new LinkedHashMap<>();
+        // ── Relations normales ────────────────────────────────────────────────
         Map<String, List<RelationalContext>> groups = new LinkedHashMap<>();
+
         for (RelationalContext rc : family.getRelationalContexts()) {
             FormalContext src = family.getSourceOf(rc);
             FormalContext tgt = family.getTargetOf(rc);
             if (src == null || tgt == null) continue;
-            String a = src.getName(), b = tgt.getName();
-            String key = a.compareTo(b) <= 0 ? a + "§" + b : b + "§" + a;
-            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(rc);
+            if (src.getName().equals(tgt.getName())) {
+                // Boucle : regrouper par nœud
+                loops.computeIfAbsent(src.getName(), k -> new ArrayList<>()).add(rc);
+            } else {
+                String a = src.getName(), b = tgt.getName();
+                String key = a.compareTo(b) <= 0 ? a + "§" + b : b + "§" + a;
+                groups.computeIfAbsent(key, k -> new ArrayList<>()).add(rc);
+            }
         }
+        // Courbures des boucles : valeur négative indique une boucle,
+        // magnitude croissante si plusieurs boucles sur le même nœud
+        for (List<RelationalContext> group : loops.values()) {
+            group.sort((a, b) -> a.getName().compareTo(b.getName()));
+            for (int i = 0; i < group.size(); i++)
+                edgeCurvatures.put(group.get(i).getName(), -(60.0 + i * 30.0));
+        }
+        // Courbures des arcs normaux (inchangé)
         for (List<RelationalContext> group : groups.values()) {
             group.sort((a, b) -> a.getName().compareTo(b.getName()));
             int total = group.size();
@@ -509,7 +534,6 @@ public class FamilyEditorController implements Initializable {
             }
         }
     }
-
     private double getCurvature(RelationalContext rc) {
         return edgeCurvatures.getOrDefault(rc.getName(), 0.0);
     }
@@ -587,7 +611,34 @@ public class FamilyEditorController implements Initializable {
             new double[]{y2, y2 - arrowLen*Math.sin(angle-arrowAngle), y2 - arrowLen*Math.sin(angle+arrowAngle)},
             3);
     }
+    /** Dessine une boucle réflexive sur un nœud — arc circulaire au-dessus du nœud. */
+    private void drawLoop(GraphicsContext gc, Point2D nodeCenter, String nodeName, double curvature) {
+        double nw     = nodeWidth(nodeName);
+        double radius = Math.abs(curvature) * 0.45 + 20;
+        // Centre du cercle de la boucle : au-dessus du coin droit du nœud
+        double cx = nodeCenter.getX() + nw / 2 - radius * 0.3;
+        double cy = nodeCenter.getY() - NODE_H / 2 - radius;
 
+        // Dessiner le cercle
+        gc.strokeOval(cx - radius, cy - radius, radius * 2, radius * 2);
+
+        // Pointe de flèche : bas du cercle, pointant vers le nœud
+        double arrowX  = cx;
+        double arrowY  = cy + radius;
+        double angle   = Math.PI / 2;  // vers le bas
+        double arrowLen = 10;
+        double arrowAngle = Math.PI / 6;
+        gc.setFill(gc.getStroke());
+        gc.fillPolygon(
+            new double[]{arrowX,
+                arrowX - arrowLen * Math.cos(angle - arrowAngle),
+                arrowX - arrowLen * Math.cos(angle + arrowAngle)},
+            new double[]{arrowY,
+                arrowY - arrowLen * Math.sin(angle - arrowAngle),
+                arrowY - arrowLen * Math.sin(angle + arrowAngle)},
+            3);
+    }
+    
     // ── Interactions souris ───────────────────────────────────────────────────
 
     private void onCanvasMousePressed(MouseEvent e) {
@@ -688,6 +739,22 @@ public class FamilyEditorController implements Initializable {
     private String edgeHitTest(double screenX, double screenY) {
         double worldX = (screenX - offsetX) / zoom;
         double worldY = (screenY - offsetY) / zoom;
+        // ── Hit test boucles réflexives ───────────────────────────────────
+        for (RelationalContext rc : family.getRelationalContexts()) {
+            FormalContext src = family.getSourceOf(rc);
+            FormalContext tgt = family.getTargetOf(rc);
+            if (src == null || tgt == null) continue;
+            if (!src.getName().equals(tgt.getName())) continue;
+            Point2D ps = nodePositions.get(src.getName());
+            if (ps == null) continue;
+            double curvature = getCurvature(rc);
+            double nw     = nodeWidth(src.getName());
+            double radius = Math.abs(curvature) * 0.45 + 20;
+            double cx = ps.getX() + nw / 2 - radius * 0.3;
+            double cy = ps.getY() - NODE_H / 2 - radius;
+            double dist = Math.sqrt((worldX - cx) * (worldX - cx) + (worldY - cy) * (worldY - cy));
+            if (Math.abs(dist - radius) < 8.0 / zoom) return rc.getName();
+        }
         for (RelationalContext rc : family.getRelationalContexts()) {
             FormalContext src = family.getSourceOf(rc);
             FormalContext tgt = family.getTargetOf(rc);
@@ -948,16 +1015,9 @@ public class FamilyEditorController implements Initializable {
         dialog.getDialogPane().setContent(grid);
         javafx.scene.control.ButtonType okButton = dialog.getDialogPane()
         	    .getButtonTypes().get(0); // ButtonType.OK
-        	javafx.scene.Node okNode = dialog.getDialogPane().lookupButton(okButton);
+        javafx.scene.Node okNode = dialog.getDialogPane().lookupButton(okButton);
 
-        	// Vérification initiale
-        	okNode.setDisable(srcCombo.getValue().equals(tgtCombo.getValue()));
-
-        	// Listeners sur les deux combos
-        	srcCombo.valueProperty().addListener((obs, old, val) ->
-        	    okNode.setDisable(val != null && val.equals(tgtCombo.getValue())));
-        	tgtCombo.valueProperty().addListener((obs, old, val) ->
-        	    okNode.setDisable(val != null && val.equals(srcCombo.getValue())));
+        okNode.setDisable(false);
         	
         dialog.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;

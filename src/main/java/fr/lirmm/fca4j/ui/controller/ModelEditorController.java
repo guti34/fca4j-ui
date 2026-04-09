@@ -636,17 +636,10 @@ public class ModelEditorController implements Initializable {
         quantCombo.setValue(existing != null ? existing.quantif : "exist");
 
         javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
-        okBtn.setDisable(nameField.getText().isBlank()
-            || srcCombo.getValue().equals(tgtCombo.getValue()));
+        okBtn.setDisable(nameField.getText().isBlank());
         nameField.textProperty().addListener((obs, old, val) ->
-            okBtn.setDisable(val.isBlank() || srcCombo.getValue().equals(tgtCombo.getValue())));
-        srcCombo.valueProperty().addListener((obs, old, val) ->
-            okBtn.setDisable(nameField.getText().isBlank()
-                || (val != null && val.equals(tgtCombo.getValue()))));
-        tgtCombo.valueProperty().addListener((obs, old, val) ->
-            okBtn.setDisable(nameField.getText().isBlank()
-                || (val != null && val.equals(srcCombo.getValue()))));
-
+            okBtn.setDisable(val.isBlank()));
+        
         int row = 0;
         grid.add(new Label(I18n.get("model.col.name")),      0, row); grid.add(nameField,  1, row++);
         grid.add(new Label(I18n.get("family.col.source")),   0, row); grid.add(srcCombo,   1, row++);
@@ -753,7 +746,7 @@ public class ModelEditorController implements Initializable {
             model.getFormalContexts().size(), model.getRelationalContexts().size()));
         contextsTable.getItems().setAll(model.getFormalContexts());
         relationsTable.getItems().setAll(model.getRelationalContexts());
-        btnAddRelation.setDisable(model.getFormalContexts().size() < 2);
+        btnAddRelation.setDisable(model.getFormalContexts().isEmpty());
         attrsTable.getItems().clear();
         csvPathLabel.setText("");
         attrPaneTitle.setText(I18n.get("model.attrs.title"));
@@ -847,8 +840,8 @@ public class ModelEditorController implements Initializable {
     }
 
     @FXML public void onAddRelation() {
-        if (model.getFormalContexts().size() < 2) {
-            showInfo(I18n.get("family.need.two.contexts")); return;
+        if (model.getFormalContexts().isEmpty()) {
+            showInfo(I18n.get("family.need.one.context")); return;
         }
         showRelationalContextDialog(null);
     }

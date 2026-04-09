@@ -22,28 +22,10 @@
 		<Button fx:id="btnFcavizir" onAction="#onOpenInFcavizir" disable="true" />
     </ToolBar>
 
-    <!-- ── Liste des règles ── -->
-<SplitPane orientation="VERTICAL" VBox.vgrow="ALWAYS" dividerPositions="0.75">
-
-    <!-- Liste des règles -->
-    <ScrollPane fitToWidth="true"
-                style="-fx-background-color: #F5F4F0; -fx-background: #F5F4F0;">
-        <VBox fx:id="rulesContainer" spacing="0" fillWidth="true"/>
-    </ScrollPane>
-
-    <!-- Console -->
-    <VBox>
-        <HBox style="-fx-padding: 2 6; -fx-background-color: #2d2d2d;"
-              alignment="CENTER_LEFT">
-            <Label text="Console"
-                   style="-fx-text-fill: #aaa; -fx-font-size: 11px;"/>
-        </HBox>
-        <TextArea fx:id="consoleArea" VBox.vgrow="ALWAYS"
-                  editable="false"
-                  style="-fx-font-family: monospace; -fx-font-size: 11px;"/>
-    </VBox>
-
-</SplitPane>
+    <!-- ── Liste des règles — ListView virtualisée ── -->
+    <ListView fx:id="rulesList" VBox.vgrow="ALWAYS"
+              style="-fx-background-color: #F5F4F0; -fx-background: #F5F4F0;
+                     -fx-border-width: 0;"/>
     <!-- ── Barre de statut ── -->
     <Label fx:id="statusLabel" styleClass="status-bar"/>
 
