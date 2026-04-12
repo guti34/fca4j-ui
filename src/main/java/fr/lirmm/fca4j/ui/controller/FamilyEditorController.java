@@ -1079,10 +1079,13 @@ public class FamilyEditorController implements Initializable {
         if (!modified) return true;
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
         a.setTitle(I18n.get("editor.confirm.discard.title")); a.setHeaderText(null);
-        a.setContentText(I18n.get("editor.confirm.discard.detail"));
+        String name = currentFile != null
+            ? currentFile.getFileName().toString()
+            : (family != null ? family.getName() : I18n.get("family.new.name"));
+        a.setContentText(I18n.get("editor.confirm.discard.family", name));
         return a.showAndWait().filter(b -> b == ButtonType.OK).isPresent();
     }
-
+    
     private boolean confirmDelete(String msg) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
         a.setTitle(I18n.get("editor.confirm.delete.title")); a.setHeaderText(null); a.setContentText(msg);

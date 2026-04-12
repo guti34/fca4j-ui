@@ -156,7 +156,7 @@ this.onInputChanged = onInputChanged;
 
     @FXML
     private void onBrowseInput() {
-        FileChooser fc = buildContextChooser(I18n.get("label.input.file"));
+        FileChooser fc = buildContextChooser(I18n.get("label.input.file"),true);
         File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
         if (f != null) {
             inputFileField.setText(f.getAbsolutePath());
@@ -173,7 +173,7 @@ this.onInputChanged = onInputChanged;
 
     @FXML
     private void onBrowseOutput() {
-        FileChooser fc = buildContextChooser(I18n.get("label.output.file"));
+        FileChooser fc = buildContextChooser(I18n.get("label.output.file"),false);
         File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
         if (f != null) {
             outputFileField.setText(f.getAbsolutePath());
@@ -234,21 +234,26 @@ this.onInputChanged = onInputChanged;
 
     // ── Utilitaires ───────────────────────────────────────────────────────────
 
-    private FileChooser buildContextChooser(String title) {
+    private FileChooser buildContextChooser(String title, boolean forOpen) {
         FileChooser fc = new FileChooser();
         fc.setTitle(title);
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("SLF (HTK)",              "*.slf"),
-            new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
-            new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
-            new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
-            new FileChooser.ExtensionFilter("CSV",              "*.csv"),
-            new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*")
-        );
+        if (forOpen) {
+            fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
+                    "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
+                new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+        } else {
+            fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
+                new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
+                new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
+                new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
+                new FileChooser.ExtensionFilter("CSV",              "*.csv"),
+                new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+        }
         return fc;
     }
-
     private void autoDetectFormat(String filename, ComboBox<String> combo) {
         String lower = filename.toLowerCase();
         if      (lower.endsWith(".cxt")) combo.setValue("CXT");

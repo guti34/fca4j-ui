@@ -59,12 +59,18 @@ public class MainApp extends Application {
         );
         // Icône de la fenêtre (barre de titre + taskbar)
         try {
-            InputStream iconStream = getClass()
-                .getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
-            if (iconStream != null) {
-                primaryStage.getIcons().add(new Image(iconStream));
-            }
-        } catch (Exception ignored) {}
+        	primaryStage.getIcons().addAll(
+        		    new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_16x16.png")),
+        		    new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_32x32.png")),
+        		    new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_48x48.png")),
+        		    new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_128x128.png")),
+           		    new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_256x256.png")),
+           	       	new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_512x512.png")),
+           	        new Image(getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_1024x1024.png")	)
+        		);            
+        } catch (Exception ignored) {
+        	 ignored.printStackTrace();
+        }
 
         primaryStage.setTitle(I18n.get("app.title") + " " + APP_VERSION);
         primaryStage.setScene(scene);

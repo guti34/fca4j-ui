@@ -219,8 +219,9 @@ public class RuleBasisController implements Initializable {
 		fc.setTitle("Fichier de contexte formel");
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
 		fc.getExtensionFilters().addAll(
-				new FileChooser.ExtensionFilter("Contextes FCA", "*.slf", "*.cex", "*.cxt", "*.xml", "*.csv"),
-				new FileChooser.ExtensionFilter("Tous les fichiers", "*.*"));
+				   new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
+					        "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
+					    new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
 		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
 		if (f != null) {
 			inputFileField.setText(f.getAbsolutePath());

@@ -7,7 +7,7 @@
 
     <groupId>fr.lirmm.fca4j</groupId>
     <artifactId>fca4j-ui</artifactId>
-    <version>0.4.0-SNAPSHOT</version>
+    <version>0.5.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>FCA4J UI</name>
@@ -28,7 +28,7 @@
 		<url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
 		<connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
 		<developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
-		<tag>fca4j-ui-0.4.0</tag>
+		<tag>fca4j-ui-0.5.0</tag>
 	</scm>
 	<developers>
 		<developer>
@@ -54,8 +54,8 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
-        <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
-        <javafx.platform>win</javafx.platform>
+		<mainClass>fr.lirmm.fca4j.ui.Launcher</mainClass>        
+		<javafx.platform>win</javafx.platform>
         <app.name>FCA4J-UI</app.name>
         <app.vendor>LIRMM - Montpellier</app.vendor>
         <app.description>Companion application for FCA4J formal concept analysis</app.description>
@@ -262,13 +262,14 @@
                             <outputFile>
                                 ${project.build.directory}/fca4j-ui-${project.version}-standalone.jar
                             </outputFile>
-                            <transformers>
-                                <transformer implementation=
-                                    "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>${mainClass}</mainClass>
-                                </transformer>
-                            </transformers>
-                            <filters>
+							<transformers>
+							    <transformer implementation=
+							        "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+							        <mainClass>${mainClass}</mainClass>
+							    </transformer>
+							    <transformer implementation=
+							        "org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+							</transformers>                            <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>

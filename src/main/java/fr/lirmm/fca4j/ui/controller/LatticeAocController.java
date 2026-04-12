@@ -178,14 +178,17 @@ public class LatticeAocController implements Initializable {
 		Utilities.bindPathTooltip(datalogFolderField);
 		Utilities.bindPathTooltip(datalogFileField);
 	}
+
 	private void updateAlgoTitle() {
-	    String algo = algoCombo.getValue();
-	    if (algo == null || algoPane == null) return;
-	    String title = I18n.get("section.algorithm") + " : " + algo;
-	    if ("ICEBERG".equals(algo))
-	        title += " (" + icebergSpinner.getValue() + "%)";
-	    algoPane.setText(title);
+		String algo = algoCombo.getValue();
+		if (algo == null || algoPane == null)
+			return;
+		String title = I18n.get("section.algorithm") + " : " + algo;
+		if ("ICEBERG".equals(algo))
+			title += " (" + icebergSpinner.getValue() + "%)";
+		algoPane.setText(title);
 	}
+
 	/**
 	 * Configure le panneau pour LATTICE ou AOCPOSET. Appelé depuis MainController
 	 * après chargement du FXML.
@@ -221,7 +224,7 @@ public class LatticeAocController implements Initializable {
 		icebergSpinner.setVisible(false);
 		loadPrefs();
 		Platform.runLater(this::updateAlgoTitle);
-		}
+	}
 
 	@FXML
 	private void onEditInput() {
@@ -241,9 +244,8 @@ public class LatticeAocController implements Initializable {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("label.input.file"));
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(
-				new FileChooser.ExtensionFilter("FCA contexts", "*.slf", "*.cex", "*.cxt", "*.xml", "*.csv"),
-				new FileChooser.ExtensionFilter("*.*", "*.*"));
+		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
+				"*.slf", "*.cex", "*.xml", "*.csv"), new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
 		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
 		if (f != null) {
 			inputFileField.setText(f.getAbsolutePath());

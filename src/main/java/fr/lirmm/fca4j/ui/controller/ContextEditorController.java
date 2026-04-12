@@ -12,8 +12,6 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
 
-import fr.lirmm.fca4j.cli.io.CXTReader;
-import fr.lirmm.fca4j.cli.io.CXTWriter;
 import fr.lirmm.fca4j.core.IBinaryContext;
 import fr.lirmm.fca4j.ui.service.ContextIOService;
 import fr.lirmm.fca4j.ui.service.ContextIOService.ContextFormat;
@@ -29,8 +27,11 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollBar;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseEvent;
@@ -107,6 +108,10 @@ public class ContextEditorController implements Initializable {
     // ── Tooltip attribut ──────────────────────────────────────────────────────
     private final Tooltip attrTooltip = new Tooltip();
     private       int     tooltipCol  = -1;  // colonne dont le tooltip est affiché
+    
+    // ── Menus contextuels ────────────────────────────────────────────────────
+    private ContextMenu attrContextMenu;
+    private ContextMenu objContextMenu;
 
     // ── Services & état ───────────────────────────────────────────────────────
     private final ContextIOService   ioService = new ContextIOService();
@@ -129,6 +134,7 @@ public class ContextEditorController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         setupToolbar();
+        setupContextMenus();
         setupCanvases();
         loadContext(ioService.createEmpty(I18n.get("editor.new.context.name")));
     }
@@ -179,7 +185,60 @@ public class ContextEditorController implements Initializable {
             redrawAll();
         });
     }
+    // ──────────────────────────────────────────────────────────────────────────
+    //  MENUS CONTEXTUELS
+    // ──────────────────────────────────────────────────────────────────────────
 
+    private void setupContextMenus() {
+        // ── Menu contextuel sur les en-têtes d'attribut ──
+        attrContextMenu = new ContextMenu();
+
+        // ── Menu contextuel sur les noms d'objet ──
+        objContextMenu = new ContextMenu();
+    }
+
+    /** Affiche le menu contextuel attribut sur l'en-tête de colonne. */
+    private void showAttrContextMenu(MouseEvent e, int col) {
+        attrContextMenu.getItems().clear();
+        String attrName = context.getAttributeName(col);
+
+        MenuItem renameItem = new MenuItem(I18n.get("editor.menu.rename.attr"));
+        renameItem.setOnAction(ev -> promptRenameAttribute(col));
+
+        MenuItem deleteItem = new MenuItem(I18n.get("editor.menu.delete.attr"));
+        deleteItem.setOnAction(ev -> deleteAttr(col));
+
+        MenuItem addItem = new MenuItem(I18n.get("editor.menu.add.attr"));
+        addItem.setOnAction(ev -> onAddAttribute());
+
+        attrContextMenu.getItems().addAll(renameItem, deleteItem, new SeparatorMenuItem(), addItem);
+        attrContextMenu.show(mainCanvasPane, e.getScreenX(), e.getScreenY());
+    }
+
+    /** Affiche le menu contextuel objet sur le nom d'objet. */
+    private void showObjContextMenu(MouseEvent e, int row) {
+        objContextMenu.getItems().clear();
+        String objName = context.getObjectName(row);
+
+        MenuItem renameItem = new MenuItem(I18n.get("editor.menu.rename.object"));
+        renameItem.setOnAction(ev -> promptRenameObject(row));
+
+        MenuItem deleteItem = new MenuItem(I18n.get("editor.menu.delete.object"));
+        deleteItem.setOnAction(ev -> {
+            if (!confirmDelete(I18n.get("editor.confirm.delete.object", objName))) return;
+            pushUndo(); context.removeObject(row);
+            undoing = true; rebuildView(); undoing = false;
+            markModified();
+        });
+
+        MenuItem addItem = new MenuItem(I18n.get("editor.menu.add.object"));
+        addItem.setOnAction(ev -> onAddObject());
+
+        objContextMenu.getItems().addAll(renameItem, deleteItem, new SeparatorMenuItem(), addItem);
+        objContextMenu.show(objCanvasPane, e.getScreenX(), e.getScreenY());
+    }
+
+ 
     // ──────────────────────────────────────────────────────────────────────────
     //  LAYOUT COLONNES
     // ──────────────────────────────────────────────────────────────────────────
@@ -234,21 +293,29 @@ public class ContextEditorController implements Initializable {
 
         int nbObj = context.getObjectCount();
 
-        // Fond en-tête
+     // Fond en-tête
         gc.setFill(C_BG_HEADER);
         gc.fillRect(0, 0, cw, HEADER_H);
 
-        // Libellé "Objets" centré dans l'en-tête
-        gc.setFill(C_TEXT_HDR);
-        gc.setFont(Font.font("System", FontWeight.BOLD, 12));
-        gc.setTextAlign(TextAlignment.CENTER);
-        gc.setTextBaseline(VPos.CENTER);
-        gc.fillText(I18n.get("editor.col.objects"), cw / 2, HEADER_H / 2);
+        // Diagonale séparatrice Objets \ Attributs
+        gc.setStroke(C_GRID); gc.setLineWidth(0.8);
+        gc.strokeLine(0, 0, cw, HEADER_H);
+
+        // "Objects" en bas-gauche de la diagonale
+        gc.setFill(C_TEXT_SEL);
+        gc.setFont(Font.font("System", FontWeight.BOLD, 14));
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.setTextBaseline(VPos.BOTTOM);
+        gc.fillText(I18n.get("editor.col.objects"), 6, HEADER_H - 6);
+
+        // "Attributes" en haut-droite de la diagonale
+        gc.setTextAlign(TextAlignment.RIGHT);
+        gc.setTextBaseline(VPos.TOP);
+        gc.fillText(I18n.get("editor.col.attributes"), cw - 8, 6);
 
         // Ligne de séparation bas en-tête
         gc.setStroke(C_GRID); gc.setLineWidth(1.0);
         gc.strokeLine(0, HEADER_H, cw, HEADER_H);
-
         // Ligne de séparation droite (bordure avec canvas principal)
         gc.setStroke(C_BORDER); gc.setLineWidth(1.0);
         gc.strokeLine(cw - 1, 0, cw - 1, ch);
@@ -415,6 +482,10 @@ public class ContextEditorController implements Initializable {
 
     private void onMainCanvasClicked(MouseEvent e) {
         int c = xToCol(e.getX()), r = yToRow(e.getY());
+        // Clic droit sur en-tête → menu contextuel attribut
+        if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY && e.getY() < HEADER_H && c >= 0) {
+            showAttrContextMenu(e, c); return;
+        }
         // Double-clic sur en-tête → renommer attribut
         if (e.getClickCount() == 2 && e.getY() < HEADER_H) {
             if (c >= 0) promptRenameAttribute(c); return;
@@ -422,15 +493,16 @@ public class ContextEditorController implements Initializable {
         // Clic sur cellule → toggle
         if (r >= 0 && c >= 0) { pushUndo(); context.set(r, c, !context.get(r, c)); markModified(); redrawAll(); }
     }
-
     private void onObjCanvasClicked(MouseEvent e) {
         int r = yToRow(e.getY());
-        // Double-clic sur une ligne → renommer objet
+        // Clic droit → menu contextuel objet
+        if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY && r >= 0) {
+            showObjContextMenu(e, r); return;
+        }
+        // Double-clic → renommer objet
         if (e.getClickCount() == 2 && r >= 0) promptRenameObject(r);
-        // Mettre à jour le hover row pour la sélection visuelle
         if (r >= 0) { hoverRow = r; redrawAll(); }
     }
-
     private void onScroll(ScrollEvent e) {
         double nv = Math.max(0, Math.min(vScrollBar.getMax(), offY - e.getDeltaY()));
         vScrollBar.setValue(nv); e.consume();
@@ -535,7 +607,7 @@ public class ContextEditorController implements Initializable {
         if (!confirmLeaveFamily()) return;
 
         fromFamily = false; onSaveCallback = null;
-        FileChooser fc = buildFC(I18n.get("editor.open.title"));
+        FileChooser fc = buildOpenFC(I18n.get("editor.open.title"));
         File f = fc.showOpenDialog(mainCanvasPane.getScene().getWindow());
         if (f == null) return;
         Path path = f.toPath(); AppPreferences.setLastDirectory(f.getParent());
@@ -573,7 +645,7 @@ public class ContextEditorController implements Initializable {
 
     @FXML private void onSaveAs() {
         Consumer<IBinaryContext> saved = onSaveCallback; onSaveCallback = null;
-        FileChooser fc = buildFC(I18n.get("editor.saveas.title"));
+        FileChooser fc = buildSaveFC(I18n.get("editor.saveas.title"));
         File f = fc.showSaveDialog(mainCanvasPane.getScene().getWindow());
         if (f == null) { onSaveCallback = saved; return; }
         currentFile = f.toPath();
@@ -617,17 +689,23 @@ public class ContextEditorController implements Initializable {
     }
 
     @FXML private void onRemoveObject() {
-        int sel = hoverRow >= 0 ? hoverRow : -1;
-        if (sel < 0) { showInfo(I18n.get("editor.select.object.first")); return; }
-        if (!confirmDelete(I18n.get("editor.confirm.delete.object", context.getObjectName(sel)))) return;
-        pushUndo(); 
-        context.removeObject(sel); 
-        undoing=true;
-        rebuildView(); 
-        undoing=false;
-        markModified();
+        if (context.getObjectCount() == 0) { showInfo(I18n.get("editor.select.object.first")); return; }
+        ChoiceDialog<String> d = new ChoiceDialog<>(context.getObjectName(0),
+            IntStream.range(0, context.getObjectCount()).mapToObj(context::getObjectName).collect(Collectors.toList()));
+        d.setTitle(I18n.get("editor.dialog.del.object.title"));
+        d.setHeaderText(null);
+        d.setContentText(I18n.get("editor.dialog.del.object.prompt"));
+        d.showAndWait().ifPresent(name -> {
+            int idx = IntStream.range(0, context.getObjectCount())
+                .filter(i -> context.getObjectName(i).equals(name)).findFirst().orElse(-1);
+            if (idx >= 0) {
+                if (!confirmDelete(I18n.get("editor.confirm.delete.object", name))) return;
+                pushUndo(); context.removeObject(idx);
+                undoing = true; rebuildView(); undoing = false;
+                markModified();
+            }
+        });
     }
-
     @FXML private void onRemoveAttribute() {
         if (context.getAttributeCount() == 0) { showInfo(I18n.get("editor.select.attr.first")); return; }
         ChoiceDialog<String> d = new ChoiceDialog<>(context.getAttributeName(0),
@@ -820,7 +898,17 @@ public class ContextEditorController implements Initializable {
 
     private String promptText(String title, String prompt, String def) { return promptText(title, prompt, def, false); }
 
-    private FileChooser buildFC(String title) {
+    private FileChooser buildOpenFC(String title) {
+        FileChooser fc = new FileChooser(); fc.setTitle(title);
+        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        fc.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
+                "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
+            new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+        return fc;
+    }
+
+    private FileChooser buildSaveFC(String title) {
         FileChooser fc = new FileChooser(); fc.setTitle(title);
         fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
         fc.getExtensionFilters().addAll(
@@ -831,5 +919,4 @@ public class ContextEditorController implements Initializable {
             new FileChooser.ExtensionFilter("CSV",              "*.csv"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
         return fc;
-    }
-}
+    }}

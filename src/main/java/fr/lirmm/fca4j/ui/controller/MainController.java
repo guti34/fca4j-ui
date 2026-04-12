@@ -1204,11 +1204,11 @@ public class MainController implements Initializable {
 
 		// Icône
 		try {
-			InputStream logoStream = getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-logo.png");
+			InputStream logoStream = getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_128x128.png");
 			if (logoStream != null) {
 				ImageView logo = new ImageView(new Image(logoStream));
-				logo.setFitWidth(64);
-				logo.setFitHeight(64);
+				logo.setFitWidth(128);
+				logo.setFitHeight(128);
 				logo.setPreserveRatio(true);
 				logo.setSmooth(true);
 				alert.setGraphic(logo);

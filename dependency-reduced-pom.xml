@@ -4,7 +4,7 @@
   <groupId>fr.lirmm.fca4j</groupId>
   <artifactId>fca4j-ui</artifactId>
   <name>FCA4J UI</name>
-  <version>0.4.0-SNAPSHOT</version>
+  <version>0.5.0-SNAPSHOT</version>
   <description>Companion JavaFX application for FCA4J</description>
   <url>https://www.lirmm.fr/fca4j/</url>
   <inceptionYear>2026</inceptionYear>
@@ -34,7 +34,7 @@
   <scm>
     <connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
     <developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
-    <tag>fca4j-ui-0.4.0</tag>
+    <tag>fca4j-ui-0.5.0</tag>
     <url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
   </scm>
   <organization>
@@ -133,6 +133,7 @@
                 <transformer>
                   <mainClass>${mainClass}</mainClass>
                 </transformer>
+                <transformer />
               </transformers>
               <filters>
                 <filter>
@@ -287,7 +288,7 @@
     <app.description>Companion application for FCA4J formal concept analysis</app.description>
     <app.dev.3.org>LIRMM</app.dev.3.org>
     <app.dev.2.name>Pierre MARTIN</app.dev.2.name>
-    <mainClass>fr.lirmm.fca4j.ui.MainApp</mainClass>
+    <mainClass>fr.lirmm.fca4j.ui.Launcher</mainClass>
     <app.dev.1.name>Marianne HUCHARD</app.dev.1.name>
     <app.org.url>https://www.lirmm.fr/equipes/marel/</app.org.url>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
