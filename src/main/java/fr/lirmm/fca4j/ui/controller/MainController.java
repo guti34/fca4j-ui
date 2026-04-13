@@ -180,12 +180,16 @@ public class MainController implements Initializable {
 		setTabGraphic(conceptStructureTab, Material2MZ.VISIBILITY, I18n.get("tab.graph"), "#3B6D11");
 		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
 				"INSPECT");
-		commandCombo.setValue("LATTICE");
-		commandCombo.valueProperty().addListener((obs, old, val) -> loadCommandPanel(val));
+		String lastCommand = AppPreferences.loadString("lastCommand", "LATTICE");
+		if (!commandCombo.getItems().contains(lastCommand)) lastCommand = "LATTICE";
+		commandCombo.setValue(lastCommand);
+		commandCombo.valueProperty().addListener((obs, old, val) -> {
+		    loadCommandPanel(val);
+		    AppPreferences.saveString("lastCommand", val);
+		});
 
 		selectedNodeLabel.setText(I18n.get("panel.node.none"));
-		loadCommandPanel("LATTICE");
-		contextRunButton.setText(I18n.get("button.run"));
+		loadCommandPanel(lastCommand);		contextRunButton.setText(I18n.get("button.run"));
 		rcaRunButton.setText(I18n.get("button.run"));
 
 		if (commandTabPane != null) {
@@ -1276,7 +1280,7 @@ public class MainController implements Initializable {
 			refreshRecentMenus();
 			modelEditorController.openFile(path);
 			mainTabPane.getSelectionModel().select(4);
-			selectCommandTabFor(path.toString()); // ← ajouter
+			selectCommandTabFor(path.toString()); 
 		}
 	}
 
