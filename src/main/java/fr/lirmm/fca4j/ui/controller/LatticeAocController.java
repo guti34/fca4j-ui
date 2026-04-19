@@ -54,10 +54,6 @@ public class LatticeAocController implements Initializable {
 	@FXML
 	private ComboBox<String> inputFormatCombo;
 	@FXML
-	private Label separatorLabel;
-	@FXML
-	private ComboBox<String> separatorCombo;
-	@FXML
 	private TextField outputFileField;
 	@FXML
 	private ComboBox<String> outputFormatCombo;
@@ -120,11 +116,6 @@ public class LatticeAocController implements Initializable {
 				"ARRAYLIST", "BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
-		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-		separatorCombo.setValue("COMMA");
-		separatorLabel.setVisible(false);
-		separatorCombo.setVisible(false);
-
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		icebergSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50, 5));
 
@@ -166,12 +157,6 @@ public class LatticeAocController implements Initializable {
 			updateAlgoTitle();
 		});
 		icebergSpinner.valueProperty().addListener((obs, old, val) -> updateAlgoTitle());
-		// Séparateur visible seulement si format = CSV
-		inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean isCsv = "CSV".equals(val);
-			separatorLabel.setVisible(isCsv);
-			separatorCombo.setVisible(isCsv);
-		});
 		Utilities.bindPathTooltip(inputFileField);
 		Utilities.bindPathTooltip(outputFileField);
 		Utilities.bindPathTooltip(dotFileField);
@@ -343,9 +328,6 @@ public class LatticeAocController implements Initializable {
 		String fmt = inputFormatCombo.getValue();
 		if (!I18n.get("format.auto").equals(fmt))
 			builder.inputFormat(fmt);
-		if ("CSV".equals(fmt))
-			builder.separator(separatorCombo.getValue());
-
 		if ("ICEBERG".equals(algoCombo.getValue()))
 			builder.icebergPercent(icebergSpinner.getValue());
 
@@ -456,7 +438,4 @@ public class LatticeAocController implements Initializable {
 		Platform.runLater(this::updateAlgoTitle);
 	}
 
-	public String getSeparator() {
-		return "CSV".equals(inputFormatCombo.getValue()) ? separatorCombo.getValue() : null;
-	}
 }

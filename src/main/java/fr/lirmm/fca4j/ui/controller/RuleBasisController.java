@@ -48,10 +48,6 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private ComboBox<String> inputFormatCombo;
 	@FXML
-	private Label separatorLabel;
-	@FXML
-	private ComboBox<String> separatorCombo;
-	@FXML
 	private TextField outputFileField;
 	@FXML
 	private ComboBox<String> outputFormatCombo;
@@ -105,15 +101,6 @@ public class RuleBasisController implements Initializable {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "CEX", "XML", "CSV");
 		inputFormatCombo.setValue("(auto)");
 
-		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-		separatorCombo.setValue("COMMA");
-		separatorLabel.setVisible(false);
-		separatorCombo.setVisible(false);
-		inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean csv = "CSV".equals(val);
-			separatorLabel.setVisible(csv);
-			separatorCombo.setVisible(csv);
-		});
 
 		outputFormatCombo.getItems().addAll("TXT", "JSON", "XML", "DATALOG");
 		outputFormatCombo.setValue("TXT");
@@ -297,8 +284,6 @@ public class RuleBasisController implements Initializable {
 		String fmt = inputFormatCombo.getValue();
 		if (!"(auto)".equals(fmt))
 			builder.inputFormat(fmt);
-		if ("CSV".equals(fmt))
-			builder.separator(separatorCombo.getValue());
 
 		builder.poolMode(poolModeCombo.getValue());
 
@@ -426,9 +411,5 @@ public class RuleBasisController implements Initializable {
 	        minSupportSpinner.getValueFactory().setValue(
 	            AppPreferences.loadInt(cmd + ".minSupport", 0));
 	    }
-	}
-	public String getSeparator() {
-	    return "CSV".equals(inputFormatCombo.getValue())
-	        ? separatorCombo.getValue() : null;
 	}
 	}

@@ -19,8 +19,6 @@
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.input.format"/>
                 <ComboBox fx:id="inputFormatCombo" prefWidth="120"/>
-                <Label fx:id="separatorLabel" text="%label.separator"/>
-                <ComboBox fx:id="separatorCombo" prefWidth="110"/>
             </HBox>
         </VBox>
     </TitledPane>

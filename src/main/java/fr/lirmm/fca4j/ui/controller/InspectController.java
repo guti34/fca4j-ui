@@ -41,10 +41,6 @@ public class InspectController implements Initializable {
 	private TextField inputFileField;
 	@FXML
 	private ComboBox<String> inputFormatCombo;
-	@FXML
-	private Label separatorLabel;
-	@FXML
-	private ComboBox<String> separatorCombo;
 
 	// ── Options avancées ──────────────────────────────────────────────────────
 	@FXML
@@ -59,16 +55,6 @@ public class InspectController implements Initializable {
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
 		inputFormatCombo.setValue("(auto)");
-
-		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-		separatorCombo.setValue("COMMA");
-		separatorLabel.setVisible(false);
-		separatorCombo.setVisible(false);
-		inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean csv = "CSV".equals(val);
-			separatorLabel.setVisible(csv);
-			separatorCombo.setVisible(csv);
-		});
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
@@ -133,8 +119,6 @@ public class InspectController implements Initializable {
 		String fmt = inputFormatCombo.getValue();
 		if (!"(auto)".equals(fmt))
 			builder.inputFormat(fmt);
-		if ("CSV".equals(fmt))
-			builder.separator(separatorCombo.getValue());
 
 		int to = timeoutSpinner.getValue();
 		if (to > 0)
@@ -182,7 +166,4 @@ public class InspectController implements Initializable {
 		return inputFileField.getText();
 	}
 
-	public String getSeparator() {
-		return "CSV".equals(inputFormatCombo.getValue()) ? separatorCombo.getValue() : null;
-	}
 }

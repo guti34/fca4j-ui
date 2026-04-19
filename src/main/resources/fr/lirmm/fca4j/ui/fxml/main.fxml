@@ -35,11 +35,14 @@
 			        <SeparatorMenuItem/>
 			        <MenuItem text="%menu.file.quit" onAction="#onQuit"/>
 			    </Menu>
-			    <Menu text="%menu.help">
-			        <MenuItem text="%menu.help.shortcuts" onAction="#onShowShortcuts"/>
-			        <SeparatorMenuItem/>
-			        <MenuItem text="%menu.help.about" onAction="#onAbout"/>
-			    </Menu>
+					<Menu text="%menu.help">
+					    <MenuItem text="%menu.help.command"   onAction="#onCommandHelp"/>
+					    <MenuItem text="%menu.help.website"   onAction="#onOpenWebsite"/>   <!-- AJOUT -->
+					    <SeparatorMenuItem/>
+					    <MenuItem text="%menu.help.shortcuts" onAction="#onShowShortcuts"/>
+					    <SeparatorMenuItem/>
+					    <MenuItem text="%menu.help.about" onAction="#onAbout"/>
+					</Menu>			
 			</MenuBar>
         </VBox>
     </top>
@@ -193,6 +196,9 @@
 	        <Label fx:id="statusGraphvizLabel" style="-fx-font-size: 11px;"/>
 	        <Pane HBox.hgrow="ALWAYS"/>
 			<Label fx:id="lastCommandLabel" style="-fx-font-size: 11px; -fx-font-weight: bold;"/>
+			<Separator orientation="VERTICAL"/>
+			<Button fx:id="btnHelp" styleClass="icon-btn" onAction="#onCommandHelp"
+			        style="-fx-background-color: transparent; -fx-cursor: hand;"/>
 			<Separator orientation="VERTICAL"/>
 	        <Label fx:id="selectedNodeLabel" style="-fx-font-size: 11px;"/>
 	    </HBox>

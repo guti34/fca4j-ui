@@ -15,10 +15,6 @@
                            promptText="%label.input.mvfile"/>
                 <Button text="%button.browse" onAction="#onBrowseInput"/>
             </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.separator"/>
-                <ComboBox fx:id="separatorCombo" prefWidth="120"/>
-            </HBox>
         </VBox>
     </TitledPane>
 

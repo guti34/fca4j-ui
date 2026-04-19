@@ -48,7 +48,7 @@ public class ContextIOService {
     public ContextIOService() {
         this.factory = new BitSetFactory();
     }
-
+    // for write usage only, read use detection
     public void setSeparator(char separator) {
         this.separator = separator;
     }
@@ -71,13 +71,17 @@ public class ContextIOService {
     }
 
     private IBinaryContext read(File file, ContextFormat format) throws Exception {
-        return switch (format) {
-            case CXT -> CXTReader.read(file, factory);
-            case CEX -> ConExpReader.read(file, factory).get(0);
-            case SLF -> SLFReader.read(file, factory);
-            case CSV -> MyCSVReader.read(file, separator, factory);
-            case XML -> GaliciaXMLReader.read(file, factory);
-        };
+        switch (format) {
+            case CXT:return CXTReader.read(file, factory);
+            case CEX:return ConExpReader.read(file, factory).get(0);
+            case SLF:return SLFReader.read(file, factory);
+            case CSV:{
+            	char sep=CSVUtilities.detectSeparator(file);
+            	return MyCSVReader.read(file, sep, factory);
+            }
+            case XML:return GaliciaXMLReader.read(file, factory);
+            default: return null;
+        }
     }
 
     // ── Écriture ──────────────────────────────────────────────────────────────

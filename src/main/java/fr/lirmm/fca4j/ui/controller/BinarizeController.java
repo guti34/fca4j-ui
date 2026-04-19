@@ -37,9 +37,8 @@ public class BinarizeController implements Initializable {
     @FXML private TitledPane       filterPane;
     @FXML private TitledPane       advancedPane;
 
-    // ── Entrée CSV ────────────────────────────────────────────────────────────
+    // ── Entrée ────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
-    @FXML private ComboBox<String> separatorCombo;
 
     // ── Sortie ────────────────────────────────────────────────────────────────
     @FXML private TextField        outputFileField;
@@ -68,8 +67,6 @@ public class BinarizeController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-        separatorCombo.setValue("COMMA");
 
         outputFormatCombo.getItems().addAll("CXT (Burmeister)", "SLF (HTK)", "CEX (ConExp)","XML (Galicia)",  "CSV");
         outputFormatCombo.setValue("CXT");
@@ -216,7 +213,6 @@ public class BinarizeController implements Initializable {
             .command("BINARIZE")
             .inputFile(inputFileField.getText().trim())
             .inputFormat("CSV")
-            .separator(separatorCombo.getValue())
             .verbose(verboseCheckBox.isSelected());
 
         if (!outputFileField.getText().isBlank()) {
@@ -252,7 +248,6 @@ public class BinarizeController implements Initializable {
         a.showAndWait();
     }
     private void savePrefs() {
-        AppPreferences.saveString(P + "separator",    separatorCombo.getValue());
         AppPreferences.saveString(P + "outputFormat", outputFormatCombo.getValue());
         AppPreferences.saveString(P + "outSeparator", outSeparatorCombo.getValue());
         AppPreferences.saveBool  (P + "verbose",      verboseCheckBox.isSelected());
@@ -265,9 +260,6 @@ public class BinarizeController implements Initializable {
     }
 
     private void loadPrefs() {
-        String sep = AppPreferences.loadString(P + "separator", "COMMA");
-        if (separatorCombo.getItems().contains(sep)) separatorCombo.setValue(sep);
-
         String fmt = AppPreferences.loadString(P + "outputFormat", "CXT");
         if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);
 
@@ -287,8 +279,5 @@ public class BinarizeController implements Initializable {
         includeList.getItems().clear();
         if (!incl.isBlank())
             includeList.getItems().addAll(incl.split("\\|"));
-    }
-    public String getSeparator() {
-        return separatorCombo.getValue();
     }
 }

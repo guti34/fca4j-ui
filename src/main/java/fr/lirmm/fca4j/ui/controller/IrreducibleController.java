@@ -46,10 +46,6 @@ public class IrreducibleController implements Initializable {
 	private TextField inputFileField;
 	@FXML
 	private ComboBox<String> inputFormatCombo;
-	@FXML
-	private Label separatorLabel;
-	@FXML
-	private ComboBox<String> separatorCombo;
 
 	// ── Sortie (optionnelle — fichier texte) ──────────────────────────────────
 	@FXML
@@ -78,16 +74,6 @@ public class IrreducibleController implements Initializable {
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
 		inputFormatCombo.setValue("(auto)");
-
-		separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-		separatorCombo.setValue("COMMA");
-		separatorLabel.setVisible(false);
-		separatorCombo.setVisible(false);
-		inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean csv = "CSV".equals(val);
-			separatorLabel.setVisible(csv);
-			separatorCombo.setVisible(csv);
-		});
 
 		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "HASHSET", "TREESET", "INT_ARRAY",
 				"ARRAYLIST", "BOOL_ARRAY");
@@ -182,8 +168,6 @@ public class IrreducibleController implements Initializable {
 		String fmt = inputFormatCombo.getValue();
 		if (!"(auto)".equals(fmt))
 			builder.inputFormat(fmt);
-		if ("CSV".equals(fmt))
-			builder.separator(separatorCombo.getValue());
 
 		String impl = implCombo.getValue();
 		if (!"BITSET".equals(impl))
@@ -253,7 +237,6 @@ public class IrreducibleController implements Initializable {
 
 	private void savePrefs() {
 		AppPreferences.saveString(P + "inputFormat", inputFormatCombo.getValue());
-		AppPreferences.saveString(P + "separator", separatorCombo.getValue());
 		AppPreferences.saveString(P + "impl", implCombo.getValue());
 		AppPreferences.saveBool(P + "lobj", lobjCheckBox.isSelected());
 		AppPreferences.saveBool(P + "lattr", lattrCheckBox.isSelected());
@@ -267,9 +250,6 @@ public class IrreducibleController implements Initializable {
 		if (inputFormatCombo.getItems().contains(fmt))
 			inputFormatCombo.setValue(fmt);
 
-		String sep = AppPreferences.loadString(P + "separator", "COMMA");
-		if (separatorCombo.getItems().contains(sep))
-			separatorCombo.setValue(sep);
 
 		String impl = AppPreferences.loadString(P + "impl", "BITSET");
 		if (implCombo.getItems().contains(impl))
@@ -282,7 +262,4 @@ public class IrreducibleController implements Initializable {
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
 	}
 
-	public String getSeparator() {
-		return "CSV".equals(inputFormatCombo.getValue()) ? separatorCombo.getValue() : null;
-	}
 }

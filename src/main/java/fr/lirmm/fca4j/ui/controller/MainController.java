@@ -72,7 +72,8 @@ public class MainController implements Initializable {
 	private Label selectedNodeLabel;
 	@FXML
 	private TabPane mainTabPane;
-
+	@FXML 
+	private Button btnHelp;
 	// ── Toolbar Graph ─────────────────────────────────────────────────────────
 	@FXML
 	private Button btnMagnifier;
@@ -235,8 +236,7 @@ public class MainController implements Initializable {
 		contextEditorController.setOnFileLoaded(path -> {
 		    onNewInputContext(path);         
 		    propagateInputFile(path);
-		    String sep = getSeparatorFromCurrentPanel();
-		    AppPreferences.addRecentContext(path, sep);
+		    AppPreferences.addRecentContext(path);
 		    refreshRecentMenus();
 		    selectCommandTabFor(path);
 		});
@@ -260,7 +260,14 @@ public class MainController implements Initializable {
 		// ── Toolbar graphe + status bar ───────────────────────────────────────────
 		setupGraphToolbar();
 		updateStatusBar();
-
+		if (btnHelp != null) {
+		    FontIcon helpIcon = new FontIcon(Material2AL.HELP_OUTLINE);
+		    helpIcon.setIconSize(16);
+		    helpIcon.setIconColor(Color.valueOf("#0047B3"));
+		    btnHelp.setGraphic(helpIcon);
+		    btnHelp.setText("");
+		    btnHelp.setTooltip(new Tooltip(I18n.get("button.help.command")));
+		}
 		// ── Raccourcis clavier globaux ────────────────────────────────────────────
 		// Branchés sur la Scene après que le layout soit stable
 		javafx.application.Platform.runLater(this::setupKeyboardShortcuts);
@@ -308,6 +315,9 @@ public class MainController implements Initializable {
 	        if (!ctrl && code == javafx.scene.input.KeyCode.F1) {
 	            onShowShortcuts(); event.consume();
 	        }
+	        if (!ctrl && code == javafx.scene.input.KeyCode.F2) {
+	            onCommandHelp(); event.consume();
+	        }
 	    });
 	}
 
@@ -350,6 +360,7 @@ public class MainController implements Initializable {
 	        + row("Ctrl+S",  isFr ? "Enregistrer"               : "Save")
 	        + row("F5",      isFr ? "Relancer la commande"       : "Re-run command")
 	        + row("Ctrl+L",  isFr ? "Effacer la console"         : "Clear console")
+	        + row("F2", isFr ? "Aide sur la commande courante" : "Help on current command")
 	        + row("F1",      isFr ? "Afficher cette aide"        : "Show this help")
 	        + "</table>"
 	        + "<h2>" + secEdit + "</h2>"
@@ -472,21 +483,6 @@ public class MainController implements Initializable {
 	        } catch (Exception ignored) {}
 	    }
 	    return false;
-	}
-	private String getSeparatorFromCurrentPanel() {
-		if (currentCommandController instanceof LatticeAocController c)
-			return c.getSeparator();
-		if (currentCommandController instanceof RuleBasisController c)
-			return c.getSeparator();
-		if (currentCommandController instanceof ReduceClarifyController c)
-			return c.getSeparator();
-		if (currentCommandController instanceof IrreducibleController c)
-			return c.getSeparator();
-		if (currentCommandController instanceof InspectController c)
-			return c.getSeparator();
-		if (currentCommandController instanceof BinarizeController c)
-			return c.getSeparator();
-		return null;
 	}
 
 	private void setLastCommandStatus(String command, boolean success, long durationMs) {
@@ -1480,4 +1476,50 @@ public class MainController implements Initializable {
 			commandTabPane.getSelectionModel().select(contextTab);
 		}
 	}
+	// Méthode pour résoudre la commande courante selon l'onglet actif
+	private String getCurrentCommandName() {
+	    Tab selected = commandTabPane.getSelectionModel().getSelectedItem();
+	    if (selected == rcaTab) {
+	        return "RCA";
+	    } else if (selected == importTab) {
+	        return (importCommandController != null)
+	            ? importCommandController.getCurrentCommand()
+	            : "BINARIZE";
+	    } else {
+	        // Onglet Context : valeur de la ComboBox
+	        return commandCombo.getValue();
+	    }
+	}
+
+	// Handler du bouton Help
+	@FXML
+	private void onCommandHelp() {
+	    String cmd = getCurrentCommandName();
+	    // Construire le nom de page : FAMILY_IMPORT → Family_import, LATTICE → Lattice
+	    String pageName;
+	    if (cmd.contains("_")) {
+	        // Ex: FAMILY_IMPORT → Family_import
+	        String[] parts = cmd.toLowerCase().split("_");
+	        parts[0] = parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1);
+	        pageName = String.join("_", parts);
+	    } else {
+	        pageName = cmd.substring(0, 1).toUpperCase() + cmd.substring(1).toLowerCase();
+	    }
+	    String url = "https://www.lirmm.fr/fca4j/" + pageName + ".html";
+	    if (!openUrlInBrowser(url)) {
+	        try {
+	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	        } catch (Exception e) {
+	            appendConsole("[Help] " + e.getMessage());
+	        }
+	    }
+	}
+	@FXML
+	private void onOpenWebsite() {
+	    String url = "https://www.lirmm.fr/fca4j/";
+	    if (!openUrlInBrowser(url)) {
+	        try { java.awt.Desktop.getDesktop().browse(new java.net.URI(url)); }
+	        catch (Exception e) { appendConsole("[Help] " + e.getMessage()); }
+	    }
+	}	
 }

@@ -802,10 +802,6 @@ public class ContextEditorController implements Initializable {
     public void openFile(Path path) { openFile(path, "COMMA"); }
 
     public void openFile(Path path, String separator) {
-        if (!"COMMA".equals(separator)) {
-            char sep = switch (separator) { case "SEMICOLON" -> ';'; case "TAB" -> '\t'; default -> ','; };
-            ioService.setSeparator(sep);
-        }
         if (onLoadStart != null) onLoadStart.run();
         java.util.concurrent.CompletableFuture.supplyAsync(() -> {
             try { return ioService.read(path); } catch (Exception e) { throw new RuntimeException(e); }

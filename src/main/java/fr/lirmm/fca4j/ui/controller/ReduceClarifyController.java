@@ -40,8 +40,6 @@ public class ReduceClarifyController implements Initializable {
     // ── Entrée ────────────────────────────────────────────────────────────────
     @FXML private TextField        inputFileField;
     @FXML private ComboBox<String> inputFormatCombo;
-    @FXML private Label            separatorLabel;
-    @FXML private ComboBox<String> separatorCombo;
 
     // ── Sortie ────────────────────────────────────────────────────────────────
     @FXML private TextField        outputFileField;
@@ -75,28 +73,26 @@ public class ReduceClarifyController implements Initializable {
         outputFormatCombo.getItems().addAll(CONTEXT_FORMATS.subList(1, CONTEXT_FORMATS.size()));
         outputFormatCombo.setValue("CXT");
 
-        separatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-        separatorCombo.setValue("COMMA");
         outSeparatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
         outSeparatorCombo.setValue("COMMA");
 
         // Afficher séparateur uniquement si format CSV
-        separatorLabel.setVisible(false);
-        separatorCombo.setVisible(false);
         outSeparatorLabel.setVisible(false);
         outSeparatorCombo.setVisible(false);
 
-        inputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-            boolean csv = "CSV".equals(val);
-            separatorLabel.setVisible(csv);
-            separatorCombo.setVisible(csv);
-        });
         outputFormatCombo.valueProperty().addListener((obs, old, val) -> {
+            // Afficher/masquer le séparateur CSV
             boolean csv = "CSV".equals(val);
             outSeparatorLabel.setVisible(csv);
             outSeparatorCombo.setVisible(csv);
-        });
 
+            // Mettre à jour l'extension du fichier de sortie
+            String current = outputFileField.getText().trim();
+            if (!current.isBlank()) {
+                String base = current.replaceAll("\\.[^.]+$", "");
+                outputFileField.setText(base + extForFormat(val));
+            }
+        });
         timeoutSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
         Utilities.bindPathTooltip(inputFileField);
@@ -138,7 +134,16 @@ this.onInputChanged = onInputChanged;
         groupCheckBox.setManaged(isReduce);
         loadPrefs();
     }
-
+    /** Retourne l'extension correspondant à un format de sortie. */
+    private static String extForFormat(String fmt) {
+        return switch (fmt) {
+            case "SLF" -> ".slf";
+            case "XML" -> ".xml";
+            case "CEX" -> ".cex";
+            case "CSV" -> ".csv";
+            default    -> ".cxt";   // CXT et tout autre
+        };
+    }
     // ── Actions ───────────────────────────────────────────────────────────────
 
 
@@ -166,7 +171,7 @@ this.onInputChanged = onInputChanged;
             if (outputFileField.getText().isBlank()) {
                 String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
                 String cmd  = descriptor.getName().toLowerCase();
-                outputFileField.setText(base + "-" + cmd + ".cxt");
+                outputFileField.setText(base + "-" + cmd + extForFormat(outputFormatCombo.getValue()));
             }
         }
     }
@@ -206,7 +211,6 @@ this.onInputChanged = onInputChanged;
         // Format d'entrée
         String inFmt = inputFormatCombo.getValue();
         if (!"(auto)".equals(inFmt)) builder.inputFormat(inFmt);
-        if ("CSV".equals(inFmt))     builder.separator(separatorCombo.getValue());
 
         // Fichier et format de sortie
         if (!outputFileField.getText().isBlank()) {
@@ -279,7 +283,8 @@ this.onInputChanged = onInputChanged;
 
         String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
         outputFileField.setText(savedOutput.isBlank()
-            ? base + "-" + cmd.toLowerCase() + ".cxt" : savedOutput);
+        		? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
+                : savedOutput);
     }
     public String getInputFile() {
         return inputFileField.getText();
@@ -287,7 +292,6 @@ this.onInputChanged = onInputChanged;
     private void savePrefs() {
         String cmd = descriptor.getName(); // "CLARIFY" ou "REDUCE"
         AppPreferences.saveString(cmd + ".inputFormat",  inputFormatCombo.getValue());
-        AppPreferences.saveString(cmd + ".separator",    separatorCombo.getValue());
         AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
         AppPreferences.saveString(cmd + ".outSeparator", outSeparatorCombo.getValue());
         AppPreferences.saveBool  (cmd + ".xo",           xoCheckBox.isSelected());
@@ -304,9 +308,6 @@ this.onInputChanged = onInputChanged;
         String inFmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
         if (inputFormatCombo.getItems().contains(inFmt)) inputFormatCombo.setValue(inFmt);
 
-        String sep = AppPreferences.loadString(cmd + ".separator", "COMMA");
-        if (separatorCombo.getItems().contains(sep)) separatorCombo.setValue(sep);
-
         String outFmt = AppPreferences.loadString(cmd + ".outputFormat", "CXT");
         if (outputFormatCombo.getItems().contains(outFmt)) outputFormatCombo.setValue(outFmt);
 
@@ -321,8 +322,4 @@ this.onInputChanged = onInputChanged;
         if ("REDUCE".equals(cmd))
             groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
     }  
-    public String getSeparator() {
-        return "CSV".equals(inputFormatCombo.getValue())
-            ? separatorCombo.getValue() : null;
-    }    
 }

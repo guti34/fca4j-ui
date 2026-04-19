@@ -48,6 +48,9 @@ public class ImportCommandController implements Initializable {
         familyImportContainer.setVisible(false);
         familyImportContainer.setManaged(false);
     }
+    public String getCurrentCommand() {
+        return (btnBinarize != null && btnBinarize.isSelected()) ? "BINARIZE" : "FAMILY_IMPORT";
+    }
     public void setOpenInModelEditor(Consumer<java.nio.file.Path> callback) {
         this.openInModelEditor = callback;
         // Relayer immédiatement si FamilyImportController déjà chargé
