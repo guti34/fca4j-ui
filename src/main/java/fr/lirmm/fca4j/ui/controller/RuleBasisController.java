@@ -270,7 +270,7 @@ public class RuleBasisController implements Initializable {
 	public void onRun() {
 		savePrefs();
 		if (inputFileField.getText().isBlank()) {
-			showError("Fichier d'entrée manquant", "Veuillez sélectionner un fichier de contexte.");
+			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
 			return;
 		}
 

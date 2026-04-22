@@ -55,7 +55,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.2</javafx.version>
 		<mainClass>fr.lirmm.fca4j.ui.Launcher</mainClass>        
-		<javafx.platform>win</javafx.platform>
+		<javafx.platform>mac-aarch64</javafx.platform>
         <app.name>FCA4J-UI</app.name>
         <app.vendor>LIRMM - Montpellier</app.vendor>
         <app.description>Companion application for FCA4J formal concept analysis</app.description>
