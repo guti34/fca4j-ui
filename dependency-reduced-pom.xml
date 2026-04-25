@@ -277,7 +277,7 @@
     </dependency>
   </dependencies>
   <properties>
-    <javafx.platform>mac-aarch64</javafx.platform>
+    <javafx.platform>linux</javafx.platform>
     <app.dev.3.name>Alain GUTIERREZ</app.dev.3.name>
     <jpackage.libs>${project.build.directory}/libs</jpackage.libs>
     <app.dev.1.org>LIRMM</app.dev.1.org>

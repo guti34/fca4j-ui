@@ -475,7 +475,7 @@ public class MainController implements Initializable {
 	    for (String[] cmd : candidates) {
 	        try {
 	            java.io.File exe = new java.io.File(cmd[0]);
-	            if (cmd.length == 2 && !exe.exists()) continue; // chemin absolu non trouvé
+	            if (cmd[0].contains(java.io.File.separator) && !exe.exists()) continue; // chemin absolu non trouvé
 	            new ProcessBuilder(cmd)
 	                .redirectErrorStream(true)
 	                .start();
