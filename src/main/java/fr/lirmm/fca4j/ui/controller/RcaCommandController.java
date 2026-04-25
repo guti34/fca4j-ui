@@ -217,7 +217,7 @@ public class RcaCommandController implements Initializable {
         loadPrefs();
     }
     @FXML private void onOpenInRcaviz() {
-        if (outputFolder == null || !buildJson.isSelected()) {
+        if (outputFolder == null ) {
             Alert a = new Alert(Alert.AlertType.WARNING);
             a.setHeaderText(null);
             a.setContentText(I18n.get("rcaviz.no.json.file"));
