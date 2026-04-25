@@ -468,7 +468,14 @@ public class MainController implements Initializable {
 	        candidates.add(new String[]{"open", url});
 	    } else {
 	        // Linux : lancer dans un thread séparé pour ne pas bloquer JavaFX
-	        new Thread(() -> {
+	    	   new Thread(() -> {
+	    	        try {
+	    	            new ProcessBuilder("bash", "-c", "nohup xdg-open '" + url + "' >/dev/null 2>&1 &")
+	    	                .directory(new java.io.File("/"))
+	    	                .start();
+	    	        } catch (Exception ignored) {}
+	    	    }).start();
+	    	 /*	        new Thread(() -> {
 	            for (String cmd : new String[]{"xdg-open", "google-chrome", "firefox"}) {
 	                try {
 	                    new ProcessBuilder(cmd, url)
@@ -480,6 +487,7 @@ public class MainController implements Initializable {
 	                } catch (Exception ignored) {}
 	            }
 	        }).start();
+*/	        
 	        return true;
 	    }
 
