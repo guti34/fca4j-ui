@@ -469,24 +469,6 @@ public class MainController implements Initializable {
 	    } else {
 	        // Linux : lancer dans un thread séparé pour ne pas bloquer JavaFX
 	        new Thread(() -> {
-	            try {
-	                System.out.println("[DEBUG] Tentative ouverture URL: " + url);
-	                Process p = new ProcessBuilder("xdg-open", url)
-	                    .directory(new java.io.File("/"))
-	                    .redirectErrorStream(true)
-	                    .start();
-	                
-	                // Lire la sortie du processus
-	                String output = new String(p.getInputStream().readAllBytes());
-	                int exitCode = p.waitFor();
-	                System.out.println("[DEBUG] Exit code: " + exitCode);
-	                System.out.println("[DEBUG] Output: " + output);
-	            } catch (Exception e) {
-	                System.out.println("[DEBUG] Exception: " + e.getMessage());
-	                e.printStackTrace();
-	            }
-	        }).start();
-	    	 /*	        new Thread(() -> {
 	            for (String cmd : new String[]{"xdg-open", "google-chrome", "firefox"}) {
 	                try {
 	                    new ProcessBuilder(cmd, url)
@@ -497,8 +479,7 @@ public class MainController implements Initializable {
 	                    return;
 	                } catch (Exception ignored) {}
 	            }
-	        }).start();
-*/	        
+	        }).start();	        
 	        return true;
 	    }
 
@@ -1334,19 +1315,19 @@ public class MainController implements Initializable {
 	}
 
 	private Hyperlink hyperlink(String url) {
-		Hyperlink h = new Hyperlink(url);
-		h.setOnAction(e -> {
-			try {
-				java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
-		});
-		// Supprimer le padding par défaut du Hyperlink pour l'aligner avec le texte
-		h.setPadding(new javafx.geometry.Insets(0));
-		return h;
+	    Hyperlink h = new Hyperlink(url);
+	    h.setOnAction(e -> {
+	        if (!openUrlInBrowser(url)) {
+	            try {
+	                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	            } catch (Exception ex) {
+	                ex.printStackTrace();
+	            }
+	        }
+	    });
+	    h.setPadding(new javafx.geometry.Insets(0));
+	    return h;
 	}
-
 	@FXML
 	private void onClearConsole() {
 		consoleArea.clear();
