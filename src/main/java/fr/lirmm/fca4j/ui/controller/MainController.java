@@ -467,9 +467,19 @@ public class MainController implements Initializable {
 	        candidates.add(new String[]{"open", "-a", "Google Chrome", url});
 	        candidates.add(new String[]{"open", url});
 	    } else {
-	        candidates.add(new String[]{"xdg-open", url});
-	        candidates.add(new String[]{"google-chrome", url});
-	        candidates.add(new String[]{"firefox", url});
+	        // Linux : lancer dans un thread séparé pour ne pas bloquer JavaFX
+	        new Thread(() -> {
+	            for (String cmd : new String[]{"xdg-open", "google-chrome", "firefox"}) {
+	                try {
+	                    new ProcessBuilder(cmd, url)
+	                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+	                        .redirectError(ProcessBuilder.Redirect.DISCARD)
+	                        .start();
+	                    return;
+	                } catch (Exception ignored) {}
+	            }
+	        }).start();
+	        return true;
 	    }
 
 	    for (String[] cmd : candidates) {
