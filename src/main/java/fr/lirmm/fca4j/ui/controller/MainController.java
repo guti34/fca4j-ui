@@ -472,6 +472,7 @@ public class MainController implements Initializable {
 	            for (String cmd : new String[]{"xdg-open", "google-chrome", "firefox"}) {
 	                try {
 	                    new ProcessBuilder(cmd, url)
+	                    	.directory(new java.io.File("/"))
 	                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
 	                        .redirectError(ProcessBuilder.Redirect.DISCARD)
 	                        .start();
