@@ -474,7 +474,14 @@ public class MainController implements Initializable {
 	                    .directory(new java.io.File("/"))
 	                    .redirectErrorStream(true)
 	                    .start();
+	                
+	                // Lire la sortie du processus
+	                String output = new String(p.getInputStream().readAllBytes());
+	                int exitCode = p.waitFor();
+	                System.out.println("[DEBUG] Exit code: " + exitCode);
+	                System.out.println("[DEBUG] Output: " + output);
 	            } catch (Exception e) {
+	                System.out.println("[DEBUG] Exception: " + e.getMessage());
 	                e.printStackTrace();
 	            }
 	        }).start();
