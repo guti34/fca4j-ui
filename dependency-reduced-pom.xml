@@ -212,6 +212,7 @@
           <linuxShortcut>true</linuxShortcut>
           <linuxMenuGroup>Science</linuxMenuGroup>
           <macPackageName>${app.name}</macPackageName>
+          <resourceDir>src/main/deploy/linux</resourceDir>
         </configuration>
       </plugin>
       <plugin>
@@ -266,11 +267,23 @@
           <groupId>org.junit.jupiter</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>junit-jupiter-params</artifactId>
+          <artifactId>junit-jupiter-engine</artifactId>
           <groupId>org.junit.jupiter</groupId>
         </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
+      <exclusions>
         <exclusion>
-          <artifactId>junit-jupiter-engine</artifactId>
+          <artifactId>apiguardian-api</artifactId>
+          <groupId>org.apiguardian</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>junit-jupiter-api</artifactId>
           <groupId>org.junit.jupiter</groupId>
         </exclusion>
       </exclusions>

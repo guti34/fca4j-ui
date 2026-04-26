@@ -165,14 +165,14 @@ public class MainController implements Initializable {
 	private ModelEditorController modelEditorController;
 	@FXML
 	private Label lastCommandLabel;
-	// ── Serveur HTTP local pour RCAViz ────────────────────────────────────────
-	private com.sun.net.httpserver.HttpServer rcavizServer;
-	private int rcavizPort = 0;
-	private com.sun.net.httpserver.HttpServer fcavizirServer;
-	private int fcavizirPort = 0;
+
+	private final BrowserLauncher browserLauncher = new BrowserLauncher(this::showAlert);
 	
 	private String lastGraphInputFile  = ""; // input qui a produit le graphe courant
 	private String lastRulesInputFile  = ""; // input qui a produit les règles courantes
+	
+	private HelpDialogs helpDialogs;
+	
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		renderer = new GraphRenderer(graphWebView.getEngine());
@@ -270,8 +270,10 @@ public class MainController implements Initializable {
 		}
 		// ── Raccourcis clavier globaux ────────────────────────────────────────────
 		// Branchés sur la Scene après que le layout soit stable
-		javafx.application.Platform.runLater(this::setupKeyboardShortcuts);
-	}
+		javafx.application.Platform.runLater(() -> {
+		    setupKeyboardShortcuts();
+		});
+		}
 
 	// ── Raccourcis clavier ────────────────────────────────────────────────────
 
@@ -321,193 +323,7 @@ public class MainController implements Initializable {
 	    });
 	}
 
-	@FXML
-	public void onShowShortcuts() {
-	    javafx.stage.Stage dialog = new javafx.stage.Stage();
-	    dialog.setTitle(I18n.get("menu.help.shortcuts"));
-	    dialog.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-	    dialog.initOwner(mainTabPane.getScene().getWindow());
-
-	    javafx.scene.web.WebView wv = new javafx.scene.web.WebView();
-	    wv.getEngine().loadContent(buildShortcutsHtml());
-	    wv.setPrefSize(520, 480);
-
-	    dialog.setScene(new javafx.scene.Scene(wv));
-	    dialog.setResizable(false);
-	    dialog.show();
-	}
-
-	private String buildShortcutsHtml() {
-	    boolean isFr = "fr".equals(I18n.getLocale().getLanguage());
-	    String title   = isFr ? "Raccourcis clavier — FCA4J UI"        : "Keyboard Shortcuts — FCA4J UI";
-	    String secGen  = isFr ? "Général"                               : "General";
-	    String secEdit = isFr ? "Éditeur de contexte"                   : "Context Editor";
-	    return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"
-	        + "body{font-family:system-ui,sans-serif;font-size:13px;padding:16px;background:#f8f9fa;}"
-	        + "h1{font-size:15px;color:#0047B3;margin:0 0 14px}"
-	        + "h2{font-size:12px;color:#555;text-transform:uppercase;letter-spacing:.04em;"
-	        +   "margin:14px 0 6px;border-bottom:1px solid #dee2e6;padding-bottom:4px}"
-	        + "table{width:100%;border-collapse:collapse}"
-	        + "td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top}"
-	        + "td:first-child{width:160px}"
-	        + "kbd{background:#e9ecef;border:1px solid #ced4da;border-radius:4px;"
-	        +   "padding:2px 7px;font-size:11px;font-family:monospace;white-space:nowrap}"
-	        + "</style></head><body>"
-	        + "<h1>" + title + "</h1>"
-	        + "<h2>" + secGen + "</h2>"
-	        + "<table>"
-	        + row("Ctrl+O",  isFr ? "Ouvrir un contexte"        : "Open context")
-	        + row("Ctrl+S",  isFr ? "Enregistrer"               : "Save")
-	        + row("F5",      isFr ? "Relancer la commande"       : "Re-run command")
-	        + row("Ctrl+L",  isFr ? "Effacer la console"         : "Clear console")
-	        + row("F2", isFr ? "Aide sur la commande courante" : "Help on current command")
-	        + row("F1",      isFr ? "Afficher cette aide"        : "Show this help")
-	        + "</table>"
-	        + "<h2>" + secEdit + "</h2>"
-	        + "<table>"
-	        + row("Ctrl+Z",       isFr ? "Annuler (undo)"                  : "Undo")
-	        + row("Double-clic",  isFr ? "Renommer objet / attribut"        : "Rename object / attribute")
-	        + row("Clic cellule", isFr ? "Cocher / décocher"                : "Toggle cell")
-	        + "</table>"
-	        + "</body></html>";
-	}
-
-	private static String row(String key, String desc) {
-	    return "<tr><td><kbd>" + key + "</kbd></td><td>" + desc + "</td></tr>";
-	}
-
-
-	private void startRcavizServer(Path jsonFile) throws Exception {
-		// Arrêter le serveur précédent si actif
-		if (rcavizServer != null)
-			rcavizServer.stop(0);
-
-		rcavizServer = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(0), 0); // port 0 = port
-																										// libre
-																										// automatique
-		rcavizPort = rcavizServer.getAddress().getPort();
-
-		rcavizServer.createContext("/", exchange -> {
-			// Headers CORS pour autoriser rcaviz.lirmm.fr à lire le fichier
-			exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-			exchange.getResponseHeaders().add("Content-Type", "application/json");
-			byte[] bytes = java.nio.file.Files.readAllBytes(jsonFile);
-			exchange.sendResponseHeaders(200, bytes.length);
-			try (var os = exchange.getResponseBody()) {
-				os.write(bytes);
-			}
-		});
-		rcavizServer.setExecutor(null);
-		rcavizServer.start();
-	}
-
-	public void openInRcaviz(Path jsonFile) {
-		try {
-			startRcavizServer(jsonFile);
-			String url = "https://rcaviz.lirmm.fr/?data=http://localhost:" + rcavizPort + "/" + jsonFile.getFileName();
-	        if (!openUrlInBrowser(url)) {
-	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-	        }
-		} catch (Exception e) {
-			showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
-		}
-	}
-	public void openInFcavizir(Path txtFile) {
-	    try {
-	        // Meme mecanisme que RCAViz : serveur HTTP local + ?data=
-	        // Le serveur Java envoie le fichier avec les bons headers CORS
-	        if (fcavizirServer != null) fcavizirServer.stop(0);
-	        fcavizirServer = com.sun.net.httpserver.HttpServer.create(
-	            new java.net.InetSocketAddress(0), 0);
-	        fcavizirPort = fcavizirServer.getAddress().getPort();
-	        fcavizirServer.createContext("/", exchange -> {
-	            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-	            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-	            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
-	            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-	                exchange.sendResponseHeaders(204, -1);
-	                return;
-	            }
-	            exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
-	            byte[] bytes = java.nio.file.Files.readAllBytes(txtFile);
-	            exchange.sendResponseHeaders(200, bytes.length);
-	            try (var os = exchange.getResponseBody()) { os.write(bytes); }
-	        });
-	        fcavizirServer.setExecutor(null);
-	        fcavizirServer.start();
-
-	        String url = "https://fcavizir.lirmm.fr/?data=http://localhost:"
-	            + fcavizirPort + "/" + txtFile.getFileName();
-	        if (!openUrlInBrowser(url)) {
-	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-	        }
-	    } catch (Exception e) {
-	        showAlert("FCAvizIR", "Impossible d'ouvrir FCAvizIR : " + e.getMessage());
-	    }
-	}
-
-	/**
-	 * Lance le navigateur directement via ProcessBuilder pour contourner la limite
-	 * de 2048 chars de ShellExecuteW (Desktop.browse sur Windows).
-	 * Tente Chrome, Firefox, Edge dans cet ordre.
-	 * @return true si un navigateur a été lancé, false sinon
-	 */
-	private boolean openUrlInBrowser(String url) {
-	    String os = System.getProperty("os.name", "").toLowerCase();
-	    java.util.List<String[]> candidates = new java.util.ArrayList<>();
-
-	    if (os.contains("win")) {
-	        String local = System.getenv("LOCALAPPDATA");
-	        candidates.add(new String[]{"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", url});
-	        candidates.add(new String[]{"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", url});
-	        if (local != null)
-	            candidates.add(new String[]{local + "\\Google\\Chrome\\Application\\chrome.exe", url});
-	        candidates.add(new String[]{"C:\\Program Files\\Mozilla Firefox\\firefox.exe", url});
-	        candidates.add(new String[]{"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe", url});
-	    } else if (os.contains("mac")) {
-	        candidates.add(new String[]{"open", "-a", "Google Chrome", url});
-	        candidates.add(new String[]{"open", url});
-	    } else {
-	        // Linux : lancer dans un thread séparé pour ne pas bloquer JavaFX
-	        new Thread(() -> {
-	            try {
-	                Process p = new ProcessBuilder("xdg-open", url)
-	                    .directory(new java.io.File("/"))
-	                    .redirectErrorStream(true)
-	                    .start();
-	                
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	            }
-	        }).start();
-	    	 /*	        new Thread(() -> {
-	            for (String cmd : new String[]{"xdg-open", "google-chrome", "firefox"}) {
-	                try {
-	                    new ProcessBuilder(cmd, url)
-	                    	.directory(new java.io.File("/"))
-	                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-	                        .redirectError(ProcessBuilder.Redirect.DISCARD)
-	                        .start();
-	                    return;
-	                } catch (Exception ignored) {}
-	            }
-	        }).start();
-*/	        
-	        return true;
-	    }
-
-	    for (String[] cmd : candidates) {
-	        try {
-	            java.io.File exe = new java.io.File(cmd[0]);
-	            if (cmd[0].contains(java.io.File.separator) && !exe.exists()) continue; // chemin absolu non trouvé
-	            new ProcessBuilder(cmd)
-	                .redirectErrorStream(true)
-	                .start();
-	            return true;
-	        } catch (Exception ignored) {}
-	    }
-	    return false;
-	}
+	
 
 	private void setLastCommandStatus(String command, boolean success, long durationMs) {
 		String text;
@@ -524,7 +340,13 @@ public class MainController implements Initializable {
 			lastCommandLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
 		});
 	}
+	public void openInRcaviz(Path jsonFile) {
+	    browserLauncher.openInRcaviz(jsonFile);
+	}
 
+	public void openInFcavizir(Path txtFile) {
+	    browserLauncher.openInFcavizir(txtFile);
+	}
 	private String formatDuration(long ms) {
 		if (ms < 1000)
 			return ms + " ms";
@@ -840,6 +662,10 @@ public class MainController implements Initializable {
 		if (importCommandController != null)
 			importCommandController.onRun();
 	}
+	@FXML
+	private void onAbout() {
+	    getHelpDialogs().showAbout();
+	}
 	// ── Ouverture dans les éditeurs ───────────────────────────────────────────
 
 	@FXML
@@ -970,8 +796,7 @@ public class MainController implements Initializable {
 	}
 
 	public void shutdown() {
-	    if (rcavizServer  != null) rcavizServer.stop(0);
-	    if (fcavizirServer != null) fcavizirServer.stop(0);
+		browserLauncher.stopServers();
 		// Arrêter le timer overlay
 		if (overlayTimer != null)
 			overlayTimer.cancel(false);
@@ -1189,61 +1014,18 @@ public class MainController implements Initializable {
 	}
 
 	@FXML
-	private void onAbout() {
-		Alert alert = new Alert(Alert.AlertType.INFORMATION);
-		alert.setTitle(I18n.get("menu.help.about"));
-		alert.setHeaderText(MainApp.APP_TITLE + " " + MainApp.APP_VERSION);
-
-		// Contenu personnalisé avec hyperliens
-		javafx.scene.text.TextFlow content = new javafx.scene.text.TextFlow();
-		content.setLineSpacing(4);
-		content.setPrefWidth(380);
-
-		java.util.List<javafx.scene.Node> nodes = new java.util.ArrayList<>();
-
-		// Organisation
-		nodes.add(text(MainApp.APP_ORG_NAME + "\n\n", true));
-
-		// Développeurs
-		nodes.add(text(I18n.get("about.developers") + " :\n", true));
-		for (String dev : MainApp.APP_DEVELOPERS)
-			nodes.add(text("  " + dev + "\n", false));
-
-		nodes.add(text("\n"));
-
-		// Licence / Depuis
-		nodes.add(text(I18n.get("about.license") + " : " + MainApp.APP_LICENSE + "\n", false));
-		nodes.add(text(I18n.get("about.since") + " : " + MainApp.APP_INCEPTION + "\n\n", false));
-
-		// Site web
-		nodes.add(text(I18n.get("about.website") + " : ", false));
-		nodes.add(hyperlink(MainApp.APP_URL));
-		nodes.add(text("\n", false));
-
-		// Source
-		nodes.add(text(I18n.get("about.source") + " : ", false));
-		nodes.add(hyperlink(MainApp.APP_SCM));
-
-		content.getChildren().addAll(nodes);
-
-		// Icône
-		try {
-			InputStream logoStream = getClass().getResourceAsStream("/fr/lirmm/fca4j/ui/icons/fca4j-ui_128x128.png");
-			if (logoStream != null) {
-				ImageView logo = new ImageView(new Image(logoStream));
-				logo.setFitWidth(128);
-				logo.setFitHeight(128);
-				logo.setPreserveRatio(true);
-				logo.setSmooth(true);
-				alert.setGraphic(logo);
-			}
-		} catch (Exception ignored) {
-		}
-
-		alert.getDialogPane().setContent(content);
-		alert.showAndWait();
+	public void onShowShortcuts() {
+	    getHelpDialogs().showShortcuts();
 	}
-
+	private HelpDialogs getHelpDialogs() {
+	    if (helpDialogs == null) {
+	        helpDialogs = new HelpDialogs(
+	            mainTabPane.getScene().getWindow(),
+	            browserLauncher::openUrlWithFallback
+	        );
+	    }
+	    return helpDialogs;
+	}
 	@FXML
 	private void onContextRun() {
 		// Déléguer au contrôleur courant
@@ -1316,31 +1098,6 @@ public class MainController implements Initializable {
 		mainTabPane.getSelectionModel().select(3);
 	}
 
-	private javafx.scene.text.Text text(String s) {
-		return new javafx.scene.text.Text(s);
-	}
-
-	private javafx.scene.text.Text text(String s, boolean bold) {
-		javafx.scene.text.Text t = new javafx.scene.text.Text(s);
-		if (bold)
-			t.setStyle("-fx-font-weight: bold;");
-		return t;
-	}
-
-	private Hyperlink hyperlink(String url) {
-	    Hyperlink h = new Hyperlink(url);
-	    h.setOnAction(e -> {
-	        if (!openUrlInBrowser(url)) {
-	            try {
-	                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-	            } catch (Exception ex) {
-	                ex.printStackTrace();
-	            }
-	        }
-	    });
-	    h.setPadding(new javafx.geometry.Insets(0));
-	    return h;
-	}
 	@FXML
 	private void onClearConsole() {
 		consoleArea.clear();
@@ -1515,35 +1272,25 @@ public class MainController implements Initializable {
 	    }
 	}
 
-	// Handler du bouton Help
 	@FXML
 	private void onCommandHelp() {
 	    String cmd = getCurrentCommandName();
-	    // Construire le nom de page : FAMILY_IMPORT → Family_import, LATTICE → Lattice
-	    String pageName;
-	    if (cmd.contains("_")) {
-	        // Ex: FAMILY_IMPORT → Family_import
-	        String[] parts = cmd.toLowerCase().split("_");
-	        parts[0] = parts[0].substring(0, 1).toUpperCase() + parts[0].substring(1);
-	        pageName = String.join("_", parts);
-	    } else {
-	        pageName = cmd.substring(0, 1).toUpperCase() + cmd.substring(1).toLowerCase();
-	    }
-	    String url = "https://www.lirmm.fr/fca4j/" + pageName + ".html";
-	    if (!openUrlInBrowser(url)) {
-	        try {
-	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
-	        } catch (Exception e) {
-	            appendConsole("[Help] " + e.getMessage());
-	        }
-	    }
+	    String pageName = toPageName(cmd);
+	    browserLauncher.openUrlWithFallback(
+	        "https://www.lirmm.fr/fca4j/" + pageName + ".html");
 	}
+
 	@FXML
 	private void onOpenWebsite() {
-	    String url = "https://www.lirmm.fr/fca4j/";
-	    if (!openUrlInBrowser(url)) {
-	        try { java.awt.Desktop.getDesktop().browse(new java.net.URI(url)); }
-	        catch (Exception e) { appendConsole("[Help] " + e.getMessage()); }
+	    browserLauncher.openUrlWithFallback("https://www.lirmm.fr/fca4j/");
+	}
+
+	private static String toPageName(String command) {
+	    if (command.contains("_")) {
+	        String[] parts = command.toLowerCase().split("_");
+	        parts[0] = Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1);
+	        return String.join("_", parts);
 	    }
-	}	
-}
+	    return Character.toUpperCase(command.charAt(0)) + command.substring(1).toLowerCase();
+	}
+	}
