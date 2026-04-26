@@ -23,8 +23,6 @@ import java.util.function.Consumer;
  * Contrôleur du panneau de paramètres pour RULEBASIS et DBASIS.
  */
 public class RuleBasisController implements Initializable {
-	private static final String P = "RULEBASIS.";
-
 
 	@FXML
 	private TitledPane inputPane;
@@ -203,7 +201,7 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private void onBrowseInput() {
 		FileChooser fc = new FileChooser();
-		fc.setTitle("Fichier de contexte formel");
+		fc.setTitle(I18n.get("browse.input.title"));
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
 		fc.getExtensionFilters().addAll(
 				   new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
@@ -225,11 +223,13 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private void onBrowseOutput() {
 		FileChooser fc = new FileChooser();
-		fc.setTitle("Fichier de sortie");
+		fc.setTitle(I18n.get("browse.output.title"));
+		fc.getExtensionFilters().addAll(
+		    new FileChooser.ExtensionFilter(I18n.get("filter.text"), "*.txt"),
+		    new FileChooser.ExtensionFilter(I18n.get("filter.json"), "*.json"),
+		    new FileChooser.ExtensionFilter(I18n.get("filter.xml"), "*.xml"),
+		    new FileChooser.ExtensionFilter(I18n.get("filter.datalog"), "*.dlgp"));		
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("Texte", "*.txt"),
-				new FileChooser.ExtensionFilter("JSON", "*.json"), new FileChooser.ExtensionFilter("XML", "*.xml"),
-				new FileChooser.ExtensionFilter("Datalog+", "*.dlgp"));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null) {
 			outputFileField.setText(f.getAbsolutePath());
@@ -248,9 +248,10 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private void onBrowseReport() {
 		FileChooser fc = new FileChooser();
-		fc.setTitle("Fichier de rapport");
+		fc.setTitle(I18n.get("browse.report.title"));
+		fc.getExtensionFilters().add(
+		    new FileChooser.ExtensionFilter(I18n.get("filter.text"), "*.txt"));		
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Texte", "*.txt"));
 		File f = fc.showSaveDialog(reportFileField.getScene().getWindow());
 		if (f != null)
 			reportFileField.setText(f.getAbsolutePath());
@@ -259,7 +260,7 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private void onBrowseImplFolder() {
 		javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
-		dc.setTitle("Dossier de sortie par support");
+		dc.setTitle(I18n.get("browse.impl.folder.title"));
 		dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
 		File f = dc.showDialog(implFolderField.getScene().getWindow());
 		if (f != null)

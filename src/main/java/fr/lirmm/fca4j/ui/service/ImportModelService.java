@@ -72,7 +72,7 @@ public class ImportModelService {
             sb.append("            \"target\": ").append(quoted(rc.target)).append(",\n");
             sb.append("            \"path\": ").append(quoted(rc.path)).append(",\n");
             sb.append("            \"sourceKeys\": ").append(intList(rc.sourceKeys)).append(",\n");
-            sb.append("            \"targetKeys\": ").append(intList(rc.targetKeys)).append(",\n");
+            sb.append("            \"targetKeys\": ").append(intList(rc.targetKeys)).append("\n");
             sb.append("        }");
             if (i < rcs.size() - 1) sb.append(",");
             sb.append("\n");

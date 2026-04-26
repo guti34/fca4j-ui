@@ -405,7 +405,6 @@ public class MainController implements Initializable {
 		try {
 			startRcavizServer(jsonFile);
 			String url = "https://rcaviz.lirmm.fr/?data=http://localhost:" + rcavizPort + "/" + jsonFile.getFileName();
-	        openUrlInBrowser(url);
 	        if (!openUrlInBrowser(url)) {
 	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
 	        }
@@ -439,7 +438,6 @@ public class MainController implements Initializable {
 
 	        String url = "https://fcavizir.lirmm.fr/?data=http://localhost:"
 	            + fcavizirPort + "/" + txtFile.getFileName();
-	        openUrlInBrowser(url);
 	        if (!openUrlInBrowser(url)) {
 	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
 	        }
@@ -478,13 +476,7 @@ public class MainController implements Initializable {
 	                    .redirectErrorStream(true)
 	                    .start();
 	                
-	                // Lire la sortie du processus
-	                String output = new String(p.getInputStream().readAllBytes());
-	                int exitCode = p.waitFor();
-	                System.out.println("[DEBUG] Exit code: " + exitCode);
-	                System.out.println("[DEBUG] Output: " + output);
 	            } catch (Exception e) {
-	                System.out.println("[DEBUG] Exception: " + e.getMessage());
 	                e.printStackTrace();
 	            }
 	        }).start();
