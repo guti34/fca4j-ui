@@ -1,3 +1,6 @@
 #!/bin/bash
 xdg-icon-resource install --size 256 /opt/fca4j-ui/lib/FCA4J-UI.png FCA4J-UI 2>/dev/null || true
-gtk-update-icon-cache /usr/share/icons/hicolor 2>/dev/null || true
+cp /opt/fca4j-ui/lib/fca4j-ui-FCA4J-UI.desktop /usr/share/applications/ 2>/dev/null || true
+sed -i 's|Icon=/opt/fca4j-ui/lib/FCA4J-UI.png|Icon=FCA4J-UI|' /usr/share/applications/fca4j-ui-FCA4J-UI.desktop 2>/dev/null || true
+echo "StartupWMClass=fr.lirmm.fca4j.ui.MainApp" >> /usr/share/applications/fca4j-ui-FCA4J-UI.desktop 2>/dev/null || true
+gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
