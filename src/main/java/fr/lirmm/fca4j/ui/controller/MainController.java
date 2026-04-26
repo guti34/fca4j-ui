@@ -405,7 +405,10 @@ public class MainController implements Initializable {
 		try {
 			startRcavizServer(jsonFile);
 			String url = "https://rcaviz.lirmm.fr/?data=http://localhost:" + rcavizPort + "/" + jsonFile.getFileName();
-			java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	        openUrlInBrowser(url);
+	        if (!openUrlInBrowser(url)) {
+	            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+	        }
 		} catch (Exception e) {
 			showAlert("RCAViz", "Impossible d'ouvrir RCAViz : " + e.getMessage());
 		}
