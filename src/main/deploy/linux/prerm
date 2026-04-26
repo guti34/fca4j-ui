@@ -1,0 +1,2 @@
+#!/bin/bash
+xdg-icon-resource uninstall --size 256 FCA4J-UI 2>/dev/null || true

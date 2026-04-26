@@ -349,7 +349,8 @@
                     <linuxShortcut>true</linuxShortcut>
                     <linuxMenuGroup>Science</linuxMenuGroup>
                     <macPackageName>${app.name}</macPackageName>
-                </configuration>
+					<resourceDir>src/main/deploy/linux</resourceDir>                
+				</configuration>
             </plugin>
 
             <plugin>
