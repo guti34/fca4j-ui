@@ -6,8 +6,6 @@ import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
 import fr.lirmm.fca4j.ui.util.Utilities;
 
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -23,7 +21,7 @@ import java.util.function.Consumer;
  * Contrôleur du panneau pour la commande INSPECT. Inspecte un contexte formel
  * et affiche ses statistiques dans la console.
  */
-public class InspectController implements Initializable {
+public class InspectController extends AbstractCommandController implements Initializable {
 
 	// ── TitledPanes et bouton ─────────────────────────────────────────────────
 	@FXML
@@ -34,7 +32,6 @@ public class InspectController implements Initializable {
 	// ── Bouton édition ────────────────────────────────────────────────────────
 	@FXML
 	private Button editInputButton;
-	private Consumer<Path> openInEditor;
 
 	// ── Entrée ────────────────────────────────────────────────────────────────
 	@FXML
@@ -48,9 +45,6 @@ public class InspectController implements Initializable {
 	@FXML
 	private CheckBox verboseCheckBox;
 
-	private Consumer<CommandBuilder> onRun;
-	private Consumer<String> onInputChanged;
-
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
@@ -62,31 +56,18 @@ public class InspectController implements Initializable {
 
 	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
 			Consumer<String> onInputChanged) {
-		this.onInputChanged = onInputChanged;
-		this.onRun = onRun;
-		this.openInEditor = openInEditor;
+
+		configureBase(desc, onRun, openInEditor, onInputChanged, editInputButton);
 
 		inputPane.setText(I18n.get("section.input"));
 		advancedPane.setText(I18n.get("section.advanced"));
-
-		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-		editIcon.setIconSize(14);
-		editInputButton.setGraphic(editIcon);
-		editInputButton.setText("");
-		editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 	}
 
 	// ── Actions ───────────────────────────────────────────────────────────────
 
 	@FXML
 	private void onEditInput() {
-		String path = inputFileField.getText().trim();
-		if (path.isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
-		if (openInEditor != null)
-			openInEditor.accept(Path.of(path));
+			editInput(inputFileField);
 	}
 
 	@FXML
@@ -102,16 +83,13 @@ public class InspectController implements Initializable {
 			if (onInputChanged != null)
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
-			autoDetectFormat(f.getName());
+			autoDetectFormat(f.getName(),inputFormatCombo);
 		}
 	}
 
 	@FXML
 	public void onRun() {
-		if (inputFileField.getText().isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
+		if(!validateInput(inputFileField)) return;
 
 		CommandBuilder builder = new CommandBuilder().command("INSPECT").inputFile(inputFileField.getText().trim())
 				.verbose(verboseCheckBox.isSelected());
@@ -130,40 +108,34 @@ public class InspectController implements Initializable {
 
 	// ── Utilitaires ───────────────────────────────────────────────────────────
 
-	private void autoDetectFormat(String filename) {
-		String lower = filename.toLowerCase();
-		if (lower.endsWith(".cxt"))
-			inputFormatCombo.setValue("CXT");
-		else if (lower.endsWith(".slf"))
-			inputFormatCombo.setValue("SLF");
-		else if (lower.endsWith(".xml"))
-			inputFormatCombo.setValue("XML");
-		else if (lower.endsWith(".cex"))
-			inputFormatCombo.setValue("CEX");
-		else if (lower.endsWith(".csv"))
-			inputFormatCombo.setValue("CSV");
-		else
-			inputFormatCombo.setValue("(auto)");
-	}
 
-	private void showError(String title, String msg) {
-		Alert a = new Alert(Alert.AlertType.WARNING);
-		a.setTitle(title);
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
 
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
 		inputFileField.setText(path);
-		autoDetectFormat(new File(path).getName());
+		autoDetectFormat(new File(path).getName(),inputFormatCombo);
 		// Pas d'output pour INSPECT
 	}
 
 	public String getInputFile() {
 		return inputFileField.getText();
+	}
+
+	@Override
+	protected void savePrefs() {
+		String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
+		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+		
+	}
+
+	@Override
+	protected void loadPrefs() {
+		String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
+		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+		
 	}
 
 }

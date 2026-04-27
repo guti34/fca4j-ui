@@ -29,12 +29,11 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
 
-public class LatticeAocController implements Initializable {
+public class LatticeAocController extends AbstractCommandController implements Initializable {
 
 	// ── Bouton édition ────────────────────────────────────────────────────────
 	@FXML
 	private Button editInputButton;
-	private Consumer<Path> openInEditor;
 
 	// ── TitledPanes et bouton Run (titres gérés par I18n) ─────────────────────
 	@FXML
@@ -96,10 +95,6 @@ public class LatticeAocController implements Initializable {
 	@FXML
 	private CheckBox verboseCheckBox;
 
-	// ── État ──────────────────────────────────────────────────────────────────
-	private CommandDescriptor descriptor;
-	private Consumer<CommandBuilder> onRun;
-	private Consumer<String> onInputChanged;
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
@@ -180,10 +175,8 @@ public class LatticeAocController implements Initializable {
 	 */
 	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
 			Consumer<String> onInputChanged) {
-		this.onInputChanged = onInputChanged;
-		this.openInEditor = openInEditor;
-		this.descriptor = desc;
-		this.onRun = onRun;
+
+		configureBase(desc, onRun, openInEditor, onInputChanged, editInputButton);
 
 		// Titres des sections via I18n
 		inputPane.setText(I18n.get("section.input"));
@@ -192,13 +185,6 @@ public class LatticeAocController implements Initializable {
 		graphvizPane.setText(I18n.get("section.graphviz"));
 		datalogPane.setText(I18n.get("rca.section.datalog"));
 		advancedPane.setText(I18n.get("section.advanced"));
-
-		// Bouton "Ouvrir dans l'éditeur"
-		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-		editIcon.setIconSize(14);
-		editInputButton.setGraphic(editIcon);
-		editInputButton.setText("");
-		editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 
 		// Algorithmes spécifiques à la commande
 		algoCombo.getItems().setAll(desc.getAlgorithms());
@@ -213,31 +199,21 @@ public class LatticeAocController implements Initializable {
 
 	@FXML
 	private void onEditInput() {
-		String path = inputFileField.getText().trim();
-		if (path.isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
-		if (openInEditor != null)
-			openInEditor.accept(java.nio.file.Path.of(path));
+			editInput(inputFileField);
 	}
 
 	// ── Actions ───────────────────────────────────────────────────────────────
 
 	@FXML
 	private void onBrowseInput() {
-		FileChooser fc = new FileChooser();
-		fc.setTitle(I18n.get("label.input.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
-				"*.slf", "*.cex", "*.xml", "*.csv"), new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+		FileChooser fc = buildContextChooser(I18n.get("label.input.file"));
 		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
 		if (f != null) {
 			inputFileField.setText(f.getAbsolutePath());
 			if (onInputChanged != null)
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
-			autoDetectFormat(f.getName());
+			autoDetectFormat(f.getName(),inputFormatCombo);
 			String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
 			if (outputFileField.getText().isBlank())
 				outputFileField.setText(base + "-result.xml");
@@ -300,10 +276,7 @@ public class LatticeAocController implements Initializable {
 	@FXML
 	public void onRun() {
 		savePrefs();
-		if (inputFileField.getText().isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
+		if(!validateInput(inputFileField)) return;
 		if (dotCheckBox.isSelected() && dotFileField.getText().isBlank()) {
 			showError(I18n.get("error.dot.missing.title"), I18n.get("error.dot.missing.detail"));
 			return;
@@ -346,35 +319,13 @@ public class LatticeAocController implements Initializable {
 
 	// ── Utilitaires ───────────────────────────────────────────────────────────
 
-	private void autoDetectFormat(String filename) {
-		String lower = filename.toLowerCase();
-		if (lower.endsWith(".cxt"))
-			inputFormatCombo.setValue("CXT");
-		else if (lower.endsWith(".slf"))
-			inputFormatCombo.setValue("SLF");
-		else if (lower.endsWith(".xml"))
-			inputFormatCombo.setValue("XML");
-		else if (lower.endsWith(".cex"))
-			inputFormatCombo.setValue("CEX");
-		else if (lower.endsWith(".csv"))
-			inputFormatCombo.setValue("CSV");
-		else
-			inputFormatCombo.setValue(I18n.get("format.auto"));
-	}
 
-	private void showError(String title, String msg) {
-		Alert a = new Alert(Alert.AlertType.WARNING);
-		a.setTitle(title);
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
 
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
 		inputFileField.setText(path);
-		autoDetectFormat(new File(path).getName());
+		autoDetectFormat(new File(path).getName(),inputFormatCombo);
 
 		String cmd = descriptor != null ? descriptor.getName() : "LATTICE";
 		String base = path.replaceAll("\\.[^.]+$", "");
@@ -396,8 +347,8 @@ public class LatticeAocController implements Initializable {
 		return dotCheckBox.isSelected() ? dotFileField.getText() : null;
 	}
 
-	private void savePrefs() {
-		String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+	protected void savePrefs() {
+		String cmd = descriptor.getName(); 
 		AppPreferences.saveString(cmd + ".algo", algoCombo.getValue());
 		AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 		AppPreferences.saveString(cmd + ".displayMode", displayModeCombo.getValue());
@@ -411,7 +362,7 @@ public class LatticeAocController implements Initializable {
 		AppPreferences.saveBool(cmd + ".nds", noDirectSiblings.isSelected());
 	}
 
-	private void loadPrefs() {
+	protected void loadPrefs() {
 		String cmd = descriptor.getName();
 		String algo = AppPreferences.loadString(cmd + ".algo", descriptor.getDefaultAlgorithm());
 		if (algoCombo.getItems().contains(algo))

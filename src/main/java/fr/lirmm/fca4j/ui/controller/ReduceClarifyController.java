@@ -20,306 +20,281 @@ import java.util.ResourceBundle;
 import java.util.function.Consumer;
 
 /**
- * Contrôleur du panneau de paramètres pour CLARIFY et REDUCE.
- * Ces deux commandes prennent un contexte formel en entrée
- * et produisent un contexte formel en sortie.
+ * Contrôleur du panneau de paramètres pour CLARIFY et REDUCE. Ces deux
+ * commandes prennent un contexte formel en entrée et produisent un contexte
+ * formel en sortie.
  */
-public class ReduceClarifyController implements Initializable {
+public class ReduceClarifyController extends AbstractCommandController implements Initializable {
+
+	// ── Bouton édition ────────────────────────────────────────────────────────
+	@FXML
+	private Button editInputButton;
+
+	// ── TitledPanes et bouton Run ─────────────────────────────────────────────
+	@FXML
+	private TitledPane inputPane;
+	@FXML
+	private TitledPane outputPane;
+	@FXML
+	private TitledPane operationPane;
+	@FXML
+	private TitledPane advancedPane;
+
+	// ── Entrée ────────────────────────────────────────────────────────────────
+	@FXML
+	private TextField inputFileField;
+	@FXML
+	private ComboBox<String> inputFormatCombo;
+
+	// ── Sortie ────────────────────────────────────────────────────────────────
+	@FXML
+	private TextField outputFileField;
+	@FXML
+	private ComboBox<String> outputFormatCombo;
+	@FXML
+	private Label outSeparatorLabel;
+	@FXML
+	private ComboBox<String> outSeparatorCombo;
+
+	// ── Opération ─────────────────────────────────────────────────────────────
+	@FXML
+	private CheckBox xoCheckBox; // -xo : objets
+	@FXML
+	private CheckBox xaCheckBox; // -xa : attributs
+	@FXML
+	private CheckBox groupCheckBox; // -u : REDUCE seulement
+
+	// ── Options avancées ──────────────────────────────────────────────────────
+	@FXML
+	private Spinner<Integer> timeoutSpinner;
+	@FXML
+	private CheckBox verboseCheckBox;
 
 
-    // ── Bouton édition ────────────────────────────────────────────────────────
-    @FXML private Button           editInputButton;
-    private Consumer<Path>         openInEditor;
+	// Formats communs aux deux commandes (contexte → contexte)
+	private static final java.util.List<String> CONTEXT_FORMATS = java.util.List.of("(auto)", "CXT", "SLF", "XML",
+			"CEX", "CSV");
 
-    // ── TitledPanes et bouton Run ─────────────────────────────────────────────
-    @FXML private TitledPane       inputPane;
-    @FXML private TitledPane       outputPane;
-    @FXML private TitledPane       operationPane;
-    @FXML private TitledPane       advancedPane;
- 
-    // ── Entrée ────────────────────────────────────────────────────────────────
-    @FXML private TextField        inputFileField;
-    @FXML private ComboBox<String> inputFormatCombo;
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		inputFormatCombo.getItems().addAll(CONTEXT_FORMATS);
+		inputFormatCombo.setValue("(auto)");
 
-    // ── Sortie ────────────────────────────────────────────────────────────────
-    @FXML private TextField        outputFileField;
-    @FXML private ComboBox<String> outputFormatCombo;
-    @FXML private Label            outSeparatorLabel;
-    @FXML private ComboBox<String> outSeparatorCombo;
+		outputFormatCombo.getItems().addAll(CONTEXT_FORMATS.subList(1, CONTEXT_FORMATS.size()));
+		outputFormatCombo.setValue("CXT");
 
-    // ── Opération ─────────────────────────────────────────────────────────────
-    @FXML private CheckBox         xoCheckBox;   // -xo : objets
-    @FXML private CheckBox         xaCheckBox;   // -xa : attributs
-    @FXML private CheckBox         groupCheckBox; // -u  : REDUCE seulement
+		outSeparatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
+		outSeparatorCombo.setValue("COMMA");
 
-    // ── Options avancées ──────────────────────────────────────────────────────
-    @FXML private Spinner<Integer> timeoutSpinner;
-    @FXML private CheckBox         verboseCheckBox;
+		// Afficher séparateur uniquement si format CSV
+		outSeparatorLabel.setVisible(false);
+		outSeparatorCombo.setVisible(false);
 
-    // ── État ──────────────────────────────────────────────────────────────────
-    private CommandDescriptor        descriptor;
-    private Consumer<CommandBuilder> onRun;
-    private Consumer<String> onInputChanged;
-    
-    // Formats communs aux deux commandes (contexte → contexte)
-    private static final java.util.List<String> CONTEXT_FORMATS =
-        java.util.List.of("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
+		outputFormatCombo.valueProperty().addListener((obs, old, val) -> {
+			// Afficher/masquer le séparateur CSV
+			boolean csv = "CSV".equals(val);
+			outSeparatorLabel.setVisible(csv);
+			outSeparatorCombo.setVisible(csv);
 
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        inputFormatCombo.getItems().addAll(CONTEXT_FORMATS);
-        inputFormatCombo.setValue("(auto)");
+			// Mettre à jour l'extension du fichier de sortie
+			String current = outputFileField.getText().trim();
+			if (!current.isBlank()) {
+				String base = current.replaceAll("\\.[^.]+$", "");
+				outputFileField.setText(base + extForFormat(val));
+			}
+		});
+		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
+		Utilities.bindPathTooltip(inputFileField);
+		Utilities.bindPathTooltip(outputFileField);
+	}
 
-        outputFormatCombo.getItems().addAll(CONTEXT_FORMATS.subList(1, CONTEXT_FORMATS.size()));
-        outputFormatCombo.setValue("CXT");
+	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
+			Consumer<String> onInputChanged) {
+        configureBase(desc, onRun, openInEditor, onInputChanged, editInputButton);
 
-        outSeparatorCombo.getItems().addAll("COMMA", "SEMICOLON", "TAB");
-        outSeparatorCombo.setValue("COMMA");
+		boolean isReduce = "REDUCE".equals(desc.getName());
 
-        // Afficher séparateur uniquement si format CSV
-        outSeparatorLabel.setVisible(false);
-        outSeparatorCombo.setVisible(false);
+		// Titres via I18n
+		inputPane.setText(I18n.get("section.input"));
+		outputPane.setText(I18n.get("section.output"));
+		operationPane.setText(I18n.get("section.operation"));
+		advancedPane.setText(I18n.get("section.advanced"));
 
-        outputFormatCombo.valueProperty().addListener((obs, old, val) -> {
-            // Afficher/masquer le séparateur CSV
-            boolean csv = "CSV".equals(val);
-            outSeparatorLabel.setVisible(csv);
-            outSeparatorCombo.setVisible(csv);
+		// Labels de l'opération selon la commande
+		xoCheckBox.setText(isReduce ? I18n.get("rc.reduce.objects") : I18n.get("rc.clarify.objects"));
+		xaCheckBox.setText(isReduce ? I18n.get("rc.reduce.attributes") : I18n.get("rc.clarify.attributes"));
 
-            // Mettre à jour l'extension du fichier de sortie
-            String current = outputFileField.getText().trim();
-            if (!current.isBlank()) {
-                String base = current.replaceAll("\\.[^.]+$", "");
-                outputFileField.setText(base + extForFormat(val));
-            }
-        });
-        timeoutSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
-        Utilities.bindPathTooltip(inputFileField);
-        Utilities.bindPathTooltip(outputFileField);
-        }
+		// Option -u : REDUCE seulement
+		groupCheckBox.setVisible(isReduce);
+		groupCheckBox.setManaged(isReduce);
+		loadPrefs();
+	}
 
-    public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun,
-            Consumer<Path> openInEditor, Consumer<String> onInputChanged) {
-this.onInputChanged = onInputChanged;
-        this.openInEditor = openInEditor;
-        this.descriptor = desc;
-        this.onRun      = onRun;
+	/** Retourne l'extension correspondant à un format de sortie. */
+	private static String extForFormat(String fmt) {
+		return switch (fmt) {
+		case "SLF" -> ".slf";
+		case "XML" -> ".xml";
+		case "CEX" -> ".cex";
+		case "CSV" -> ".csv";
+		default -> ".cxt"; // CXT et tout autre
+		};
+	}
+	// ── Actions ───────────────────────────────────────────────────────────────
 
-        boolean isReduce = "REDUCE".equals(desc.getName());
+	@FXML
+	private void onEditInput() {
+			editInput(inputFileField);
+	}
 
-        // Titres via I18n
-        inputPane.setText(I18n.get("section.input"));
-        outputPane.setText(I18n.get("section.output"));
-        operationPane.setText(I18n.get("section.operation"));
-        advancedPane.setText(I18n.get("section.advanced"));
+	@FXML
+	private void onBrowseInput() {
+		FileChooser fc = buildContextChooserForSave(I18n.get("label.input.file"), true);
+		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
+		if (f != null) {
+			inputFileField.setText(f.getAbsolutePath());
+			if (onInputChanged != null)
+				onInputChanged.accept(f.getAbsolutePath());
+			AppPreferences.setLastDirectory(f.getParent());
+			autoDetectFormat(f.getName(), inputFormatCombo);
+			if (outputFileField.getText().isBlank()) {
+				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
+				String cmd = descriptor.getName().toLowerCase();
+				outputFileField.setText(base + "-" + cmd + extForFormat(outputFormatCombo.getValue()));
+			}
+		}
+	}
 
-        // Bouton "Ouvrir dans l'éditeur"
-        FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-        editIcon.setIconSize(14);
-        editInputButton.setGraphic(editIcon);
-        editInputButton.setText("");
-        editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
+	@FXML
+	private void onBrowseOutput() {
+		FileChooser fc = buildContextChooserForSave(I18n.get("label.output.file"), false);
+		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
+		if (f != null) {
+			outputFileField.setText(f.getAbsolutePath());
+			AppPreferences.setLastDirectory(f.getParent());
+			autoDetectFormat(f.getName(), outputFormatCombo);
+		}
+	}
 
-        // Labels de l'opération selon la commande
-        xoCheckBox.setText(isReduce
-            ? I18n.get("rc.reduce.objects")
-            : I18n.get("rc.clarify.objects"));
-        xaCheckBox.setText(isReduce
-            ? I18n.get("rc.reduce.attributes")
-            : I18n.get("rc.clarify.attributes"));
+	@FXML
+	public void onRun() {
+		savePrefs();
+		if(!validateInput(inputFileField)) return;
+		if (!xoCheckBox.isSelected() && !xaCheckBox.isSelected()) {
+			showError(I18n.get("rc.error.no.option.title"), I18n.get("rc.error.no.option.detail"));
+			return;
+		}
 
-        // Option -u : REDUCE seulement
-        groupCheckBox.setVisible(isReduce);
-        groupCheckBox.setManaged(isReduce);
-        loadPrefs();
-    }
-    /** Retourne l'extension correspondant à un format de sortie. */
-    private static String extForFormat(String fmt) {
-        return switch (fmt) {
-            case "SLF" -> ".slf";
-            case "XML" -> ".xml";
-            case "CEX" -> ".cex";
-            case "CSV" -> ".csv";
-            default    -> ".cxt";   // CXT et tout autre
-        };
-    }
-    // ── Actions ───────────────────────────────────────────────────────────────
+		CommandBuilder builder = new CommandBuilder().command(descriptor.getName())
+				.inputFile(inputFileField.getText().trim()).clarifyObjects(xoCheckBox.isSelected())
+				.clarifyAttributes(xaCheckBox.isSelected()).verbose(verboseCheckBox.isSelected());
+
+		// Format d'entrée
+		String inFmt = inputFormatCombo.getValue();
+		if (!"(auto)".equals(inFmt))
+			builder.inputFormat(inFmt);
+
+		// Fichier et format de sortie
+		if (!outputFileField.getText().isBlank()) {
+			builder.outputFile(Utilities.resolveOutput(outputFileField.getText().trim(), inputFileField));
+			String outFmt = outputFormatCombo.getValue();
+			if (!"XML".equals(outFmt))
+				builder.outputFormat(outFmt);
+			if ("CSV".equals(outFmt))
+				builder.separator(outSeparatorCombo.getValue());
+		}
+
+		// Option -u (REDUCE uniquement)
+		if ("REDUCE".equals(descriptor.getName()) && groupCheckBox.isSelected())
+			builder.groupByClasses(true);
+
+		// Timeout
+		int to = timeoutSpinner.getValue();
+		if (to > 0)
+			builder.timeout(to);
+
+		if (!outputFileField.getText().isBlank())
+			AppPreferences.saveOutputForInput(descriptor.getName(), inputFileField.getText().trim(),
+					outputFileField.getText().trim());
+		if (onRun != null)
+			onRun.accept(builder);
+	}
+
+	// ── Utilitaires ───────────────────────────────────────────────────────────
+
+	private FileChooser buildContextChooserForSave(String title, boolean forOpen) {
+		FileChooser fc = new FileChooser();
+		fc.setTitle(title);
+		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+		if (forOpen) {
+			fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
+					"*.slf", "*.cex", "*.xml", "*.csv"),
+					new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+		} else {
+			fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
+					new FileChooser.ExtensionFilter("SLF (HTK)", "*.slf"),
+					new FileChooser.ExtensionFilter("CEX (ConExp)", "*.cex"),
+					new FileChooser.ExtensionFilter("XML (Galicia)", "*.xml"),
+					new FileChooser.ExtensionFilter("CSV", "*.csv"),
+					new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
+		}
+		return fc;
+	}
 
 
-    @FXML
-    private void onEditInput() {
-        String path = inputFileField.getText().trim();
-        if (path.isBlank()) {
-            showError(I18n.get("error.no.input.title"),
-                      I18n.get("error.no.input.detail"));
-            return;
-        }
-        if (openInEditor != null)
-            openInEditor.accept(java.nio.file.Path.of(path));
-    }
+	public void setInputFile(String path) {
+		if (path == null || path.isBlank())
+			return;
+		inputFileField.setText(path);
+		autoDetectFormat(new File(path).getName(), inputFormatCombo);
 
-    @FXML
-    private void onBrowseInput() {
-        FileChooser fc = buildContextChooser(I18n.get("label.input.file"),true);
-        File f = fc.showOpenDialog(inputFileField.getScene().getWindow());
-        if (f != null) {
-            inputFileField.setText(f.getAbsolutePath());
-            if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
-            AppPreferences.setLastDirectory(f.getParent());
-            autoDetectFormat(f.getName(), inputFormatCombo);
-            if (outputFileField.getText().isBlank()) {
-                String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-                String cmd  = descriptor.getName().toLowerCase();
-                outputFileField.setText(base + "-" + cmd + extForFormat(outputFormatCombo.getValue()));
-            }
-        }
-    }
+		String cmd = descriptor != null ? descriptor.getName() : "CLARIFY";
+		String base = path.replaceAll("\\.[^.]+$", "");
 
-    @FXML
-    private void onBrowseOutput() {
-        FileChooser fc = buildContextChooser(I18n.get("label.output.file"),false);
-        File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
-        if (f != null) {
-            outputFileField.setText(f.getAbsolutePath());
-            AppPreferences.setLastDirectory(f.getParent());
-            autoDetectFormat(f.getName(), outputFormatCombo);
-        }
-    }
+		String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+		outputFileField.setText(
+				savedOutput.isBlank() ? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
+						: savedOutput);
+	}
 
-    @FXML
-    public void onRun() {
-    	savePrefs();
-        if (inputFileField.getText().isBlank()) {
-            showError(I18n.get("error.no.input.title"),
-                      I18n.get("error.no.input.detail"));
-            return;
-        }
-        if (!xoCheckBox.isSelected() && !xaCheckBox.isSelected()) {
-            showError(I18n.get("rc.error.no.option.title"),
-                      I18n.get("rc.error.no.option.detail"));
-            return;
-        }
+	public String getInputFile() {
+		return inputFileField.getText();
+	}
 
-        CommandBuilder builder = new CommandBuilder()
-            .command(descriptor.getName())
-            .inputFile(inputFileField.getText().trim())
-            .clarifyObjects(xoCheckBox.isSelected())
-            .clarifyAttributes(xaCheckBox.isSelected())
-            .verbose(verboseCheckBox.isSelected());
+	protected void savePrefs() {
+		String cmd = descriptor.getName(); // "CLARIFY" ou "REDUCE"
+		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
+		AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
+		AppPreferences.saveString(cmd + ".outSeparator", outSeparatorCombo.getValue());
+		AppPreferences.saveBool(cmd + ".xo", xoCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".xa", xaCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
+		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+		if ("REDUCE".equals(cmd))
+			AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
+	}
 
-        // Format d'entrée
-        String inFmt = inputFormatCombo.getValue();
-        if (!"(auto)".equals(inFmt)) builder.inputFormat(inFmt);
+	protected void loadPrefs() {
+		String cmd = descriptor.getName();
 
-        // Fichier et format de sortie
-        if (!outputFileField.getText().isBlank()) {
-            builder.outputFile(Utilities.resolveOutput(outputFileField.getText().trim(),inputFileField));
-            String outFmt = outputFormatCombo.getValue();
-            if (!"XML".equals(outFmt)) builder.outputFormat(outFmt);
-            if ("CSV".equals(outFmt))  builder.separator(outSeparatorCombo.getValue());
-        }
+		String inFmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
+		if (inputFormatCombo.getItems().contains(inFmt))
+			inputFormatCombo.setValue(inFmt);
 
-        // Option -u (REDUCE uniquement)
-        if ("REDUCE".equals(descriptor.getName()) && groupCheckBox.isSelected())
-            builder.groupByClasses(true);
+		String outFmt = AppPreferences.loadString(cmd + ".outputFormat", "CXT");
+		if (outputFormatCombo.getItems().contains(outFmt))
+			outputFormatCombo.setValue(outFmt);
 
-        // Timeout
-        int to = timeoutSpinner.getValue();
-        if (to > 0) builder.timeout(to);
+		String outSep = AppPreferences.loadString(cmd + ".outSeparator", "COMMA");
+		if (outSeparatorCombo.getItems().contains(outSep))
+			outSeparatorCombo.setValue(outSep);
 
-    	if (!outputFileField.getText().isBlank())
-    	    AppPreferences.saveOutputForInput(
-    	        descriptor.getName(),
-    	        inputFileField.getText().trim(),
-    	        outputFileField.getText().trim());
-        if (onRun != null) onRun.accept(builder);
-    }
+		xoCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xo", false));
+		xaCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xa", false));
+		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
+		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
 
-    // ── Utilitaires ───────────────────────────────────────────────────────────
-
-    private FileChooser buildContextChooser(String title, boolean forOpen) {
-        FileChooser fc = new FileChooser();
-        fc.setTitle(title);
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-        if (forOpen) {
-            fc.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
-                    "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
-                new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
-        } else {
-            fc.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
-                new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),
-                new FileChooser.ExtensionFilter("CEX (ConExp)",     "*.cex"),
-                new FileChooser.ExtensionFilter("XML (Galicia)",    "*.xml"),
-                new FileChooser.ExtensionFilter("CSV",              "*.csv"),
-                new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
-        }
-        return fc;
-    }
-    private void autoDetectFormat(String filename, ComboBox<String> combo) {
-        String lower = filename.toLowerCase();
-        if      (lower.endsWith(".cxt")) combo.setValue("CXT");
-        else if (lower.endsWith(".slf")) combo.setValue("SLF");
-        else if (lower.endsWith(".xml")) combo.setValue("XML");
-        else if (lower.endsWith(".cex")) combo.setValue("CEX");
-        else if (lower.endsWith(".csv")) combo.setValue("CSV");
-        else if (combo.getItems().contains("(auto)")) combo.setValue("(auto)");
-    }
-
-    private void showError(String title, String msg) {
-        Alert a = new Alert(Alert.AlertType.WARNING);
-        a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
-        a.showAndWait();
-    }
-    public void setInputFile(String path) {
-        if (path == null || path.isBlank()) return;
-        inputFileField.setText(path);
-        autoDetectFormat(new File(path).getName(), inputFormatCombo);
-
-        String cmd  = descriptor != null ? descriptor.getName() : "CLARIFY";
-        String base = path.replaceAll("\\.[^.]+$", "");
-
-        String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-        outputFileField.setText(savedOutput.isBlank()
-        		? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
-                : savedOutput);
-    }
-    public String getInputFile() {
-        return inputFileField.getText();
-    }
-    private void savePrefs() {
-        String cmd = descriptor.getName(); // "CLARIFY" ou "REDUCE"
-        AppPreferences.saveString(cmd + ".inputFormat",  inputFormatCombo.getValue());
-        AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
-        AppPreferences.saveString(cmd + ".outSeparator", outSeparatorCombo.getValue());
-        AppPreferences.saveBool  (cmd + ".xo",           xoCheckBox.isSelected());
-        AppPreferences.saveBool  (cmd + ".xa",           xaCheckBox.isSelected());
-        AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
-        AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
-        if ("REDUCE".equals(cmd))
-            AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
-    }
-
-    private void loadPrefs() {
-        String cmd = descriptor.getName();
-
-        String inFmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
-        if (inputFormatCombo.getItems().contains(inFmt)) inputFormatCombo.setValue(inFmt);
-
-        String outFmt = AppPreferences.loadString(cmd + ".outputFormat", "CXT");
-        if (outputFormatCombo.getItems().contains(outFmt)) outputFormatCombo.setValue(outFmt);
-
-        String outSep = AppPreferences.loadString(cmd + ".outSeparator", "COMMA");
-        if (outSeparatorCombo.getItems().contains(outSep)) outSeparatorCombo.setValue(outSep);
-
-        xoCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xo",      false));
-        xaCheckBox.setSelected(AppPreferences.loadBool(cmd + ".xa",      false));
-        verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
-        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
-
-        if ("REDUCE".equals(cmd))
-            groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
-    }  
+		if ("REDUCE".equals(cmd))
+			groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
+	}
 }

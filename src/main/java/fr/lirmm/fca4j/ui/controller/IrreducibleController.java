@@ -23,8 +23,7 @@ import java.util.function.Consumer;
  * Contrôleur du panneau pour la commande IRREDUCIBLE. Liste les objets et/ou
  * attributs irréductibles d'un contexte formel.
  */
-public class IrreducibleController implements Initializable {
-	private static final String P = "IRREDUCIBLE.";
+public class IrreducibleController extends AbstractCommandController implements Initializable {
 
 	// ── TitledPanes et bouton ─────────────────────────────────────────────────
 	@FXML
@@ -39,7 +38,6 @@ public class IrreducibleController implements Initializable {
 	// ── Bouton édition ────────────────────────────────────────────────────────
 	@FXML
 	private Button editInputButton;
-	private Consumer<Path> openInEditor;
 
 	// ── Entrée ────────────────────────────────────────────────────────────────
 	@FXML
@@ -67,9 +65,6 @@ public class IrreducibleController implements Initializable {
 	@FXML
 	private CheckBox verboseCheckBox;
 
-	private Consumer<CommandBuilder> onRun;
-	private Consumer<String> onInputChanged;
-
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
@@ -87,21 +82,13 @@ public class IrreducibleController implements Initializable {
 
 	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
 			Consumer<String> onInputChanged) {
-		this.onInputChanged = onInputChanged;
-		this.onRun = onRun;
-		this.openInEditor = openInEditor;
+        configureBase(desc, onRun, openInEditor, onInputChanged, editInputButton);
 
 		inputPane.setText(I18n.get("section.input"));
 		outputPane.setText(I18n.get("section.output"));
 		operationPane.setText(I18n.get("section.operation"));
 		advancedPane.setText(I18n.get("section.advanced"));
 
-		// Bouton "Ouvrir dans l'éditeur"
-		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-		editIcon.setIconSize(14);
-		editInputButton.setGraphic(editIcon);
-		editInputButton.setText("");
-		editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 		loadPrefs();
 	}
 
@@ -109,13 +96,7 @@ public class IrreducibleController implements Initializable {
 
 	@FXML
 	private void onEditInput() {
-		String path = inputFileField.getText().trim();
-		if (path.isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
-		if (openInEditor != null)
-			openInEditor.accept(Path.of(path));
+			editInput(inputFileField);
 	}
 
 	@FXML
@@ -127,7 +108,7 @@ public class IrreducibleController implements Initializable {
 			if (onInputChanged != null)
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
-			autoDetectFormat(f.getName());
+			autoDetectFormat(f.getName(),inputFormatCombo);
 			if (outputFileField.getText().isBlank()) {
 				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
 				outputFileField.setText(base + "-irreducible.txt");
@@ -149,10 +130,7 @@ public class IrreducibleController implements Initializable {
 	@FXML
 	public void onRun() {
 		savePrefs();
-		if (inputFileField.getText().isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
+		if(!validateInput(inputFileField)) return;
 		if (!lobjCheckBox.isSelected() && !lattrCheckBox.isSelected()) {
 			showError(I18n.get("rc.error.no.option.title"), I18n.get("irr.error.no.option.detail"));
 			return;
@@ -186,44 +164,13 @@ public class IrreducibleController implements Initializable {
 
 	// ── Utilitaires ───────────────────────────────────────────────────────────
 
-	private FileChooser buildContextChooser(String title) {
-		FileChooser fc = new FileChooser();
-		fc.setTitle(title);
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
-				"*.slf", "*.cex", "*.xml", "*.csv"), new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
-		return fc;
-	}
 
-	private void autoDetectFormat(String filename) {
-		String lower = filename.toLowerCase();
-		if (lower.endsWith(".cxt"))
-			inputFormatCombo.setValue("CXT");
-		else if (lower.endsWith(".slf"))
-			inputFormatCombo.setValue("SLF");
-		else if (lower.endsWith(".xml"))
-			inputFormatCombo.setValue("XML");
-		else if (lower.endsWith(".cex"))
-			inputFormatCombo.setValue("CEX");
-		else if (lower.endsWith(".csv"))
-			inputFormatCombo.setValue("CSV");
-		else
-			inputFormatCombo.setValue("(auto)");
-	}
-
-	private void showError(String title, String msg) {
-		Alert a = new Alert(Alert.AlertType.WARNING);
-		a.setTitle(title);
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
 
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
 		inputFileField.setText(path);
-		autoDetectFormat(new File(path).getName());
+		autoDetectFormat(new File(path).getName(),inputFormatCombo);
 
 		String base = path.replaceAll("\\.[^.]+$", "");
 
@@ -235,31 +182,33 @@ public class IrreducibleController implements Initializable {
 		return inputFileField.getText();
 	}
 
-	private void savePrefs() {
-		AppPreferences.saveString(P + "inputFormat", inputFormatCombo.getValue());
-		AppPreferences.saveString(P + "impl", implCombo.getValue());
-		AppPreferences.saveBool(P + "lobj", lobjCheckBox.isSelected());
-		AppPreferences.saveBool(P + "lattr", lattrCheckBox.isSelected());
-		AppPreferences.saveBool(P + "group", groupCheckBox.isSelected());
-		AppPreferences.saveBool(P + "verbose", verboseCheckBox.isSelected());
-		AppPreferences.saveInt(P + "timeout", timeoutSpinner.getValue());
+	protected void savePrefs() {
+		String cmd = descriptor.getName(); 
+		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
+		AppPreferences.saveString(cmd + ".impl", implCombo.getValue());
+		AppPreferences.saveBool(cmd + ".lobj", lobjCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".lattr", lattrCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
+		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
 	}
 
-	private void loadPrefs() {
-		String fmt = AppPreferences.loadString(P + "inputFormat", "(auto)");
+	protected void loadPrefs() {
+		String cmd = descriptor.getName();
+		String fmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
 		if (inputFormatCombo.getItems().contains(fmt))
 			inputFormatCombo.setValue(fmt);
 
 
-		String impl = AppPreferences.loadString(P + "impl", "BITSET");
+		String impl = AppPreferences.loadString(cmd + ".impl", "BITSET");
 		if (implCombo.getItems().contains(impl))
 			implCombo.setValue(impl);
 
-		lobjCheckBox.setSelected(AppPreferences.loadBool(P + "lobj", false));
-		lattrCheckBox.setSelected(AppPreferences.loadBool(P + "lattr", false));
-		groupCheckBox.setSelected(AppPreferences.loadBool(P + "group", false));
-		verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
-		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+		lobjCheckBox.setSelected(AppPreferences.loadBool(cmd + ".lobj", false));
+		lattrCheckBox.setSelected(AppPreferences.loadBool(cmd + ".lattr", false));
+		groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
+		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
+		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
 	}
 
 }

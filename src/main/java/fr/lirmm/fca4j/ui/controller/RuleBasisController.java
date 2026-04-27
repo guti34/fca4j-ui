@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 /**
  * Contrôleur du panneau de paramètres pour RULEBASIS et DBASIS.
  */
-public class RuleBasisController implements Initializable {
+public class RuleBasisController extends AbstractCommandController implements Initializable {
 
 	@FXML
 	private TitledPane inputPane;
@@ -38,7 +38,6 @@ public class RuleBasisController implements Initializable {
 	// ── Bouton édition ────────────────────────────────────────────────────────
 	@FXML
 	private Button editInputButton;
-	private Consumer<Path> openInEditor;
 
 	// ── Fichiers ──────────────────────────────────────────────────────────────
 	@FXML
@@ -90,10 +89,6 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	private CheckBox verboseCheckBox;
 
-	private CommandDescriptor descriptor;
-	private Consumer<CommandBuilder> onRun;
-	private Consumer<String> onInputChanged;
-
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "CEX", "XML", "CSV");
@@ -131,23 +126,14 @@ public class RuleBasisController implements Initializable {
 
 	public void configure(CommandDescriptor desc, Consumer<CommandBuilder> onRun, Consumer<Path> openInEditor,
 			Consumer<String> onInputChanged) {
-		this.onInputChanged = onInputChanged;
-		this.openInEditor = openInEditor;
-		this.descriptor = desc;
-		this.onRun = onRun;
+
+		configureBase(desc, onRun, openInEditor, onInputChanged, editInputButton);
 
 		inputPane.setText(I18n.get("section.input"));
 		outputPane.setText(I18n.get("section.output"));
 		threadPane.setText(I18n.get("section.multithreading"));
 		advancedPane.setText(I18n.get("section.advanced"));
 		dbasisPane.setText(I18n.get("section.dbasis"));
-
-		// Bouton "Ouvrir dans l'éditeur"
-		FontIcon editIcon = new FontIcon(Material2AL.EDIT);
-		editIcon.setIconSize(14);
-		editInputButton.setGraphic(editIcon);
-		editInputButton.setText("");
-		editInputButton.setTooltip(new Tooltip(I18n.get("btn.open.in.editor")));
 
 		boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
 		boolean isDbasis = "DBASIS".equals(desc.getName());
@@ -189,13 +175,7 @@ public class RuleBasisController implements Initializable {
 
 	@FXML
 	private void onEditInput() {
-		String path = inputFileField.getText().trim();
-		if (path.isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
-		if (openInEditor != null)
-			openInEditor.accept(java.nio.file.Path.of(path));
+			editInput(inputFileField);
 	}
 
 	@FXML
@@ -212,7 +192,7 @@ public class RuleBasisController implements Initializable {
 			inputFileField.setText(f.getAbsolutePath());
 			if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
-			autoDetectFormat(f.getName());
+			autoDetectFormat(f.getName(),inputFormatCombo);
 			if (outputFileField.getText().isBlank()) {
 				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
 				outputFileField.setText(base + "-rules.txt");
@@ -270,10 +250,7 @@ public class RuleBasisController implements Initializable {
 	@FXML
 	public void onRun() {
 		savePrefs();
-		if (inputFileField.getText().isBlank()) {
-			showError(I18n.get("error.no.input.title"), I18n.get("error.no.input.detail"));
-			return;
-		}
+		if(!validateInput(inputFileField)) return;
 
 		CommandBuilder builder = new CommandBuilder().command(descriptor.getName())
 				.inputFile(inputFileField.getText().trim()).outputFormat(outputFormatCombo.getValue())
@@ -320,34 +297,10 @@ public class RuleBasisController implements Initializable {
 			onRun.accept(builder);
 	}
 
-	private void autoDetectFormat(String filename) {
-		String lower = filename.toLowerCase();
-		if (lower.endsWith(".cxt"))
-			inputFormatCombo.setValue("CXT");
-		else if (lower.endsWith(".slf"))
-			inputFormatCombo.setValue("SLF");
-		else if (lower.endsWith(".xml"))
-			inputFormatCombo.setValue("XML");
-		else if (lower.endsWith(".cex"))
-			inputFormatCombo.setValue("CEX");
-		else if (lower.endsWith(".csv"))
-			inputFormatCombo.setValue("CSV");
-		else
-			inputFormatCombo.setValue("(auto)");
-	}
-
-	private void showError(String title, String msg) {
-		Alert a = new Alert(Alert.AlertType.WARNING);
-		a.setTitle(title);
-		a.setHeaderText(null);
-		a.setContentText(msg);
-		a.showAndWait();
-	}
-
 	public void setInputFile(String path) {
 	    if (path == null || path.isBlank()) return;
 	    inputFileField.setText(path);
-	    autoDetectFormat(new File(path).getName());
+	    autoDetectFormat(new File(path).getName(),inputFormatCombo);
 
 	    String cmd  = descriptor != null ? descriptor.getName() : "RULEBASIS";
 	    String base = path.replaceAll("\\.[^.]+$", "");
@@ -360,7 +313,7 @@ public class RuleBasisController implements Initializable {
 	public String getInputFile() {
 		return inputFileField.getText();
 	}
-	private void savePrefs() {
+	protected void savePrefs() {
 	    String cmd = descriptor.getName(); // "RULEBASIS" ou "DBASIS"
 	    AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
@@ -380,7 +333,7 @@ public class RuleBasisController implements Initializable {
 	    }
 	}
 
-	private void loadPrefs() {
+	protected void loadPrefs() {
 	    String cmd = descriptor.getName();
 	    String fmt = AppPreferences.loadString(cmd + ".outputFormat", "TXT");
 	    if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);

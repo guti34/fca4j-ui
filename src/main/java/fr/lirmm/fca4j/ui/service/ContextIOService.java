@@ -76,8 +76,10 @@ public class ContextIOService {
             case CEX:return ConExpReader.read(file, factory).get(0);
             case SLF:return SLFReader.read(file, factory);
             case CSV:{
-            	char sep=CSVUtilities.detectSeparator(file);
-            	return MyCSVReader.read(file, sep, factory);
+                char sep = CSVUtilities.detectSeparator(file);
+                IBinaryContext ctx = MyCSVReader.read(file, sep, factory);
+                ctx.setName(file.getName().replaceFirst("\\.[^.]+$", ""));
+                return ctx;
             }
             case XML:return GaliciaXMLReader.read(file, factory);
             default: return null;
