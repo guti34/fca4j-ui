@@ -1,0 +1,214 @@
+name: Build & Release (Windows, Linux, macOS)
+
+on:
+  push:
+    tags:
+      - 'v*'          # déclenché sur v0.6.0, v1.0.0, etc.
+  workflow_dispatch:   # déclenchement manuel depuis l'interface GitHub
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FCA4J_VERSION: '0.4.6'
+
+jobs:
+
+  # ── Tests (Linux uniquement, rapide) ────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install FCA4J JARs
+        run: |
+          mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-parent \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=pom -q
+          mvn install:install-file -Dfile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.pom -q
+
+      - name: Run tests
+        run: mvn test
+
+  # ── Build Windows MSI ───────────────────────────────────────────────────────
+  build-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install FCA4J JARs
+        shell: bash
+        run: |
+          mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-parent \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=pom -q
+          mvn install:install-file -Dfile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.pom -q
+
+      - name: Build JAR
+        run: mvn package -DskipTests -q
+
+      - name: Create MSI installer
+        run: mvn jpackage:jpackage
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: target/installer/*.msi
+          retention-days: 30
+
+  # ── Build Linux DEB ─────────────────────────────────────────────────────────
+  build-linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install build tools
+        run: sudo apt-get install -y fakeroot dpkg-dev binutils
+
+      - name: Install FCA4J JARs
+        run: |
+          mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-parent \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=pom -q
+          mvn install:install-file -Dfile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.pom -q
+
+      - name: Build JAR
+        run: mvn package -DskipTests -q
+
+      - name: Create DEB installer
+        run: mvn jpackage:jpackage
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: target/installer/*.deb
+          retention-days: 30
+
+  # ── Build macOS DMG ─────────────────────────────────────────────────────────
+  build-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install FCA4J JARs
+        run: |
+          mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-parent \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=pom -q
+          mvn install:install-file -Dfile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-iset \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-iset-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-core \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-core-${{ env.FCA4J_VERSION }}.pom -q
+          mvn install:install-file -Dfile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.jar \
+            -DgroupId=fr.lirmm.fca4j -DartifactId=fca4j-io \
+            -Dversion=${{ env.FCA4J_VERSION }} -Dpackaging=jar \
+            -DpomFile=lib/fca4j-io-${{ env.FCA4J_VERSION }}.pom -q
+
+      - name: Build JAR
+        run: mvn package -DskipTests -q
+
+      - name: Create macOS DMG
+        run: mvn jpackage:jpackage
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos
+          path: target/installer/*.dmg
+          retention-days: 30
+
+  # ── Publication GitHub Release ──────────────────────────────────────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: List downloaded files
+        run: find installers -type f
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installers/*.msi
+            installers/*.deb
+            installers/*.dmg
+          generate_release_notes: true
+          fail_on_unmatched_files: false

@@ -72,7 +72,7 @@ public class MainController implements Initializable {
 	private Label selectedNodeLabel;
 	@FXML
 	private TabPane mainTabPane;
-	@FXML 
+	@FXML
 	private Button btnHelp;
 	// ── Toolbar Graph ─────────────────────────────────────────────────────────
 	@FXML
@@ -167,30 +167,34 @@ public class MainController implements Initializable {
 	private Label lastCommandLabel;
 
 	private final BrowserLauncher browserLauncher = new BrowserLauncher(this::showAlert);
-	
-	private String lastGraphInputFile  = ""; // input qui a produit le graphe courant
-	private String lastRulesInputFile  = ""; // input qui a produit les règles courantes
-	
+
+	private String lastGraphInputFile = ""; // input qui a produit le graphe courant
+	private String lastRulesInputFile = ""; // input qui a produit les règles courantes
+
 	private HelpDialogs helpDialogs;
-	
+	private RecentFilesManager recentFilesManager;
+	private GraphExporter graphExporter;
+
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		renderer = new GraphRenderer(graphWebView.getEngine());
 		renderer.setOnNodeClick(this::onNodeSelected);
-		renderer.setOnConsoleMessage(this::appendConsole); 
+		renderer.setOnConsoleMessage(this::appendConsole);
 		setTabGraphic(conceptStructureTab, Material2MZ.VISIBILITY, I18n.get("tab.graph"), "#3B6D11");
 		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
 				"INSPECT");
 		String lastCommand = AppPreferences.loadString("lastCommand", "LATTICE");
-		if (!commandCombo.getItems().contains(lastCommand)) lastCommand = "LATTICE";
+		if (!commandCombo.getItems().contains(lastCommand))
+			lastCommand = "LATTICE";
 		commandCombo.setValue(lastCommand);
 		commandCombo.valueProperty().addListener((obs, old, val) -> {
-		    loadCommandPanel(val);
-		    AppPreferences.saveString("lastCommand", val);
+			loadCommandPanel(val);
+			AppPreferences.saveString("lastCommand", val);
 		});
 
 		selectedNodeLabel.setText(I18n.get("panel.node.none"));
-		loadCommandPanel(lastCommand);		contextRunButton.setText(I18n.get("button.run"));
+		loadCommandPanel(lastCommand);
+		contextRunButton.setText(I18n.get("button.run"));
 		rcaRunButton.setText(I18n.get("button.run"));
 
 		if (commandTabPane != null) {
@@ -202,8 +206,11 @@ public class MainController implements Initializable {
 		buildLoadingOverlay();
 
 		// ── Menus récents ─────────────────────────────────────────────────────────
-		refreshRecentMenus();
-
+		recentFilesManager = new RecentFilesManager(recentContextMenu, recentFamilyMenu, recentModelMenu,
+				entry -> openInEditor(entry),
+				entry -> openInFamilyEditor(Path.of(AppPreferences.recentEntryPath(entry))),
+				entry -> openInModelEditor(Path.of(AppPreferences.recentEntryPath(entry))));
+		recentFilesManager.refresh();
 		// ── Panneaux RCA et Import ────────────────────────────────────────────────
 		loadRcaPanel();
 		importTab.setText(I18n.get("tab.import.commands"));
@@ -217,7 +224,7 @@ public class MainController implements Initializable {
 			familyEditorController.setOpenInContextEditor(this::openContextInEditor);
 			familyEditorController.setOnFileOpened(path -> {
 				AppPreferences.addRecentFamily(path.toString());
-				refreshRecentMenus();
+				recentFilesManager.refresh();
 				selectCommandTabFor(path.toString());
 			});
 		}
@@ -234,11 +241,11 @@ public class MainController implements Initializable {
 		// ── Éditeur de contexte ───────────────────────────────────────────────────
 		setTabGraphic(contextEditorTab, Material2AL.EDIT, I18n.get("tab.context"), "#185FA5");
 		contextEditorController.setOnFileLoaded(path -> {
-		    onNewInputContext(path);         
-		    propagateInputFile(path);
-		    AppPreferences.addRecentContext(path);
-		    refreshRecentMenus();
-		    selectCommandTabFor(path);
+			onNewInputContext(path);
+			propagateInputFile(path);
+			AppPreferences.addRecentContext(path);
+			recentFilesManager.refresh();
+			selectCommandTabFor(path);
 		});
 		contextEditorController.setOnLoadCallbacks(this::showLoadingOverlay, this::hideLoadingOverlay);
 
@@ -248,82 +255,95 @@ public class MainController implements Initializable {
 		if (modelEditorController != null) {
 			modelEditorController.setOnFileOpened(path -> {
 				AppPreferences.addRecentModel(path.toString());
-				refreshRecentMenus();
+				recentFilesManager.refresh();
 				selectCommandTabFor(path.toString());
 			});
 		}
 		// rule viewer
 		setTabGraphic(rulesViewerTab, Material2MZ.VISIBILITY, I18n.get("tab.rules"), "#3B6D11");
 		if (rulesViewerController != null) {
-		    rulesViewerController.setOpenInFcavizir(this::openInFcavizir);
-		}		
+			rulesViewerController.setOpenInFcavizir(this::openInFcavizir);
+		}
 		// ── Toolbar graphe + status bar ───────────────────────────────────────────
-		setupGraphToolbar();
+		graphExporter = new GraphExporter(renderer, btnOpenDot, btnSaveDot, btnExportSvg, btnExportPng, btnExportPdf,
+				btnMagnifier, dotFileLabel, this::appendConsole, () -> graphWebView.getScene().getWindow());
+		graphExporter.setupToolbar();
 		updateStatusBar();
 		if (btnHelp != null) {
-		    FontIcon helpIcon = new FontIcon(Material2AL.HELP_OUTLINE);
-		    helpIcon.setIconSize(16);
-		    helpIcon.setIconColor(Color.valueOf("#0047B3"));
-		    btnHelp.setGraphic(helpIcon);
-		    btnHelp.setText("");
-		    btnHelp.setTooltip(new Tooltip(I18n.get("button.help.command")));
+			FontIcon helpIcon = new FontIcon(Material2AL.HELP_OUTLINE);
+			helpIcon.setIconSize(16);
+			helpIcon.setIconColor(Color.valueOf("#0047B3"));
+			btnHelp.setGraphic(helpIcon);
+			btnHelp.setText("");
+			btnHelp.setTooltip(new Tooltip(I18n.get("button.help.command")));
 		}
 		// ── Raccourcis clavier globaux ────────────────────────────────────────────
 		// Branchés sur la Scene après que le layout soit stable
 		javafx.application.Platform.runLater(() -> {
-		    setupKeyboardShortcuts();
+			setupKeyboardShortcuts();
 		});
-		}
+	}
 
 	// ── Raccourcis clavier ────────────────────────────────────────────────────
 
 	private void setupKeyboardShortcuts() {
-	    javafx.scene.Scene scene = mainTabPane.getScene();
-	    if (scene == null) return;
-	    // EventFilter : capture les touches AVANT les controles focuses
-	    // (getAccelerators ne fonctionne pas quand Canvas ou TextField a le focus)
-	    scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
-	        javafx.scene.input.KeyCode code = event.getCode();
-	        boolean ctrl = event.isControlDown();
-	        if (event.isShiftDown() || event.isAltDown()) return;
+		javafx.scene.Scene scene = mainTabPane.getScene();
+		if (scene == null)
+			return;
+		// EventFilter : capture les touches AVANT les controles focuses
+		// (getAccelerators ne fonctionne pas quand Canvas ou TextField a le focus)
+		scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+			javafx.scene.input.KeyCode code = event.getCode();
+			boolean ctrl = event.isControlDown();
+			if (event.isShiftDown() || event.isAltDown())
+				return;
 
-	        if (ctrl && code == javafx.scene.input.KeyCode.Z) {
-	            if (contextEditorController != null) contextEditorController.undo();
-	            event.consume(); return;
-	        }
-	        if (ctrl && code == javafx.scene.input.KeyCode.S) {
-	            if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
-	                    && contextEditorController != null
-	                    && !contextEditorController.isFromFamily())
-	                contextEditorController.onSave();
-	            event.consume(); return;
-	        }
-	        if (ctrl && code == javafx.scene.input.KeyCode.O) {
-	            if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
-	                    && contextEditorController != null)
-	                contextEditorController.onOpen();
-	            event.consume(); return;
-	        }
-	        if (ctrl && code == javafx.scene.input.KeyCode.L) {
-	            onClearConsole(); event.consume(); return;
-	        }
-	        if (!ctrl && code == javafx.scene.input.KeyCode.F5) {
-	            Tab left = commandTabPane.getSelectionModel().getSelectedItem();
-	            if      (left == contextTab)  onContextRun();
-	            else if (left == rcaTab)      onRcaRun();
-	            else if (left == importTab)   onImportRun();
-	            event.consume(); return;
-	        }
-	        if (!ctrl && code == javafx.scene.input.KeyCode.F1) {
-	            onShowShortcuts(); event.consume();
-	        }
-	        if (!ctrl && code == javafx.scene.input.KeyCode.F2) {
-	            onCommandHelp(); event.consume();
-	        }
-	    });
+			if (ctrl && code == javafx.scene.input.KeyCode.Z) {
+				if (contextEditorController != null)
+					contextEditorController.undo();
+				event.consume();
+				return;
+			}
+			if (ctrl && code == javafx.scene.input.KeyCode.S) {
+				if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
+						&& contextEditorController != null && !contextEditorController.isFromFamily())
+					contextEditorController.onSave();
+				event.consume();
+				return;
+			}
+			if (ctrl && code == javafx.scene.input.KeyCode.O) {
+				if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
+						&& contextEditorController != null)
+					contextEditorController.onOpen();
+				event.consume();
+				return;
+			}
+			if (ctrl && code == javafx.scene.input.KeyCode.L) {
+				onClearConsole();
+				event.consume();
+				return;
+			}
+			if (!ctrl && code == javafx.scene.input.KeyCode.F5) {
+				Tab left = commandTabPane.getSelectionModel().getSelectedItem();
+				if (left == contextTab)
+					onContextRun();
+				else if (left == rcaTab)
+					onRcaRun();
+				else if (left == importTab)
+					onImportRun();
+				event.consume();
+				return;
+			}
+			if (!ctrl && code == javafx.scene.input.KeyCode.F1) {
+				onShowShortcuts();
+				event.consume();
+			}
+			if (!ctrl && code == javafx.scene.input.KeyCode.F2) {
+				onCommandHelp();
+				event.consume();
+			}
+		});
 	}
-
-	
 
 	private void setLastCommandStatus(String command, boolean success, long durationMs) {
 		String text;
@@ -340,13 +360,15 @@ public class MainController implements Initializable {
 			lastCommandLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
 		});
 	}
+
 	public void openInRcaviz(Path jsonFile) {
-	    browserLauncher.openInRcaviz(jsonFile);
+		browserLauncher.openInRcaviz(jsonFile);
 	}
 
 	public void openInFcavizir(Path txtFile) {
-	    browserLauncher.openInFcavizir(txtFile);
+		browserLauncher.openInFcavizir(txtFile);
 	}
+
 	private String formatDuration(long ms) {
 		if (ms < 1000)
 			return ms + " ms";
@@ -457,34 +479,6 @@ public class MainController implements Initializable {
 			statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
 		}
 	}
-	// ── Toolbar Graph ─────────────────────────────────────────────────────────
-
-	private void setupGraphToolbar() {
-		setGraphToolbarBtn(btnOpenDot,   new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("graph.btn.open.dot"));
-		setGraphToolbarBtn(btnSaveDot, new FontIcon(Material2MZ.SAVE), I18n.get("graph.btn.save.dot"));
-		setGraphToolbarBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.svg"));
-		setGraphToolbarBtn(btnExportPng, new FontIcon(Material2AL.IMAGE), I18n.get("graph.btn.export.png"));
-		setGraphToolbarBtn(btnExportPdf, new FontIcon(Material2AL.INSERT_DRIVE_FILE), I18n.get("graph.btn.export.pdf"));
-		setGraphToolbarBtn(btnMagnifier, new FontIcon(Material2MZ.SEARCH), I18n.get("graph.btn.magnifier"));
-	}
-
-	private void setGraphToolbarBtn(Button btn, FontIcon icon, String tooltip) {
-		if (btn == null)
-			return;
-		icon.setIconSize(20);
-		icon.setIconColor(javafx.scene.paint.Color.valueOf("#444444"));
-		btn.setGraphic(icon);
-		btn.setText("");
-		btn.setTooltip(new Tooltip(tooltip));
-	}
-
-	private void enableGraphButtons() {
-		btnSaveDot.setDisable(false);
-		btnExportSvg.setDisable(false);
-		btnExportPng.setDisable(false);
-		btnExportPdf.setDisable(false);
-		btnMagnifier.setDisable(false);
-	}
 
 	// ── Gestion de l'input persistant entre commandes ─────────────────────────
 
@@ -527,36 +521,31 @@ public class MainController implements Initializable {
 			switch (desc.getFamily()) {
 			case LATTICE_AOC -> {
 				LatticeAocController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor,
-				            onInputFileChanged()); 				
+				ctrl.configure(desc, this::executeCommand, this::openInEditor, onInputFileChanged());
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case RULE_BASIS -> {
 				RuleBasisController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor,
-			            onInputFileChanged()); 				
+				ctrl.configure(desc, this::executeCommand, this::openInEditor, onInputFileChanged());
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case REDUCE_CLARIFY -> {
 				ReduceClarifyController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor,
-			            onInputFileChanged()); 				
+				ctrl.configure(desc, this::executeCommand, this::openInEditor, onInputFileChanged());
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case IRREDUCIBLE -> {
 				IrreducibleController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor,
-			            onInputFileChanged()); 				
+				ctrl.configure(desc, this::executeCommand, this::openInEditor, onInputFileChanged());
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
 			case INSPECT -> {
 				InspectController ctrl = loader.getController();
-				ctrl.configure(desc, this::executeCommand, this::openInEditor,
-			            onInputFileChanged()); 				
+				ctrl.configure(desc, this::executeCommand, this::openInEditor, onInputFileChanged());
 				ctrl.setInputFile(lastInputFile);
 				currentCommandController = ctrl;
 			}
@@ -578,29 +567,32 @@ public class MainController implements Initializable {
 			e.printStackTrace();
 		}
 	}
+
 	private Consumer<String> onInputFileChanged() {
 		return path -> {
-	        onNewInputContext(path);      
-	        if (contextEditorController != null
-	                && contextEditorController.confirmDiscardChanges()) {
-	            contextEditorController.openFile(Path.of(path));
-	            mainTabPane.getSelectionModel().select(contextEditorTab);
-	        }
-	        AppPreferences.addRecentContext(path, null);
-	        refreshRecentMenus();
-	        selectCommandTabFor(path);
-	        propagateInputFile(path);
-	    };	
-	    }
-	private void onNewInputContext(String path) {
-	    if (path == null || path.equals(lastInputFile)) return;
-	    lastInputFile      = path;
-	    lastGraphInputFile = "";
-	    lastRulesInputFile = "";
-	    clearGraph();
-	    if (rulesViewerController != null)
-	        rulesViewerController.clearRules();
+			onNewInputContext(path);
+			if (contextEditorController != null && contextEditorController.confirmDiscardChanges()) {
+				contextEditorController.openFile(Path.of(path));
+				mainTabPane.getSelectionModel().select(contextEditorTab);
+			}
+			AppPreferences.addRecentContext(path, null);
+			recentFilesManager.refresh();
+			selectCommandTabFor(path);
+			propagateInputFile(path);
+		};
 	}
+
+	private void onNewInputContext(String path) {
+		if (path == null || path.equals(lastInputFile))
+			return;
+		lastInputFile = path;
+		lastGraphInputFile = "";
+		lastRulesInputFile = "";
+		graphExporter.clearGraph();
+		if (rulesViewerController != null)
+			rulesViewerController.clearRules();
+	}
+
 	private void setTabGraphic(Tab tab, Ikon icon, String text, String colorHex) {
 		FontIcon fi = new FontIcon(icon);
 		fi.setIconSize(14);
@@ -621,18 +613,16 @@ public class MainController implements Initializable {
 			Node panel = loader.load();
 			rcaCommandController = loader.getController();
 			rcaCommandController.configure(this::executeRcaCommand, this::openInFamilyEditor, this::openDotInGraph,
-					this::openInRcaviz, 
-					path -> {
-				        AppPreferences.addRecentFamily(path.toString());
-				        refreshRecentMenus();
-				        // Charger dans l'éditeur famille
-				        if (familyEditorController != null
-				                && familyEditorController.confirmDiscard()) {
-				            familyEditorController.openFile(path);
-				            mainTabPane.getSelectionModel().select(familyEditorTab);
-				        }
-				        selectCommandTabFor(path.toString());
-				    });			
+					this::openInRcaviz, path -> {
+						AppPreferences.addRecentFamily(path.toString());
+						recentFilesManager.refresh();
+						// Charger dans l'éditeur famille
+						if (familyEditorController != null && familyEditorController.confirmDiscard()) {
+							familyEditorController.openFile(path);
+							mainTabPane.getSelectionModel().select(familyEditorTab);
+						}
+						selectCommandTabFor(path.toString());
+					});
 			if (rcaCommandContainer != null)
 				rcaCommandContainer.getChildren().setAll(panel);
 		} catch (Exception e) {
@@ -662,60 +652,66 @@ public class MainController implements Initializable {
 		if (importCommandController != null)
 			importCommandController.onRun();
 	}
+
 	@FXML
 	private void onAbout() {
-	    getHelpDialogs().showAbout();
+		getHelpDialogs().showAbout();
 	}
 	// ── Ouverture dans les éditeurs ───────────────────────────────────────────
 
 	@FXML
 	private void onOpenDot() {
-	    FileChooser fc = new FileChooser();
-	    fc.setTitle(I18n.get("graph.btn.open.dot"));
-	    fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
-	    fc.getExtensionFilters().addAll(
-	        new FileChooser.ExtensionFilter("GraphViz DOT", "*.dot"),
-	        new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*")
-	    );
-	    File f = fc.showOpenDialog(graphWebView.getScene().getWindow());
-	    if (f == null) return;
-	    AppPreferences.setLastDirectory(f.getParent());
-	    Path dot = f.toPath();
-	    dotFileLabel.setText(dot.getFileName().toString());
-	    appendConsole(I18n.get("console.graphviz.render", dot.getFileName()));
-	    clearGraph();
-	    dotFileLabel.setText(dot.getFileName().toString()); // restaurer après clearGraph
-	    renderer.render(dot).thenRun(() -> Platform.runLater(() -> {
-	        enableGraphButtons();
-	        hideOverlay();
-	    })).exceptionally(ex -> {
-	        Platform.runLater(() -> {
-	            hideOverlay();
-	            appendConsole("[GraphViz] " + ex.getCause().getMessage());
-	        });
-	        return null;
-	    });
-	    showOverlayDelayed();
-	    mainTabPane.getSelectionModel().select(conceptStructureTab);
+		graphExporter.openDot(() -> {
+			showOverlayDelayed();
+			mainTabPane.getSelectionModel().select(conceptStructureTab);
+		}, this::hideOverlay);
 	}
-	   private void openContextInEditor(IBinaryContext ctx) {
-	        if (contextEditorController != null) {
-	            mainTabPane.getSelectionModel().select(2);
-	            contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
-	                Platform.runLater(() -> {
-	                    RCAFamily currentFamily = familyEditorController.getFamily();
-	                    // Remplacer le contexte dans la famille par la version éditée
-	                    RCAFamily.FormalContext fc = currentFamily.getFormalContext(modifiedCtx.getName());
-	                    if (fc != null) fc.setContext(modifiedCtx);
-	                    rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
-	                    familyEditorController.reloadFamily(currentFamily);
-	                    familyEditorController.markModified();
-	                    mainTabPane.getSelectionModel().select(3);
-	                });
-	            });
-	        }
-	    }
-	   public void openInEditor(Path filePath) {
+
+	@FXML
+	private void onSaveDot() {
+		graphExporter.saveDot();
+	}
+
+	@FXML
+	private void onExportSvg() {
+		graphExporter.exportSvg();
+	}
+
+	@FXML
+	private void onExportPng() {
+		graphExporter.exportPng();
+	}
+
+	@FXML
+	private void onExportPdf() {
+		graphExporter.exportPdf();
+	}
+
+	@FXML
+	private void onToggleMagnifier() {
+		graphExporter.toggleMagnifier();
+	}
+
+	private void openContextInEditor(IBinaryContext ctx) {
+		if (contextEditorController != null) {
+			mainTabPane.getSelectionModel().select(2);
+			contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
+				Platform.runLater(() -> {
+					RCAFamily currentFamily = familyEditorController.getFamily();
+					// Remplacer le contexte dans la famille par la version éditée
+					RCAFamily.FormalContext fc = currentFamily.getFormalContext(modifiedCtx.getName());
+					if (fc != null)
+						fc.setContext(modifiedCtx);
+					rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
+					familyEditorController.reloadFamily(currentFamily);
+					familyEditorController.markModified();
+					mainTabPane.getSelectionModel().select(3);
+				});
+			});
+		}
+	}
+
+	public void openInEditor(Path filePath) {
 		openInEditor(filePath, "COMMA");
 	}
 
@@ -731,7 +727,7 @@ public class MainController implements Initializable {
 			if (!contextEditorController.confirmDiscardChanges())
 				return;
 			AppPreferences.addRecentContext(filePath.toString(), separator);
-			refreshRecentMenus();
+			recentFilesManager.refresh();
 			contextEditorController.openFile(filePath, separator);
 			mainTabPane.getSelectionModel().select(2);
 			selectCommandTabFor(filePath.toString()); // ← ajouter
@@ -743,7 +739,7 @@ public class MainController implements Initializable {
 			if (!familyEditorController.confirmDiscard())
 				return;
 			AppPreferences.addRecentFamily(filePath.toString());
-			refreshRecentMenus();
+			recentFilesManager.refresh();
 			familyEditorController.openFile(filePath);
 			mainTabPane.getSelectionModel().select(3);
 			selectCommandTabFor(filePath.toString()); // ← ajouter
@@ -751,21 +747,22 @@ public class MainController implements Initializable {
 	}
 
 	private void openDotInGraph(Path dotFile) {
-		mainTabPane.getSelectionModel().select(0);
-		appendConsole(I18n.get("console.graphviz.render", dotFile));
-		renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
-			hideOverlay();
-			enableGraphButtons();
-		})).exceptionally(ex -> {
-			Platform.runLater(() -> {
-				hideOverlay();
-				appendConsole("[GraphViz] " + ex.getCause().getMessage());
-			});
-			return null;
-		});
-		showOverlayDelayed();
+	    mainTabPane.getSelectionModel().select(0);
+	    graphExporter.setDotFileLabel(dotFile.getFileName().toString());
+	    appendConsole(I18n.get("console.graphviz.render", dotFile));
+	    renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
+	        hideOverlay();
+	        graphExporter.enableButtons();
+	    })).exceptionally(ex -> {
+	        Platform.runLater(() -> {
+	            hideOverlay();
+	            appendConsole("[GraphViz] " + ex.getCause().getMessage());
+	        });
+	        return null;
+	    });
+	    showOverlayDelayed();
 	}
-
+	
 	/**
 	 * Retourne true si l'utilisateur accepte de perdre les modifications (ou s'il
 	 * n'y en a pas). Interroge les trois éditeurs.
@@ -787,14 +784,6 @@ public class MainController implements Initializable {
 		appendConsole("\n" + I18n.get("console.cancelled"));
 	}
 
-	@FXML
-	private void onToggleMagnifier() {
-		if (renderer.getCurrentDotFile() == null)
-			return; // pas de graphe chargé
-		renderer.toggleMagnifier();
-		btnMagnifier.setStyle(renderer.isMagnifierActive() ? "-fx-background-color: #e0e0e0;" : "");
-	}
-
 	public void shutdown() {
 		browserLauncher.stopServers();
 		// Arrêter le timer overlay
@@ -809,101 +798,85 @@ public class MainController implements Initializable {
 	// ── Exécution des commandes ───────────────────────────────────────────────
 
 	private void executeCommand(CommandBuilder builder) {
-	    if (!AppPreferences.isFca4jConfigured()) {
-	        showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
-	        return;
-	    }
+		if (!AppPreferences.isFca4jConfigured()) {
+			showAlert(I18n.get("error.not.configured.title"), I18n.get("error.not.configured.detail"));
+			return;
+		}
 
-	    final var    args        = builder.build();
-	    final String commandName = args.get(0);
-	    final String inputFile   = args.size() > 1 ? args.get(1) : "";
-	    final boolean isRules    = "RULEBASIS".equals(commandName) || "DBASIS".equals(commandName);
-	    final boolean isGraph    = !isRules
-                && !"BINARIZE".equals(commandName)
-                && !"FAMILY_IMPORT".equals(commandName);
+		final var args = builder.build();
+		final String commandName = args.get(0);
+		final String inputFile = args.size() > 1 ? args.get(1) : "";
+		final boolean isRules = "RULEBASIS".equals(commandName) || "DBASIS".equals(commandName);
+		final boolean isGraph = !isRules && !"BINARIZE".equals(commandName) && !"FAMILY_IMPORT".equals(commandName);
 
-	    // ── Console ───────────────────────────────────────────────────────────────
-	    consoleArea.clear();
-	    appendConsole("$ " + builder.toDisplayString());
+		// ── Console ───────────────────────────────────────────────────────────────
+		consoleArea.clear();
+		appendConsole("$ " + builder.toDisplayString());
 
-	    // ── Basculer sur le bon viewer + effacer seulement si nouvel input ────────
-	    if (isRules) {
-	        if (!inputFile.equals(lastRulesInputFile)) {
-	            rulesViewerController.clearRules();
-	        }
-	        mainTabPane.getSelectionModel().select(rulesViewerTab);
-	    } else if (isGraph) {
-	        if (!inputFile.equals(lastGraphInputFile)) {
-	            clearGraph();
-	        }
-	        mainTabPane.getSelectionModel().select(conceptStructureTab);
-	    }
+		// ── Basculer sur le bon viewer + effacer seulement si nouvel input ────────
+		if (isRules) {
+			if (!inputFile.equals(lastRulesInputFile)) {
+				rulesViewerController.clearRules();
+			}
+			mainTabPane.getSelectionModel().select(rulesViewerTab);
+		} else if (isGraph) {
+			if (!inputFile.equals(lastGraphInputFile)) {
+				graphExporter.clearGraph();
+			}
+			mainTabPane.getSelectionModel().select(conceptStructureTab);
+		}
 
-	    showOverlayDelayed();
+		showOverlayDelayed();
 
-	    // ── Limiter l'affichage console pour les commandes à sortie volumineuse ───
-	    final int     MAX_CONSOLE_LINES = 500;
-	    final int[]   lineCount         = { 0 };
-	    final boolean[] truncated       = { false };
-	    final long    startTime         = System.currentTimeMillis();
+		// ── Limiter l'affichage console pour les commandes à sortie volumineuse ───
+		final int MAX_CONSOLE_LINES = 500;
+		final int[] lineCount = { 0 };
+		final boolean[] truncated = { false };
+		final long startTime = System.currentTimeMillis();
 
-	    runner.run(args, line -> Platform.runLater(() -> {
-	        // Console graphe — toujours alimentée
-	        if (!truncated[0]) {
-	            if (lineCount[0]++ < MAX_CONSOLE_LINES) {
-	                appendConsole(line);
-	            } else {
-	                truncated[0] = true;
-	                appendConsole("... [" + I18n.get("console.output.truncated") + "]");
-	            }
-	        }
-	        // Console rules — aussi alimentée si commande rules
-	
-	    })).thenAccept(result -> Platform.runLater(() -> {
-	        hideOverlay();
-	        long duration = System.currentTimeMillis() - startTime;
-	        setLastCommandStatus(commandName, result.isSuccess(), duration);
+		runner.run(args, line -> Platform.runLater(() -> {
+			// Console graphe — toujours alimentée
+			if (!truncated[0]) {
+				if (lineCount[0]++ < MAX_CONSOLE_LINES) {
+					appendConsole(line);
+				} else {
+					truncated[0] = true;
+					appendConsole("... [" + I18n.get("console.output.truncated") + "]");
+				}
+			}
+			// Console rules — aussi alimentée si commande rules
 
-	        if (result.isSuccess()) {
-	            appendConsole("\n" + I18n.get("console.ok"));
+		})).thenAccept(result -> Platform.runLater(() -> {
+			hideOverlay();
+			long duration = System.currentTimeMillis() - startTime;
+			setLastCommandStatus(commandName, result.isSuccess(), duration);
 
-	            // Mémoriser l'input qui a produit ce résultat
-	            if (isRules) {
-	                lastRulesInputFile = inputFile;
-	                tryOpenRules(builder);
-	            } else if(isGraph){
-	                lastGraphInputFile = inputFile;
-	                tryRenderDot(builder);
-	            }
+			if (result.isSuccess()) {
+				appendConsole("\n" + I18n.get("console.ok"));
 
-	            // Mettre à jour les récents
-	            if (args.size() > 1
-	                    && !"BINARIZE".equals(commandName)
-	                    && !"FAMILY_IMPORT".equals(commandName)) {
-	                String sep  = null;
-	                int    sIdx = args.indexOf("-s");
-	                if (sIdx >= 0 && sIdx + 1 < args.size())
-	                    sep = args.get(sIdx + 1);
-	                AppPreferences.addRecentContext(args.get(1), sep);
-	                refreshRecentMenus();
-	            }
+				// Mémoriser l'input qui a produit ce résultat
+				if (isRules) {
+					lastRulesInputFile = inputFile;
+					tryOpenRules(builder);
+				} else if (isGraph) {
+					lastGraphInputFile = inputFile;
+					tryRenderDot(builder);
+				}
 
-	        } else {
-	            appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
-	        }
-	    }));
-	}
-	private void clearGraph() {
-		renderer.clear();
-		btnSaveDot.setDisable(true);
-		btnExportSvg.setDisable(true);
-		btnExportPng.setDisable(true);
-		btnExportPdf.setDisable(true);
-		btnMagnifier.setDisable(true);
-		// Désactiver aussi la loupe si elle était active
-		if (renderer.isMagnifierActive())
-			renderer.toggleMagnifier();
-		dotFileLabel.setText(""); 
+				// Mettre à jour les récents
+				if (args.size() > 1 && !"BINARIZE".equals(commandName) && !"FAMILY_IMPORT".equals(commandName)) {
+					String sep = null;
+					int sIdx = args.indexOf("-s");
+					if (sIdx >= 0 && sIdx + 1 < args.size())
+						sep = args.get(sIdx + 1);
+					AppPreferences.addRecentContext(args.get(1), sep);
+					recentFilesManager.refresh();
+				}
+
+			} else {
+				appendConsole("\n" + I18n.get("console.error") + "\n" + result.stderr());
+			}
+		}));
 	}
 
 	private void executeRcaCommand(CommandBuilder builder) {
@@ -931,7 +904,7 @@ public class MainController implements Initializable {
 						if (args.size() > 1) {
 							String inputPath = args.get(1);
 							AppPreferences.addRecentFamily(inputPath);
-							Platform.runLater(this::refreshRecentMenus);
+							Platform.runLater(recentFilesManager::refresh);
 						}
 
 					} else {
@@ -941,31 +914,30 @@ public class MainController implements Initializable {
 	}
 
 	private void tryRenderDot(CommandBuilder builder) {
-		var args = builder.build();
-		int gIdx = args.indexOf("-g");
-		if (gIdx == -1 || gIdx + 1 >= args.size())
-			return;
+	    var args = builder.build();
+	    int gIdx = args.indexOf("-g");
+	    if (gIdx == -1 || gIdx + 1 >= args.size()) return;
 
-		Path dotFile = Path.of(args.get(gIdx + 1));
-		if (!dotFile.toFile().exists()) {
-			appendConsole(I18n.get("error.graphviz.not.found", dotFile));
-			return;
-		}
-		dotFileLabel.setText(dotFile.getFileName().toString()); // ← ajouter
-		appendConsole(I18n.get("console.graphviz.render", dotFile));
-		renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
-			hideOverlay();
-			enableGraphButtons();
-		})).exceptionally(ex -> {
-			Platform.runLater(() -> {
-				hideOverlay();
-				appendConsole("[GraphViz] " + ex.getCause().getMessage());
-			});
-			return null;
-		});
-		showOverlayDelayed();
+	    Path dotFile = Path.of(args.get(gIdx + 1));
+	    if (!dotFile.toFile().exists()) {
+	        appendConsole(I18n.get("error.graphviz.not.found", dotFile));
+	        return;
+	    }
+	    graphExporter.setDotFileLabel(dotFile.getFileName().toString());
+	    appendConsole(I18n.get("console.graphviz.render", dotFile));
+	    renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
+	        hideOverlay();
+	        graphExporter.enableButtons();
+	    })).exceptionally(ex -> {
+	        Platform.runLater(() -> {
+	            hideOverlay();
+	            appendConsole("[GraphViz] " + ex.getCause().getMessage());
+	        });
+	        return null;
+	    });
+	    showOverlayDelayed();
 	}
-
+	
 	private void tryOpenRules(CommandBuilder builder) {
 		if (!"RULEBASIS".equals(builder.getCommand()) && !"DBASIS".equals(builder.getCommand()))
 			return;
@@ -1015,17 +987,16 @@ public class MainController implements Initializable {
 
 	@FXML
 	public void onShowShortcuts() {
-	    getHelpDialogs().showShortcuts();
+		getHelpDialogs().showShortcuts();
 	}
+
 	private HelpDialogs getHelpDialogs() {
-	    if (helpDialogs == null) {
-	        helpDialogs = new HelpDialogs(
-	            mainTabPane.getScene().getWindow(),
-	            browserLauncher::openUrlWithFallback
-	        );
-	    }
-	    return helpDialogs;
+		if (helpDialogs == null) {
+			helpDialogs = new HelpDialogs(mainTabPane.getScene().getWindow(), browserLauncher::openUrlWithFallback);
+		}
+		return helpDialogs;
 	}
+
 	@FXML
 	private void onContextRun() {
 		// Déléguer au contrôleur courant
@@ -1079,10 +1050,10 @@ public class MainController implements Initializable {
 			if (!modelEditorController.confirmDiscard())
 				return;
 			AppPreferences.addRecentModel(path.toString());
-			refreshRecentMenus();
+			recentFilesManager.refresh();
 			modelEditorController.openFile(path);
 			mainTabPane.getSelectionModel().select(4);
-			selectCommandTabFor(path.toString()); 
+			selectCommandTabFor(path.toString());
 		}
 	}
 
@@ -1103,128 +1074,6 @@ public class MainController implements Initializable {
 		consoleArea.clear();
 	}
 
-	// ── Export Graph ──────────────────────────────────────────────────────────
-
-	@FXML
-	private void onSaveDot() {
-		Path src = renderer.getCurrentDotFile();
-		if (src == null)
-			return;
-		FileChooser fc = new FileChooser();
-		fc.setTitle(I18n.get("graph.btn.save.dot"));
-		fc.setInitialFileName(src.getFileName().toString());
-		fc.setInitialDirectory(src.getParent().toFile());
-		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("DOT", "*.dot"));
-		File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
-		if (dest == null)
-			return;
-		try {
-			java.nio.file.Files.copy(src, dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			appendConsole(I18n.get("graph.saved.dot", dest.getName()));
-		} catch (Exception e) {
-			appendConsole("[Error] " + e.getMessage());
-		}
-	}
-
-	@FXML
-	private void onExportSvg() {
-		exportViaGraphviz("svg", "*.svg");
-	}
-
-	@FXML
-	private void onExportPng() {
-		exportViaGraphviz("png", "*.png");
-	}
-
-	@FXML
-	private void onExportPdf() {
-		exportViaGraphviz("pdf", "*.pdf");
-	}
-
-	private void exportViaGraphviz(String format, String extension) {
-		Path src = renderer.getCurrentDotFile();
-		if (src == null)
-			return;
-
-		FileChooser fc = new FileChooser();
-		fc.setTitle(I18n.get("graph.export." + format));
-		fc.setInitialFileName(src.getFileName().toString().replace(".dot", "." + format));
-		fc.setInitialDirectory(src.getParent().toFile());
-		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.toUpperCase(), extension));
-		File dest = fc.showSaveDialog(graphWebView.getScene().getWindow());
-		if (dest == null)
-			return;
-
-		String dotExe = AppPreferences.getDotPath();
-		ProcessBuilder pb = new ProcessBuilder(dotExe, "-T" + format, src.toString(), "-o", dest.getAbsolutePath());
-		pb.redirectErrorStream(true);
-
-		CompletableFuture.runAsync(() -> {
-			try {
-				Process proc = pb.start();
-				int exit = proc.waitFor();
-				Platform.runLater(() -> {
-					if (exit == 0)
-						appendConsole(I18n.get("graph.exported", format.toUpperCase(), dest.getName()));
-					else
-						appendConsole("[GraphViz] export " + format + " failed (exit " + exit + ")");
-				});
-			} catch (Exception e) {
-				Platform.runLater(() -> appendConsole("[GraphViz] " + e.getMessage()));
-			}
-		});
-	}
-
-	private void refreshRecentMenus() {
-		buildRecentMenu(recentContextMenu, AppPreferences.getRecentContexts(), entry -> openInEditor(entry),
-				() -> AppPreferences.clearRecentContexts());
-		buildRecentMenu(recentFamilyMenu, AppPreferences.getRecentFamilies(),
-				entry -> openInFamilyEditor(Path.of(AppPreferences.recentEntryPath(entry))),
-				() -> AppPreferences.clearRecentFamilies());
-		buildRecentMenu(recentModelMenu, AppPreferences.getRecentModels(),
-				entry -> openInModelEditor(Path.of(AppPreferences.recentEntryPath(entry))),
-				() -> AppPreferences.clearRecentModels());
-	}
-
-	private void buildRecentMenu(javafx.scene.control.Menu menu, java.util.List<String> entries,
-			Consumer<String> action, Runnable onClear) {
-		menu.getItems().clear();
-		if (entries.isEmpty()) {
-			javafx.scene.control.MenuItem empty = new javafx.scene.control.MenuItem(I18n.get("menu.file.recent.empty"));
-			empty.setDisable(true);
-			menu.getItems().add(empty);
-		} else {
-			for (String entry : entries) {
-				String path = AppPreferences.recentEntryPath(entry);
-				java.io.File f = new java.io.File(path);
-				String label = f.getName() + "   —   [" + shortenPath(f.getParent(), 40) + "]";
-				javafx.scene.control.MenuItem item = new javafx.scene.control.MenuItem(label);
-				item.setDisable(!f.exists());
-				item.setOnAction(e -> {
-					action.accept(entry);
-					AppPreferences.setLastDirectory(f.getParent());
-				});
-				menu.getItems().add(item);
-			}
-			// Séparateur + action vider
-			menu.getItems().add(new SeparatorMenuItem());
-			javafx.scene.control.MenuItem clearItem = new javafx.scene.control.MenuItem(
-					I18n.get("menu.file.recent.clear"));
-			clearItem.setOnAction(e -> {
-				onClear.run();
-				refreshRecentMenus();
-			});
-			menu.getItems().add(clearItem);
-		}
-	}
-
-	private String shortenPath(String path, int maxLen) {
-		if (path == null)
-			return "";
-		if (path.length() <= maxLen)
-			return path;
-		return "..." + path.substring(path.length() - maxLen);
-	}
 	// ── Utilitaires ───────────────────────────────────────────────────────────
 
 	private void appendConsole(String text) {
@@ -1257,40 +1106,38 @@ public class MainController implements Initializable {
 			commandTabPane.getSelectionModel().select(contextTab);
 		}
 	}
+
 	// Méthode pour résoudre la commande courante selon l'onglet actif
 	private String getCurrentCommandName() {
-	    Tab selected = commandTabPane.getSelectionModel().getSelectedItem();
-	    if (selected == rcaTab) {
-	        return "RCA";
-	    } else if (selected == importTab) {
-	        return (importCommandController != null)
-	            ? importCommandController.getCurrentCommand()
-	            : "BINARIZE";
-	    } else {
-	        // Onglet Context : valeur de la ComboBox
-	        return commandCombo.getValue();
-	    }
+		Tab selected = commandTabPane.getSelectionModel().getSelectedItem();
+		if (selected == rcaTab) {
+			return "RCA";
+		} else if (selected == importTab) {
+			return (importCommandController != null) ? importCommandController.getCurrentCommand() : "BINARIZE";
+		} else {
+			// Onglet Context : valeur de la ComboBox
+			return commandCombo.getValue();
+		}
 	}
 
 	@FXML
 	private void onCommandHelp() {
-	    String cmd = getCurrentCommandName();
-	    String pageName = toPageName(cmd);
-	    browserLauncher.openUrlWithFallback(
-	        "https://www.lirmm.fr/fca4j/" + pageName + ".html");
+		String cmd = getCurrentCommandName();
+		String pageName = toPageName(cmd);
+		browserLauncher.openUrlWithFallback("https://www.lirmm.fr/fca4j/" + pageName + ".html");
 	}
 
 	@FXML
 	private void onOpenWebsite() {
-	    browserLauncher.openUrlWithFallback("https://www.lirmm.fr/fca4j/");
+		browserLauncher.openUrlWithFallback("https://www.lirmm.fr/fca4j/");
 	}
 
 	private static String toPageName(String command) {
-	    if (command.contains("_")) {
-	        String[] parts = command.toLowerCase().split("_");
-	        parts[0] = Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1);
-	        return String.join("_", parts);
-	    }
-	    return Character.toUpperCase(command.charAt(0)) + command.substring(1).toLowerCase();
+		if (command.contains("_")) {
+			String[] parts = command.toLowerCase().split("_");
+			parts[0] = Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1);
+			return String.join("_", parts);
+		}
+		return Character.toUpperCase(command.charAt(0)) + command.substring(1).toLowerCase();
 	}
-	}
+}
