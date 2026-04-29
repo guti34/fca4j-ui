@@ -4,7 +4,7 @@
   <groupId>fr.lirmm.fca4j</groupId>
   <artifactId>fca4j-ui</artifactId>
   <name>FCA4J UI</name>
-  <version>0.9.0-SNAPSHOT</version>
+  <version>0.9.1-SNAPSHOT</version>
   <description>Companion JavaFX application for FCA4J</description>
   <url>https://www.lirmm.fr/fca4j/</url>
   <inceptionYear>2026</inceptionYear>
@@ -34,7 +34,7 @@
   <scm>
     <connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</connection>
     <developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-ui.git</developerConnection>
-    <tag>fca4j-ui-0.9.0</tag>
+    <tag>fca4j-ui-0.9.1</tag>
     <url>https://gite.lirmm.fr/gutierre/fca4j-ui/</url>
   </scm>
   <organization>
@@ -104,6 +104,18 @@
         <version>3.12.1</version>
         <configuration>
           <release>21</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <configuration>
+          <nonFilteredFileExtensions>
+            <nonFilteredFileExtension>jar</nonFilteredFileExtension>
+            <nonFilteredFileExtension>ico</nonFilteredFileExtension>
+            <nonFilteredFileExtension>icns</nonFilteredFileExtension>
+            <nonFilteredFileExtension>png</nonFilteredFileExtension>
+          </nonFilteredFileExtensions>
         </configuration>
       </plugin>
       <plugin>
