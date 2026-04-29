@@ -1,11 +1,9 @@
 package fr.lirmm.fca4j.ui.controller;
 
 import java.io.File;
-import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ResourceBundle;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.kordamp.ikonli.Ikon;
@@ -15,7 +13,6 @@ import org.kordamp.ikonli.material2.Material2MZ;
 
 import fr.lirmm.fca4j.core.IBinaryContext;
 import fr.lirmm.fca4j.core.RCAFamily;
-import fr.lirmm.fca4j.ui.MainApp;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.service.Fca4jRunner;
@@ -32,26 +29,18 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.web.WebView;
-import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
 
 public class MainController implements Initializable {
 
@@ -312,11 +301,11 @@ public class MainController implements Initializable {
 				return;
 			}
 			if (ctrl && code == javafx.scene.input.KeyCode.O) {
-				if (mainTabPane.getSelectionModel().getSelectedItem() == contextEditorTab
-						&& contextEditorController != null)
-					contextEditorController.onOpen();
-				event.consume();
-				return;
+			    if (contextEditorController != null) {
+			        contextEditorController.onOpen();
+			        mainTabPane.getSelectionModel().select(contextEditorTab);
+			    }
+			    event.consume(); return;
 			}
 			if (ctrl && code == javafx.scene.input.KeyCode.L) {
 				onClearConsole();
@@ -458,27 +447,37 @@ public class MainController implements Initializable {
 
 	private void updateStatusBar() {
 		// FCA4J jar
-		if (AppPreferences.isFca4jConfigured()) {
-			String jarPath = AppPreferences.getFca4jJarPath();
-			String jarName = Path.of(jarPath).getFileName().toString();
-			statusFca4jLabel.setText(jarName);
-			statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+		if (Fca4jRunner.hasEmbeddedJar() && !AppPreferences.isUseExternalFca4j()) {
+		    statusFca4jLabel.setText(I18n.get("status.embedded"));
+		    statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+		} else if (AppPreferences.isUseExternalFca4j() && AppPreferences.getFca4jJarPath() != null
+		        && !AppPreferences.getFca4jJarPath().isBlank()) {
+		    String jarName = Path.of(AppPreferences.getFca4jJarPath()).getFileName().toString();
+		    statusFca4jLabel.setText(jarName);
+		    statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
 		} else {
-			statusFca4jLabel.setText(I18n.get("status.not.configured"));
-			statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
+		    statusFca4jLabel.setText(I18n.get("status.not.configured"));
+		    statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
 		}
-
 		// GraphViz
 		String dotPath = AppPreferences.getDotPath();
 		File dotFile = new File(dotPath);
 		if (dotFile.exists() && dotFile.canExecute()) {
-			statusGraphvizLabel.setText(dotFile.getName());
-			statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+		    statusGraphvizLabel.setText(dotFile.getName());
+		    statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");
+		    statusGraphvizLabel.setCursor(javafx.scene.Cursor.DEFAULT);
+		    statusGraphvizLabel.setOnMouseClicked(null);
+		    statusGraphvizLabel.setTooltip(null);
 		} else {
-			statusGraphvizLabel.setText(I18n.get("status.graphviz.absent"));
-			statusGraphvizLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #cc3333;");
+		    statusGraphvizLabel.setText(I18n.get("status.graphviz.install"));
+		    statusGraphvizLabel.setStyle(
+		        "-fx-font-size: 11px; -fx-text-fill: #0047B3; -fx-underline: true; -fx-cursor: hand;");
+		    statusGraphvizLabel.setCursor(javafx.scene.Cursor.HAND);
+		    statusGraphvizLabel.setTooltip(new Tooltip(I18n.get("status.graphviz.install.tooltip")));
+		    statusGraphvizLabel.setOnMouseClicked(e ->
+		        browserLauncher.openUrlWithFallback("https://graphviz.org/download/"));
 		}
-	}
+		}
 
 	// ── Gestion de l'input persistant entre commandes ─────────────────────────
 

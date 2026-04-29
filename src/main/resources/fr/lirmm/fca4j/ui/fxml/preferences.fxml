@@ -9,12 +9,15 @@
     <Label fx:id="titleLabel" style="-fx-font-size: 15px; -fx-font-weight: bold;"/>
     <Separator/>
 
+    <CheckBox fx:id="useExternalJarCheckBox"/>
     <Label fx:id="jarLabel" style="-fx-font-weight: bold;"/>
     <HBox spacing="6">
         <TextField fx:id="jarPathField" HBox.hgrow="ALWAYS"/>
-        <Button text="%button.browse" onAction="#onBrowseJar"/>
+        <Button fx:id="browseJarButton" text="%button.browse" onAction="#onBrowseJar"/>
     </HBox>
     <Label fx:id="jarHintLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+    <Separator/>
 
     <Label fx:id="dotLabel" style="-fx-font-weight: bold;"/>
     <HBox spacing="6">

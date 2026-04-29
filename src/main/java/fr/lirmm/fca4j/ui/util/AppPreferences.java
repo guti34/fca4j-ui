@@ -2,6 +2,8 @@ package fr.lirmm.fca4j.ui.util;
 
 import java.util.prefs.Preferences;
 
+import fr.lirmm.fca4j.ui.service.Fca4jRunner;
+
 /**
  * Préférences persistantes de l'application (java.util.prefs).
  * Stockées dans le registre Windows, ~/Library sur macOS, ~/.java sur Linux.
@@ -39,10 +41,9 @@ public class AppPreferences {
     }
 
     public static boolean isFca4jConfigured() {
-        String p = getFca4jJarPath();
-        return p != null && !p.isBlank();
+        return Fca4jRunner.isConfigured();
     }
-
+    
     // ── GraphViz ─────────────────────────────────────────────────────────────
 
     public static String getDotPath() {
@@ -197,4 +198,13 @@ public class AppPreferences {
         String key = cmd + ".out." + Integer.toHexString(inputPath.hashCode());
         return loadString(key, "");
     }
+ // ── FCA4J externe ────────────────────────────────────────────────────────
+
+    public static boolean isUseExternalFca4j() {
+        return loadBool("useExternalFca4j", false);
+    }
+
+    public static void setUseExternalFca4j(boolean value) {
+        saveBool("useExternalFca4j", value);
+    }    
 }

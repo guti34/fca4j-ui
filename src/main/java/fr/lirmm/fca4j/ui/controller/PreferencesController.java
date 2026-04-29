@@ -1,5 +1,6 @@
 package fr.lirmm.fca4j.ui.controller;
 
+import fr.lirmm.fca4j.ui.service.Fca4jRunner;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
 import javafx.fxml.FXML;
@@ -26,6 +27,8 @@ public class PreferencesController implements Initializable {
     @FXML private ComboBox<Locale> languageCombo;
     @FXML private Button           saveButton;
     @FXML private Button           cancelButton;
+    @FXML private CheckBox         useExternalJarCheckBox;
+    @FXML private Button           browseJarButton;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -40,10 +43,22 @@ public class PreferencesController implements Initializable {
         langLabel.setText(I18n.get("prefs.language.label"));
         saveButton.setText(I18n.get("button.save"));
         cancelButton.setText(I18n.get("button.cancel"));
+        useExternalJarCheckBox.setText(I18n.get("prefs.jar.external"));
 
         // Valeurs courantes
-        jarPathField.setText(AppPreferences.getFca4jJarPath());
         dotPathField.setText(AppPreferences.getDotPath());
+
+        // Checkbox JAR externe
+        boolean useExternal = AppPreferences.isUseExternalFca4j();
+        useExternalJarCheckBox.setSelected(useExternal);
+        jarPathField.setText(AppPreferences.getFca4jJarPath());
+        jarPathField.setDisable(!useExternal);
+        browseJarButton.setDisable(!useExternal);
+
+        useExternalJarCheckBox.selectedProperty().addListener((obs, old, val) -> {
+            jarPathField.setDisable(!val);
+            browseJarButton.setDisable(!val);
+        });
 
         // Sélecteur de langue
         languageCombo.getItems().setAll(I18n.SUPPORTED_LOCALES);
@@ -76,13 +91,13 @@ public class PreferencesController implements Initializable {
 
     @FXML
     private void onSave() {
+        AppPreferences.setUseExternalFca4j(useExternalJarCheckBox.isSelected());
         AppPreferences.setFca4jJarPath(jarPathField.getText().trim());
         AppPreferences.setDotPath(dotPathField.getText().trim());
 
         Locale selected = languageCombo.getValue();
         if (selected != null && !selected.equals(I18n.getLocale())) {
             I18n.setLocale(selected);
-            // Informer l'utilisateur qu'un rechargement est nécessaire
             Alert info = new Alert(Alert.AlertType.INFORMATION);
             info.setTitle(I18n.get("prefs.title"));
             info.setHeaderText(null);
