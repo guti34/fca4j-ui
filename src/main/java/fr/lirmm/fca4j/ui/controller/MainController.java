@@ -446,7 +446,9 @@ public class MainController implements Initializable {
 	}
 
 	private void updateStatusBar() {
-		// FCA4J jar
+		System.out.println("[DEBUG] hasEmbeddedJar = " + Fca4jRunner.hasEmbeddedJar());
+		System.out.println("[DEBUG] isUseExternal = " + AppPreferences.isUseExternalFca4j());
+		System.out.println("[DEBUG] resource URL = " + Fca4jRunner.class.getResource("/fr/lirmm/fca4j/ui/bin/fca4j.jar"));		// FCA4J jar
 		if (Fca4jRunner.hasEmbeddedJar() && !AppPreferences.isUseExternalFca4j()) {
 		    statusFca4jLabel.setText(I18n.get("status.embedded"));
 		    statusFca4jLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2a7a2a;");

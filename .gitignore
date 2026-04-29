@@ -8,6 +8,7 @@ target/
 *.jar
 # Ne pas ignorer lib/ — contient les JARs FCA4J nécessaires au build CI
 !lib/*.jar
+!src/main/resources/fr/lirmm/fca4j/ui/bin/fca4j.jar
 *.bak
 *.swp
 *~.nib
