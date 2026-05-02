@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>fr.lirmm.fca4j</groupId>
 	<artifactId>fca4j-parent</artifactId>
-	<version>0.4.6</version>
+	<version>0.4.7</version>
 	<packaging>pom</packaging>
 	<name>FCA4J</name>
 	<description>a Java toolkit for formal concept analysis purposes</description>
@@ -24,7 +24,7 @@
 		<url>https://gite.lirmm.fr/gutierre/fca4j-project/</url>
 		<connection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-project.git</connection>
 		<developerConnection>scm:git:git@gite.lirmm.fr:gutierre/fca4j-project.git</developerConnection>
-		<tag>fca4j-0.4.6</tag>
+		<tag>fca4j-0.4.7</tag>
 	</scm>
 	<developers>
 		<developer>
@@ -137,16 +137,15 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>org.sonatype.plugins</groupId>
-				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.7</version>
-				<extensions>true</extensions>
-				<configuration>
-					<serverId>ossrh</serverId>
-					<nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-					<autoReleaseAfterClose>true</autoReleaseAfterClose>
-				</configuration>
-			</plugin>
+			    <groupId>org.sonatype.central</groupId>
+			    <artifactId>central-publishing-maven-plugin</artifactId>
+			    <version>0.9.0</version>
+			    <extensions>true</extensions>
+			    <configuration>
+			        <publishingServerId>central</publishingServerId>
+			        <autoPublish>true</autoPublish>
+			    </configuration>
+			</plugin>		
 		</plugins>
 	</build>
 

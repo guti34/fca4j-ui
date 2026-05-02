@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 LIRMM — BSD 3-Clause License
+ * See LICENSE file in the project root for full license text.
+ */
 package fr.lirmm.fca4j.ui.controller;
 
 import fr.lirmm.fca4j.ui.service.Fca4jRunner;
@@ -51,6 +55,12 @@ public class PreferencesController implements Initializable {
         // Checkbox JAR externe
         boolean useExternal = AppPreferences.isUseExternalFca4j();
         useExternalJarCheckBox.setSelected(useExternal);
+        if (Fca4jRunner.hasEmbeddedJar()) {
+            jarHintLabel.setText(I18n.get("prefs.jar.embedded.version",
+                Fca4jRunner.getEmbeddedVersion()));
+        } else {
+            jarHintLabel.setText(I18n.get("prefs.jar.hint"));
+        }
         jarPathField.setText(AppPreferences.getFca4jJarPath());
         jarPathField.setDisable(!useExternal);
         browseJarButton.setDisable(!useExternal);

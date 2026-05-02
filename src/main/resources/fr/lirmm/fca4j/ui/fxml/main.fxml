@@ -200,7 +200,7 @@
 			<Button fx:id="btnHelp" styleClass="icon-btn" onAction="#onCommandHelp"
 			        style="-fx-background-color: transparent; -fx-cursor: hand;"/>
 			<Separator orientation="VERTICAL"/>
-	        <Label fx:id="selectedNodeLabel" style="-fx-font-size: 11px;"/>
-	    </HBox>
+			<Label fx:id="currentFileLabel" style="-fx-font-size: 11px; -fx-text-fill: #555;"/>	    
+			</HBox>
 	</bottom>
 </BorderPane>

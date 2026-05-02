@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 LIRMM — BSD 3-Clause License
+ * See LICENSE file in the project root for full license text.
+ */
 package fr.lirmm.fca4j.ui.controller;
 
 import java.io.File;
@@ -915,4 +919,9 @@ public class ContextEditorController implements Initializable {
             new FileChooser.ExtensionFilter("CSV",              "*.csv"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
         return fc;
-    }}
+    }
+
+	public Path getCurrentFile() {
+		return currentFile;
+	}
+	}

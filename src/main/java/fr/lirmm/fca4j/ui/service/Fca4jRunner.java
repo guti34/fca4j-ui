@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 LIRMM — BSD 3-Clause License
+ * See LICENSE file in the project root for full license text.
+ */
 package fr.lirmm.fca4j.ui.service;
 
 import fr.lirmm.fca4j.ui.util.AppPreferences;
@@ -187,4 +191,28 @@ public class Fca4jRunner {
     public CompletableFuture<RunResult> run(List<String> args) {
         return run(args, null);
     }
-}
+    /**
+     * Retourne la version de FCA4J embarquée, lue depuis le package fca4j-core.
+     * Tente successivement : Package.getImplementationVersion(),
+     * pom.properties de Maven, puis "?" en dernier recours.
+     */
+    public static String getEmbeddedVersion() {
+        // 1. Via le manifest (Implementation-Version)
+        Package pkg = fr.lirmm.fca4j.core.IBinaryContext.class.getPackage();
+        if (pkg != null && pkg.getImplementationVersion() != null)
+            return pkg.getImplementationVersion();
+
+        // 2. Via pom.properties embarqué par Maven
+        try (InputStream is = fr.lirmm.fca4j.core.IBinaryContext.class.getResourceAsStream(
+                "/META-INF/maven/fr.lirmm.fca4j/fca4j-core/pom.properties")) {
+            if (is != null) {
+                java.util.Properties props = new java.util.Properties();
+                props.load(is);
+                String v = props.getProperty("version");
+                if (v != null) return v;
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Fallback
+        return "?";
+    }}

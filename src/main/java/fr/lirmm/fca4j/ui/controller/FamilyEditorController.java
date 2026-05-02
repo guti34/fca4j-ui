@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 LIRMM — BSD 3-Clause License
+ * See LICENSE file in the project root for full license text.
+ */
 package fr.lirmm.fca4j.ui.controller;
 
 import fr.lirmm.fca4j.core.IBinaryContext;
@@ -813,7 +817,6 @@ public class FamilyEditorController implements Initializable {
     }
 
     @FXML public void onSave() {
-        if (!confirmDiscard()) return;
         if (currentFile == null) { onSaveAs(); return; }
         saveToFile(currentFile);
     }
