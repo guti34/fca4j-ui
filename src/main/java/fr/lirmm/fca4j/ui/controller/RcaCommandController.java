@@ -431,7 +431,7 @@ public class RcaCommandController implements Initializable {
         String savedFolder = AppPreferences.loadOutputForInput("RCA", path.toString());
         if (!savedFolder.isBlank())
             outputFolderField.setText(savedFolder);
-        else if (outputFolderField.getText().isBlank()) {
+        else {
             Path def = defaultOutputFolder();
             if (def != null) outputFolderField.setText(def.toString());
         }

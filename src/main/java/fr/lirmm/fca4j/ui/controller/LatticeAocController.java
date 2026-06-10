@@ -95,6 +95,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 	@FXML
 	private ComboBox<String> implCombo;
 	@FXML
+	private CheckBox disableNativeCodeCheckBox;
+	@FXML
 	private Spinner<Integer> timeoutSpinner;
 	@FXML
 	private CheckBox verboseCheckBox;
@@ -117,6 +119,16 @@ public class LatticeAocController extends AbstractCommandController implements I
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		icebergSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50, 5));
+
+		// Quand le natif est actif (checkbox non cochée) → forcer ROARING_BITMAP
+		disableNativeCodeCheckBox.selectedProperty().addListener((obs, old, disabled) -> {
+			if (!disabled) {
+				implCombo.setValue("ROARING_BITMAP");
+				implCombo.setDisable(true);
+			} else {
+				implCombo.setDisable(false);
+			}
+		});
 
 		// Contrôles DOT désactivés jusqu'à ce que la case soit cochée
 		dotFileField.setDisable(true);
@@ -174,6 +186,18 @@ public class LatticeAocController extends AbstractCommandController implements I
 	}
 
 	/**
+	 * Indique si le couple (commande, algorithme) dispose d'une implémentation
+	 * native C activable via -dnc.
+	 */
+	private static boolean hasNativeImpl(String cmd, String algo) {
+		if (cmd == null || algo == null)
+			return false;
+		if ("LATTICE".equals(cmd)  && "ADD_EXTENT".equals(algo)) return true;
+		if ("AOCPOSET".equals(cmd) && "HERMES".equals(algo))     return true;
+		return false;
+	}
+
+	/**
 	 * Configure le panneau pour LATTICE ou AOCPOSET. Appelé depuis MainController
 	 * après chargement du FXML.
 	 */
@@ -197,6 +221,26 @@ public class LatticeAocController extends AbstractCommandController implements I
 		// Zone Iceberg : LATTICE seulement
 		icebergLabel.setVisible(false);
 		icebergSpinner.setVisible(false);
+
+		// Checkbox native code : visible si le couple (commande, algo) a un
+		// portage natif (LATTICE+ADD_EXTENT ou AOCPOSET+HERMES).
+		final String cmdName = desc.getName();
+		boolean showNativeInit = hasNativeImpl(cmdName, algoCombo.getValue());
+		disableNativeCodeCheckBox.setVisible(showNativeInit);
+		disableNativeCodeCheckBox.setManaged(showNativeInit);
+
+		// Mettre à jour la visibilité quand l'algo change
+		algoCombo.valueProperty().addListener((obs, old, val) -> {
+			boolean showNative = hasNativeImpl(cmdName, val);
+			disableNativeCodeCheckBox.setVisible(showNative);
+			disableNativeCodeCheckBox.setManaged(showNative);
+			if (!showNative) {
+				implCombo.setDisable(false);
+			} else if (!disableNativeCodeCheckBox.isSelected()) {
+				implCombo.setValue("ROARING_BITMAP");
+				implCombo.setDisable(true);
+			}
+		});
 		loadPrefs();
 		Platform.runLater(this::updateAlgoTitle);
 	}
@@ -308,6 +352,11 @@ public class LatticeAocController extends AbstractCommandController implements I
 		if ("ICEBERG".equals(algoCombo.getValue()))
 			builder.icebergPercent(icebergSpinner.getValue());
 
+		// Native code (couples avec portage natif : LATTICE+ADD_EXTENT, AOCPOSET+HERMES)
+		if (hasNativeImpl(descriptor.getName(), algoCombo.getValue())
+				&& disableNativeCodeCheckBox.isSelected())
+			builder.disableNativeCode(true);
+
 		int to = timeoutSpinner.getValue();
 		if (to > 0)
 			builder.timeout(to);
@@ -362,6 +411,9 @@ public class LatticeAocController extends AbstractCommandController implements I
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
 		AppPreferences.saveInt(cmd + ".iceberg", icebergSpinner.getValue());
+		// Native code (commandes avec portage natif)
+		if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd))
+			AppPreferences.saveBool(cmd + ".disableNativeCode", disableNativeCodeCheckBox.isSelected());
 		// Datalog
 		AppPreferences.saveBool(cmd + ".nds", noDirectSiblings.isSelected());
 	}
@@ -389,6 +441,15 @@ public class LatticeAocController extends AbstractCommandController implements I
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
 		icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".iceberg", 50));
+		// Native code (commandes avec portage natif)
+		if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd)) {
+			boolean dnc = AppPreferences.loadBool(cmd + ".disableNativeCode", false);
+			disableNativeCodeCheckBox.setSelected(dnc);
+			if (!dnc && hasNativeImpl(cmd, algoCombo.getValue())) {
+				implCombo.setValue("ROARING_BITMAP");
+				implCombo.setDisable(true);
+			}
+		}
 		noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
 		Platform.runLater(this::updateAlgoTitle);
 	}

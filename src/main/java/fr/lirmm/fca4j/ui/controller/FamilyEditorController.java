@@ -385,7 +385,10 @@ public class FamilyEditorController implements Initializable {
             zoom = 1.0; 
             offsetX = 0.0; 
             offsetY = 0.0;
-        } catch (Exception e) { showError(I18n.get("family.error.read"), e.getMessage()); }
+        } catch (Exception e) { 
+        	e.printStackTrace();
+        	showError(I18n.get("family.error.read"), e.getMessage()); 
+        	}
     }
 
     public void reloadFamily(RCAFamily rcf) {

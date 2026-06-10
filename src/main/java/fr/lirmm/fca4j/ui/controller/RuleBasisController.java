@@ -78,6 +78,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private TitledPane dbasisPane;
 	@FXML
 	private Spinner<Integer> minSupportSpinner;
+	@FXML
+	private CheckBox disableNativeCodeCheckBox;
 
 	// ── Options communes ──────────────────────────────────────────────────────
 	@FXML
@@ -120,6 +122,16 @@ public class RuleBasisController extends AbstractCommandController implements In
 		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "TREESET", "INT_ARRAY", "ARRAYLIST",
 				"BOOL_ARRAY");
 		implCombo.setValue("BITSET");
+
+		// Quand le natif est actif (checkbox non cochée) → forcer ROARING_BITMAP
+		disableNativeCodeCheckBox.selectedProperty().addListener((obs, old, disabled) -> {
+			if (!disabled) {
+				implCombo.setValue("ROARING_BITMAP");
+				implCombo.setDisable(true);
+			} else {
+				implCombo.setDisable(false);
+			}
+		});
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
@@ -288,6 +300,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 			int ms = minSupportSpinner.getValue();
 			if (ms > 0)
 				builder.minimalSupport(ms);
+			if (disableNativeCodeCheckBox.isSelected())
+				builder.disableNativeCode(true);
 			if (!reportFileField.getText().isBlank())
 				builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
 		}
@@ -334,6 +348,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
+	        AppPreferences.saveBool(cmd + ".disableNativeCode", disableNativeCodeCheckBox.isSelected());
 	    }
 	}
 
@@ -368,6 +383,15 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    if ("DBASIS".equals(cmd)) {
 	        minSupportSpinner.getValueFactory().setValue(
 	            AppPreferences.loadInt(cmd + ".minSupport", 0));
+	        boolean dnc = AppPreferences.loadBool(cmd + ".disableNativeCode", false);
+	        disableNativeCodeCheckBox.setSelected(dnc);
+	        // Appliquer l'état du combo selon la checkbox
+	        if (!dnc) {
+	            implCombo.setValue("ROARING_BITMAP");
+	            implCombo.setDisable(true);
+	        } else {
+	            implCombo.setDisable(false);
+	        }
 	    }
 	}
 	}

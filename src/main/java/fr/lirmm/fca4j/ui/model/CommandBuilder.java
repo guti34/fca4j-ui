@@ -47,6 +47,7 @@ public class CommandBuilder {
     public String getImplFolder() { return implFolder; }
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
+    private boolean disableNativeCode = false; // -dnc
 
     // ── CLARIFY / REDUCE ─────────────────────────────────────────────────────
     private boolean clarifyObjects    = false; // -xo
@@ -113,6 +114,7 @@ public class CommandBuilder {
     public CommandBuilder implFolder(String v)      { this.implFolder = v;        return this; }
     // DBASIS
     public CommandBuilder minimalSupport(int v)     { this.minimalSupport = v;    return this; }
+    public CommandBuilder disableNativeCode(boolean v) { this.disableNativeCode = v;    return this; }
     // CLARIFY / REDUCE
     public CommandBuilder clarifyObjects(boolean v)    { this.clarifyObjects = v;    return this; }
     public CommandBuilder clarifyAttributes(boolean v) { this.clarifyAttributes = v; return this; }
@@ -229,6 +231,7 @@ public class CommandBuilder {
         // ── Options DBASIS ───────────────────────────────────────────────────
         if (minimalSupport != null && minimalSupport > 0)
             add(args, "-x", String.valueOf(minimalSupport));
+        if (disableNativeCode) args.add("-dnc");
 
         // ── Options CLARIFY / REDUCE ──────────────────────────────────────────
         if (clarifyObjects)    args.add("-xo");

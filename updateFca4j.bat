@@ -6,3 +6,5 @@ copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-io\0.4.7\fca4j-io-0.4
 copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-io\0.4.7\fca4j-io-0.4.7.jar C:\platform\fca4j-ui\lib\
 copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-core\0.4.7\fca4j-core-0.4.7.pom C:\platform\fca4j-ui\lib\
 copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-core\0.4.7\fca4j-core-0.4.7.jar C:\platform\fca4j-ui\lib\
+copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-core-natif\0.4.7\fca4j-core-natif-0.4.7.pom C:\platform\fca4j-ui\lib\
+copy C:\Users\gutierre\.m2\repository\fr\lirmm\fca4j\fca4j-core-natif\0.4.7\fca4j-core-natif-0.4.7.jar C:\platform\fca4j-ui\lib\
