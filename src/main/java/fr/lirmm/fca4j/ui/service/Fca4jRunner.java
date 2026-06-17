@@ -113,6 +113,12 @@ public class Fca4jRunner {
 
                 List<String> command = new ArrayList<>();
                 command.add(currentJavaExe());
+                // VM arguments (ex: -Xmx4g) configurés dans les préférences
+                String vmArgs = AppPreferences.getVmArgs();
+                if (vmArgs != null && !vmArgs.isBlank()) {
+                    for (String arg : vmArgs.trim().split("\\s+"))
+                        if (!arg.isBlank()) command.add(arg);
+                }
                 command.add("-jar");
                 command.add(jarPath);
                 command.addAll(args);

@@ -49,8 +49,8 @@ public class CommandDescriptor {
     public static final CommandDescriptor LATTICE = new CommandDescriptor(
         "LATTICE",
         "Construit un treillis de concepts.",
-        List.of("AUTO", "ADD_EXTENT", "ADD_INTENT", "ICEBERG"),
-        "AUTO", true, CommandFamily.LATTICE_AOC
+        List.of("PARALLEL_CBO","ADD_EXTENT", "ADD_INTENT", "ICEBERG"),
+        "PARALLEL_CBO", true, CommandFamily.LATTICE_AOC
     );
 
     public static final CommandDescriptor AOCPOSET = new CommandDescriptor(

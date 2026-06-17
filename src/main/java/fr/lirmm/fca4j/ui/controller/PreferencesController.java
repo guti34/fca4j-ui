@@ -26,8 +26,11 @@ public class PreferencesController implements Initializable {
     @FXML private Label            dotLabel;
     @FXML private Label            dotHintLabel;
     @FXML private Label            langLabel;
+    @FXML private Label            vmArgsLabel;
+    @FXML private Label            vmArgsHintLabel;
     @FXML private TextField        jarPathField;
     @FXML private TextField        dotPathField;
+    @FXML private TextField        vmArgsField;
     @FXML private ComboBox<Locale> languageCombo;
     @FXML private Button           saveButton;
     @FXML private Button           cancelButton;
@@ -48,9 +51,12 @@ public class PreferencesController implements Initializable {
         saveButton.setText(I18n.get("button.save"));
         cancelButton.setText(I18n.get("button.cancel"));
         useExternalJarCheckBox.setText(I18n.get("prefs.jar.external"));
+        vmArgsLabel.setText(I18n.get("prefs.vmargs.label"));
+        vmArgsHintLabel.setText(I18n.get("prefs.vmargs.hint"));
 
         // Valeurs courantes
         dotPathField.setText(AppPreferences.getDotPath());
+        vmArgsField.setText(AppPreferences.getVmArgs());
 
         // Checkbox JAR externe
         boolean useExternal = AppPreferences.isUseExternalFca4j();
@@ -104,6 +110,7 @@ public class PreferencesController implements Initializable {
         AppPreferences.setUseExternalFca4j(useExternalJarCheckBox.isSelected());
         AppPreferences.setFca4jJarPath(jarPathField.getText().trim());
         AppPreferences.setDotPath(dotPathField.getText().trim());
+        AppPreferences.setVmArgs(vmArgsField.getText().trim());
 
         Locale selected = languageCombo.getValue();
         if (selected != null && !selected.equals(I18n.getLocale())) {

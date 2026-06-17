@@ -32,6 +32,11 @@
     </HBox>
 
     <Separator/>
+    <Label fx:id="vmArgsLabel" style="-fx-font-weight: bold;"/>
+    <TextField fx:id="vmArgsField" promptText="-Xmx2g -Xms512m"/>
+    <Label fx:id="vmArgsHintLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+    <Separator/>
     <HBox spacing="10" style="-fx-alignment: center-right;">
         <Button fx:id="cancelButton" onAction="#onCancel"/>
         <Button fx:id="saveButton" onAction="#onSave" style="-fx-font-weight: bold;"/>

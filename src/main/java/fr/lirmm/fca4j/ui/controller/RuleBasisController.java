@@ -318,26 +318,28 @@ public class RuleBasisController extends AbstractCommandController implements In
 	public void setInputFile(String path) {
 	    if (path == null || path.isBlank()) return;
 	    inputFileField.setText(path);
-	    autoDetectFormat(new File(path).getName(),inputFormatCombo);
+	    autoDetectFormat(new File(path).getName(), inputFormatCombo);
 
-	    String cmd  = descriptor != null ? descriptor.getName() : "RULEBASIS";
-	    String base = path.replaceAll("\\.[^.]+$", "");
-
-	    String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-	    outputFileField.setText(savedOutput.isBlank()
-	        ? base + "-rules.txt" : savedOutput);
+	    if (outputFileField.getText().isBlank()) {
+	        String cmd = descriptor != null ? descriptor.getName() : "RULEBASIS";
+	        String base = path.replaceAll("\\.[^.]+$", "");
+	        String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+	        outputFileField.setText(savedOutput.isBlank() ? base + "-rules.txt" : savedOutput);
+	    }
 	}
 
 	public String getInputFile() {
 		return inputFileField.getText();
 	}
-	protected void savePrefs() {
+	public void savePrefs() {
 	    String cmd = descriptor.getName(); // "RULEBASIS" ou "DBASIS"
 	    AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
 	    AppPreferences.saveString(cmd + ".poolMode",     poolModeCombo.getValue());
 	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
 	    AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
+	    AppPreferences.saveString(cmd + ".outputFile",   outputFileField.getText().trim());
+	    AppPreferences.saveString(cmd + ".reportFile",   reportFileField.getText().trim());
 
 	    if ("RULEBASIS".equals(cmd)) {
 	        AppPreferences.saveString(cmd + ".algo",     algoCombo.getValue());
@@ -345,6 +347,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	        AppPreferences.saveBool  (cmd + ".clarify",  clarifyCheckBox.isSelected());
 	        AppPreferences.saveBool  (cmd + ".sort",     sortBySupportCheckBox.isSelected());
 	        AppPreferences.saveInt   (cmd + ".threshold",thresholdSpinner.getValue());
+	        AppPreferences.saveString(cmd + ".implFolder", implFolderField.getText().trim());
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
@@ -352,7 +355,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    }
 	}
 
-	protected void loadPrefs() {
+	public void loadPrefs() {
 	    String cmd = descriptor.getName();
 	    String fmt = AppPreferences.loadString(cmd + ".outputFormat", "TXT");
 	    if (outputFormatCombo.getItems().contains(fmt)) outputFormatCombo.setValue(fmt);
@@ -392,6 +395,14 @@ public class RuleBasisController extends AbstractCommandController implements In
 	        } else {
 	            implCombo.setDisable(false);
 	        }
+	    }
+	    String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
+	    if (!savedOutput.isBlank()) outputFileField.setText(savedOutput);
+	    String savedReport = AppPreferences.loadString(cmd + ".reportFile", "");
+	    if (!savedReport.isBlank()) reportFileField.setText(savedReport);
+	    if ("RULEBASIS".equals(cmd)) {
+	        String savedImplFolder = AppPreferences.loadString(cmd + ".implFolder", "");
+	        if (!savedImplFolder.isBlank()) implFolderField.setText(savedImplFolder);
 	    }
 	}
 	}

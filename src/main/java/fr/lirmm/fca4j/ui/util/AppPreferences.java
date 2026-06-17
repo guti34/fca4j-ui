@@ -210,5 +210,17 @@ public class AppPreferences {
 
     public static void setUseExternalFca4j(boolean value) {
         saveBool("useExternalFca4j", value);
-    }    
+    }
+
+    // ── VM arguments ─────────────────────────────────────────────────────────
+
+    private static final String KEY_VM_ARGS = "jvm.vm.args";
+
+    public static String getVmArgs() {
+        return PREFS.get(KEY_VM_ARGS, "");
+    }
+
+    public static void setVmArgs(String vmArgs) {
+        PREFS.put(KEY_VM_ARGS, vmArgs == null ? "" : vmArgs.trim());
+    }
 }

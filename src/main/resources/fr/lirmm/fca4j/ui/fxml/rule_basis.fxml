@@ -58,6 +58,7 @@
                 <Label text="%label.min.support.hint"
                        style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
             </HBox>
+            <CheckBox fx:id="disableNativeCodeCheckBox" text="%checkbox.disable.native.code"/>
         </VBox>
     </TitledPane>
 
@@ -77,7 +78,6 @@
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <CheckBox fx:id="sortBySupportCheckBox" text="%checkbox.sort.support"/>
-            <CheckBox fx:id="disableNativeCodeCheckBox" text="%checkbox.disable.native.code"/>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.implementation"/>
                 <ComboBox fx:id="implCombo" prefWidth="160"/>

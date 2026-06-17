@@ -22,6 +22,17 @@
         </VBox>
     </TitledPane>
 
+    <VBox spacing="6" style="-fx-padding: 0 8 0 8;">
+        <HBox spacing="8" alignment="CENTER_LEFT">
+            <Label text="%label.algorithm" minWidth="80"/>
+            <ComboBox fx:id="algoCombo" prefWidth="200"/>
+        </HBox>
+        <HBox fx:id="icebergBox" spacing="8" alignment="CENTER_LEFT">
+            <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
+            <Spinner fx:id="icebergSpinner" prefWidth="80"/>
+        </HBox>
+    </VBox>
+
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
@@ -32,19 +43,6 @@
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.output.format"/>
                 <ComboBox fx:id="outputFormatCombo" prefWidth="100"/>
-            </HBox>
-        </VBox>
-    </TitledPane>
-
-    <TitledPane fx:id="algoPane" collapsible="true" expanded="false" >
-        <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.algorithm"/>
-                <ComboBox fx:id="algoCombo" prefWidth="160"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
-                <Spinner fx:id="icebergSpinner" prefWidth="80"/>
             </HBox>
         </VBox>
     </TitledPane>

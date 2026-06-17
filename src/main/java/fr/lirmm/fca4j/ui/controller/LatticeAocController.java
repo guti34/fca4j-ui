@@ -18,7 +18,6 @@ import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
 import fr.lirmm.fca4j.ui.util.Utilities;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
@@ -45,8 +44,6 @@ public class LatticeAocController extends AbstractCommandController implements I
 	@FXML
 	private TitledPane outputPane;
 	@FXML
-	private TitledPane algoPane;
-	@FXML
 	private TitledPane graphvizPane;
 	@FXML
 	private TitledPane advancedPane;
@@ -65,7 +62,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 	@FXML
 	private ComboBox<String> algoCombo;
 	@FXML
-	private Label icebergLabel;
+	private javafx.scene.layout.HBox icebergBox;
 	@FXML
 	private Spinner<Integer> icebergSpinner;
 
@@ -163,26 +160,15 @@ public class LatticeAocController extends AbstractCommandController implements I
 		// Zone Iceberg visible seulement si algo = ICEBERG
 		algoCombo.valueProperty().addListener((obs, old, val) -> {
 			boolean isIceberg = "ICEBERG".equals(val);
-			icebergLabel.setVisible(isIceberg);
-			icebergSpinner.setVisible(isIceberg);
-			updateAlgoTitle();
+			icebergBox.setVisible(isIceberg);
+			icebergBox.setManaged(isIceberg);
 		});
-		icebergSpinner.valueProperty().addListener((obs, old, val) -> updateAlgoTitle());
+		icebergSpinner.valueProperty().addListener((obs, old, val) -> {});
 		Utilities.bindPathTooltip(inputFileField);
 		Utilities.bindPathTooltip(outputFileField);
 		Utilities.bindPathTooltip(dotFileField);
 		Utilities.bindPathTooltip(datalogFolderField);
 		Utilities.bindPathTooltip(datalogFileField);
-	}
-
-	private void updateAlgoTitle() {
-		String algo = algoCombo.getValue();
-		if (algo == null || algoPane == null)
-			return;
-		String title = I18n.get("section.algorithm") + " : " + algo;
-		if ("ICEBERG".equals(algo))
-			title += " (" + icebergSpinner.getValue() + "%)";
-		algoPane.setText(title);
 	}
 
 	/**
@@ -192,7 +178,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private static boolean hasNativeImpl(String cmd, String algo) {
 		if (cmd == null || algo == null)
 			return false;
-		if ("LATTICE".equals(cmd)  && "ADD_EXTENT".equals(algo)) return true;
+		if ("LATTICE".equals(cmd))
+			if("ADD_EXTENT".equals(algo) || "PARALLEL_CBO".equals(algo)) return true;
 		if ("AOCPOSET".equals(cmd) && "HERMES".equals(algo))     return true;
 		return false;
 	}
@@ -209,7 +196,6 @@ public class LatticeAocController extends AbstractCommandController implements I
 		// Titres des sections via I18n
 		inputPane.setText(I18n.get("section.input"));
 		outputPane.setText(I18n.get("section.output"));
-		algoPane.setText(I18n.get("section.algorithm"));
 		graphvizPane.setText(I18n.get("section.graphviz"));
 		datalogPane.setText(I18n.get("rca.section.datalog"));
 		advancedPane.setText(I18n.get("section.advanced"));
@@ -218,9 +204,9 @@ public class LatticeAocController extends AbstractCommandController implements I
 		algoCombo.getItems().setAll(desc.getAlgorithms());
 		algoCombo.setValue(desc.getDefaultAlgorithm());
 
-		// Zone Iceberg : LATTICE seulement
-		icebergLabel.setVisible(false);
-		icebergSpinner.setVisible(false);
+		// Zone Iceberg : masquée par défaut
+		icebergBox.setVisible(false);
+		icebergBox.setManaged(false);
 
 		// Checkbox native code : visible si le couple (commande, algo) a un
 		// portage natif (LATTICE+ADD_EXTENT ou AOCPOSET+HERMES).
@@ -242,7 +228,6 @@ public class LatticeAocController extends AbstractCommandController implements I
 			}
 		});
 		loadPrefs();
-		Platform.runLater(this::updateAlgoTitle);
 	}
 
 	@FXML
@@ -352,7 +337,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 		if ("ICEBERG".equals(algoCombo.getValue()))
 			builder.icebergPercent(icebergSpinner.getValue());
 
-		// Native code (couples avec portage natif : LATTICE+ADD_EXTENT, AOCPOSET+HERMES)
+		// Native code (couples avec portage natif : LATTICE+ADD_EXTENT,  LATTICE+PARALLEL_CBO, AOCPOSET+HERMES)
 		if (hasNativeImpl(descriptor.getName(), algoCombo.getValue())
 				&& disableNativeCodeCheckBox.isSelected())
 			builder.disableNativeCode(true);
@@ -378,17 +363,19 @@ public class LatticeAocController extends AbstractCommandController implements I
 		if (path == null || path.isBlank())
 			return;
 		inputFileField.setText(path);
-		autoDetectFormat(new File(path).getName(),inputFormatCombo);
+		autoDetectFormat(new File(path).getName(), inputFormatCombo);
 
 		String cmd = descriptor != null ? descriptor.getName() : "LATTICE";
 		String base = path.replaceAll("\\.[^.]+$", "");
 		String ext = "XML".equals(AppPreferences.loadString(cmd + ".outputFormat", "XML")) ? ".xml" : ".json";
 
-		String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-		outputFileField.setText(savedOutput.isBlank() ? base + "-result" + ext : savedOutput);
+		if (outputFileField.getText().isBlank()) {
+			String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+			outputFileField.setText(savedOutput.isBlank() ? base + "-result" + ext : savedOutput);
+		}
 
-		// DOT : toujours recalculer depuis le nouveau fichier d'entrée
-		if (dotCheckBox.isSelected())
+		// DOT : recalculer seulement si le champ est vide
+		if (dotCheckBox.isSelected() && dotFileField.getText().isBlank())
 			dotFileField.setText(base + ".dot");
 	}
 
@@ -400,8 +387,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 		return dotCheckBox.isSelected() ? dotFileField.getText() : null;
 	}
 
-	protected void savePrefs() {
-		String cmd = descriptor.getName(); 
+	public void savePrefs() {
+		String cmd = descriptor.getName();
 		AppPreferences.saveString(cmd + ".algo", algoCombo.getValue());
 		AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 		AppPreferences.saveString(cmd + ".displayMode", displayModeCombo.getValue());
@@ -411,14 +398,18 @@ public class LatticeAocController extends AbstractCommandController implements I
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
 		AppPreferences.saveInt(cmd + ".iceberg", icebergSpinner.getValue());
+		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
+		AppPreferences.saveString(cmd + ".dotFile", dotCheckBox.isSelected() ? dotFileField.getText().trim() : "");
 		// Native code (commandes avec portage natif)
 		if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd))
 			AppPreferences.saveBool(cmd + ".disableNativeCode", disableNativeCodeCheckBox.isSelected());
 		// Datalog
 		AppPreferences.saveBool(cmd + ".nds", noDirectSiblings.isSelected());
+		AppPreferences.saveString(cmd + ".datalogFolder", datalogFolderField.getText().trim());
+		AppPreferences.saveString(cmd + ".datalogFile", datalogFileField.getText().trim());
 	}
 
-	protected void loadPrefs() {
+	public void loadPrefs() {
 		String cmd = descriptor.getName();
 		String algo = AppPreferences.loadString(cmd + ".algo", descriptor.getDefaultAlgorithm());
 		if (algoCombo.getItems().contains(algo))
@@ -451,7 +442,14 @@ public class LatticeAocController extends AbstractCommandController implements I
 			}
 		}
 		noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
-		Platform.runLater(this::updateAlgoTitle);
+		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
+		if (!savedOutput.isBlank()) outputFileField.setText(savedOutput);
+		String savedDot = AppPreferences.loadString(cmd + ".dotFile", "");
+		if (!savedDot.isBlank()) dotFileField.setText(savedDot);
+		String savedDatalogFolder = AppPreferences.loadString(cmd + ".datalogFolder", "");
+		if (!savedDatalogFolder.isBlank()) datalogFolderField.setText(savedDatalogFolder);
+		String savedDatalogFile = AppPreferences.loadString(cmd + ".datalogFile", "");
+		if (!savedDatalogFile.isBlank()) datalogFileField.setText(savedDatalogFile);
 	}
 
 }

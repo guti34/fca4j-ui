@@ -599,6 +599,10 @@ public class MainController implements Initializable {
 
 	private void loadCommandPanel(String command) {
 		try {
+			// Sauvegarder l'état du contrôleur courant avant de le remplacer
+			if (currentCommandController instanceof AbstractCommandController c)
+				c.savePrefs();
+
 			CommandDescriptor desc = CommandDescriptor.forName(command);
 			if (desc == null) {
 				commandPanelContainer.getChildren().setAll(new Label(I18n.get("error.panel.load", command)));

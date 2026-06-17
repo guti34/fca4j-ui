@@ -174,19 +174,20 @@ public class IrreducibleController extends AbstractCommandController implements 
 		if (path == null || path.isBlank())
 			return;
 		inputFileField.setText(path);
-		autoDetectFormat(new File(path).getName(),inputFormatCombo);
+		autoDetectFormat(new File(path).getName(), inputFormatCombo);
 
-		String base = path.replaceAll("\\.[^.]+$", "");
-
-		String savedOutput = AppPreferences.loadOutputForInput("IRREDUCIBLE", path);
-		outputFileField.setText(savedOutput.isBlank() ? base + "-irreducible.txt" : savedOutput);
+		if (outputFileField.getText().isBlank()) {
+			String base = path.replaceAll("\\.[^.]+$", "");
+			String savedOutput = AppPreferences.loadOutputForInput("IRREDUCIBLE", path);
+			outputFileField.setText(savedOutput.isBlank() ? base + "-irreducible.txt" : savedOutput);
+		}
 	}
 
 	public String getInputFile() {
 		return inputFileField.getText();
 	}
 
-	protected void savePrefs() {
+	public void savePrefs() {
 		String cmd = descriptor.getName(); 
 		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
 		AppPreferences.saveString(cmd + ".impl", implCombo.getValue());
@@ -195,9 +196,10 @@ public class IrreducibleController extends AbstractCommandController implements 
 		AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
 	}
 
-	protected void loadPrefs() {
+	public void loadPrefs() {
 		String cmd = descriptor.getName();
 		String fmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
 		if (inputFormatCombo.getItems().contains(fmt))
@@ -213,6 +215,10 @@ public class IrreducibleController extends AbstractCommandController implements 
 		groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+
+		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
+		if (!savedOutput.isBlank())
+			outputFileField.setText(savedOutput);
 	}
 
 }

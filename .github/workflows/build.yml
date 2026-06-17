@@ -3,12 +3,15 @@ name: Build & Release (Windows, Linux, macOS)
 on:
   push:
     tags:
-      - 'v*'          # déclenché sur v0.6.0, v1.0.0, etc.
-  workflow_dispatch:   # déclenchement manuel depuis l'interface GitHub
+      - 'v*'
+  workflow_dispatch:
+  repository_dispatch:
+    types: [fat-jar-updated]   # déclenché automatiquement par fca4j-project
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FCA4J_VERSION: '0.4.7'
+  FCA4J_JAR_URL: 'https://github.com/guti34/fca4j-project/releases/download/continuous/fca4j.jar'
 
 jobs:
 
@@ -24,6 +27,11 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
+      - name: Télécharger le dernier fca4j.jar
+        run: |
+          curl -fSL -o src/main/resources/fr/lirmm/fca4j/ui/bin/fca4j.jar \
+            ${{ env.FCA4J_JAR_URL }}
 
       - name: Install FCA4J JARs
         run: |
@@ -59,6 +67,12 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
+      - name: Télécharger le dernier fca4j.jar
+        shell: bash
+        run: |
+          curl -fSL -o src/main/resources/fr/lirmm/fca4j/ui/bin/fca4j.jar \
+            ${{ env.FCA4J_JAR_URL }}
 
       - name: Install FCA4J JARs
         shell: bash
@@ -109,6 +123,11 @@ jobs:
       - name: Install build tools
         run: sudo apt-get install -y fakeroot dpkg-dev binutils
 
+      - name: Télécharger le dernier fca4j.jar
+        run: |
+          curl -fSL -o src/main/resources/fr/lirmm/fca4j/ui/bin/fca4j.jar \
+            ${{ env.FCA4J_JAR_URL }}
+
       - name: Install FCA4J JARs
         run: |
           mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
@@ -154,6 +173,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Télécharger le dernier fca4j.jar
+        run: |
+          curl -fSL -o src/main/resources/fr/lirmm/fca4j/ui/bin/fca4j.jar \
+            ${{ env.FCA4J_JAR_URL }}
+
       - name: Install FCA4J JARs
         run: |
           mvn install:install-file -Dfile=lib/fca4j-parent-${{ env.FCA4J_VERSION }}.pom \
@@ -187,7 +211,7 @@ jobs:
 
   # ── Publication GitHub Release ──────────────────────────────────────────────
   release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'repository_dispatch'
     needs: [build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
@@ -206,9 +230,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'continuous-ui' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Latest Installers' }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: |
             installers/*.msi
             installers/*.deb
             installers/*.dmg
-          generate_release_notes: true
+          generate_release_notes: ${{ startsWith(github.ref, 'refs/tags/') }}
           fail_on_unmatched_files: false

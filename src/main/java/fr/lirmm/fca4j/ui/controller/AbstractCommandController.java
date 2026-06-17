@@ -155,13 +155,13 @@ public abstract class AbstractCommandController {
      * Sauvegarde les préférences spécifiques à la commande.
      * À implémenter dans chaque sous-classe.
      */
-    protected abstract void savePrefs();
+    public abstract void savePrefs();
 
     /**
      * Charge les préférences spécifiques à la commande.
      * À implémenter dans chaque sous-classe.
      */
-    protected abstract void loadPrefs();
+    public abstract void loadPrefs();
 
     /**
      * Retourne le nom de la commande pour le préfixe des préférences.

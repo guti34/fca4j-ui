@@ -65,6 +65,8 @@ public class InspectController extends AbstractCommandController implements Init
 
 		inputPane.setText(I18n.get("section.input"));
 		advancedPane.setText(I18n.get("section.advanced"));
+
+		loadPrefs();
 	}
 
 	// ── Actions ───────────────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ public class InspectController extends AbstractCommandController implements Init
 
 	@FXML
 	public void onRun() {
+		savePrefs();
 		if(!validateInput(inputFileField)) return;
 
 		CommandBuilder builder = new CommandBuilder().command("INSPECT").inputFile(inputFileField.getText().trim())
@@ -127,19 +130,21 @@ public class InspectController extends AbstractCommandController implements Init
 	}
 
 	@Override
-	protected void savePrefs() {
-		String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+	public void savePrefs() {
+		String cmd = descriptor.getName(); // "INSPECT"
+		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
-		
 	}
 
 	@Override
-	protected void loadPrefs() {
-		String cmd = descriptor.getName(); // "LATTICE" ou "AOCPOSET"
+	public void loadPrefs() {
+		String cmd = descriptor.getName(); // "INSPECT"
+		String fmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
+		if (inputFormatCombo.getItems().contains(fmt))
+			inputFormatCombo.setValue(fmt);
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
-		
 	}
 
 }

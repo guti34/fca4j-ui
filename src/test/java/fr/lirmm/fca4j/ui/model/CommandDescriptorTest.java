@@ -40,7 +40,7 @@ class CommandDescriptorTest {
         CommandDescriptor d = CommandDescriptor.LATTICE;
         assertTrue(d.getAlgorithms().contains("ICEBERG"));
         assertTrue(d.hasIcebergPercent());
-        assertEquals("AUTO", d.getDefaultAlgorithm());
+        assertEquals("PARALLEL_CBO", d.getDefaultAlgorithm());
         assertEquals(CommandDescriptor.CommandFamily.LATTICE_AOC, d.getFamily());
     }
 

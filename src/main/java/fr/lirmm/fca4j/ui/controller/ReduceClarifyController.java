@@ -252,20 +252,21 @@ public class ReduceClarifyController extends AbstractCommandController implement
 		inputFileField.setText(path);
 		autoDetectFormat(new File(path).getName(), inputFormatCombo);
 
-		String cmd = descriptor != null ? descriptor.getName() : "CLARIFY";
-		String base = path.replaceAll("\\.[^.]+$", "");
-
-		String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-		outputFileField.setText(
-				savedOutput.isBlank() ? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
-						: savedOutput);
+		if (outputFileField.getText().isBlank()) {
+			String cmd = descriptor != null ? descriptor.getName() : "CLARIFY";
+			String base = path.replaceAll("\\.[^.]+$", "");
+			String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
+			outputFileField.setText(
+					savedOutput.isBlank() ? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
+							: savedOutput);
+		}
 	}
 
 	public String getInputFile() {
 		return inputFileField.getText();
 	}
 
-	protected void savePrefs() {
+	public void savePrefs() {
 		String cmd = descriptor.getName(); // "CLARIFY" ou "REDUCE"
 		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
 		AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
@@ -274,11 +275,12 @@ public class ReduceClarifyController extends AbstractCommandController implement
 		AppPreferences.saveBool(cmd + ".xa", xaCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
 		if ("REDUCE".equals(cmd))
 			AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
 	}
 
-	protected void loadPrefs() {
+	public void loadPrefs() {
 		String cmd = descriptor.getName();
 
 		String inFmt = AppPreferences.loadString(cmd + ".inputFormat", "(auto)");
@@ -300,5 +302,9 @@ public class ReduceClarifyController extends AbstractCommandController implement
 
 		if ("REDUCE".equals(cmd))
 			groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
+
+		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
+		if (!savedOutput.isBlank())
+			outputFileField.setText(savedOutput);
 	}
 }
