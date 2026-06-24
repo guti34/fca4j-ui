@@ -139,8 +139,11 @@
 						    <Separator orientation="VERTICAL"/>
 						    <Label fx:id="dotFileLabel"
 						           style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>
-						</ToolBar>			        
-						<WebView fx:id="graphWebView" VBox.vgrow="ALWAYS"/>
+	                        <Pane HBox.hgrow="ALWAYS"/>
+	                        <Label fx:id="structureStatsLabel"
+	                               style="-fx-font-size: 12px; -fx-text-fill: #555;"/>						
+	                    </ToolBar>			        
+							<WebView fx:id="graphWebView" VBox.vgrow="ALWAYS"/>
 			    </VBox>
 			</Tab>
 			<!-- Onglet Viewer rules-->
@@ -195,6 +198,7 @@
 	        <Label text="GraphViz:" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
 	        <Label fx:id="statusGraphvizLabel" style="-fx-font-size: 11px;"/>
 	        <Pane HBox.hgrow="ALWAYS"/>
+			<Label text="%status.lastcommand" style="-fx-font-weight: bold; -fx-font-size: 11px;"/>
 			<Label fx:id="lastCommandLabel" style="-fx-font-size: 11px; -fx-font-weight: bold;"/>
 			<Separator orientation="VERTICAL"/>
 			<Button fx:id="btnHelp" styleClass="icon-btn" onAction="#onCommandHelp"

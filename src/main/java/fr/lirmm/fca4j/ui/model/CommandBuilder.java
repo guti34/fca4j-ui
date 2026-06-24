@@ -7,6 +7,8 @@ package fr.lirmm.fca4j.ui.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import fr.lirmm.fca4j.ui.util.AppPreferences;
+
 /**
  * Construit la liste d'arguments passés à FCA4J CLI
  * à partir des choix faits dans l'interface.
@@ -47,7 +49,7 @@ public class CommandBuilder {
     public String getImplFolder() { return implFolder; }
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
-    private boolean disableNativeCode = false; // -dnc
+    private boolean enableNativeCode = false; // -native
 
     // ── CLARIFY / REDUCE ─────────────────────────────────────────────────────
     private boolean clarifyObjects    = false; // -xo
@@ -114,7 +116,7 @@ public class CommandBuilder {
     public CommandBuilder implFolder(String v)      { this.implFolder = v;        return this; }
     // DBASIS
     public CommandBuilder minimalSupport(int v)     { this.minimalSupport = v;    return this; }
-    public CommandBuilder disableNativeCode(boolean v) { this.disableNativeCode = v;    return this; }
+    public CommandBuilder enableNativeCode(boolean v) { this.enableNativeCode = v;    return this; }
     // CLARIFY / REDUCE
     public CommandBuilder clarifyObjects(boolean v)    { this.clarifyObjects = v;    return this; }
     public CommandBuilder clarifyAttributes(boolean v) { this.clarifyAttributes = v; return this; }
@@ -213,8 +215,8 @@ public class CommandBuilder {
                 && !"BASIC".equals(closureMethod))
             add(args, "-c", closureMethod);
 
-        if (poolMode != null && !poolMode.isBlank()
-                && !"MONO".equals(poolMode))
+        // for RULEBASIS and DBASIS
+        if (poolMode != null && !poolMode.isBlank())
             add(args, "-t", poolMode);
 
         if (threadThreshold != null && threadThreshold != 50)
@@ -231,7 +233,8 @@ public class CommandBuilder {
         // ── Options DBASIS ───────────────────────────────────────────────────
         if (minimalSupport != null && minimalSupport > 0)
             add(args, "-x", String.valueOf(minimalSupport));
-        if (disableNativeCode) args.add("-dnc");
+        if (enableNativeCode) args.add("-native");
+
 
         // ── Options CLARIFY / REDUCE ──────────────────────────────────────────
         if (clarifyObjects)    args.add("-xo");
@@ -290,7 +293,18 @@ public class CommandBuilder {
     }
 
     public String toDisplayString() {
-        return "java -jar fca4j.jar " + String.join(" ", build());
+    	String vmArgsToDisplay="";
+        // VM arguments (ex: -Xmx4g) configurés dans les préférences
+        String vmArgs = AppPreferences.getVmArgs();
+        if (vmArgs != null && !vmArgs.isBlank()) {
+            for (String arg : vmArgs.trim().split("\\s+"))
+                if (!arg.isBlank()) {
+                	vmArgsToDisplay+=arg;
+                	vmArgsToDisplay+="\s";
+                }
+        }
+
+        return "java "+vmArgsToDisplay+"-jar fca4j.jar " + String.join(" ", build());
     }
 
     // ── Utilitaires privés ────────────────────────────────────────────────────

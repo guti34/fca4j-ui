@@ -100,12 +100,10 @@ public class ReduceClarifyController extends AbstractCommandController implement
 			outSeparatorLabel.setVisible(csv);
 			outSeparatorCombo.setVisible(csv);
 
-			// Mettre à jour l'extension du fichier de sortie
+			// Détail 1 : mettre à jour l'extension du fichier de sortie
 			String current = outputFileField.getText().trim();
-			if (!current.isBlank()) {
-				String base = current.replaceAll("\\.[^.]+$", "");
-				outputFileField.setText(base + extForFormat(val));
-			}
+			if (!current.isBlank())
+				outputFileField.setText(Utilities.replaceExtension(current, extForFormat(val)));
 		});
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
@@ -161,11 +159,6 @@ public class ReduceClarifyController extends AbstractCommandController implement
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
 			autoDetectFormat(f.getName(), inputFormatCombo);
-			if (outputFileField.getText().isBlank()) {
-				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-				String cmd = descriptor.getName().toLowerCase();
-				outputFileField.setText(base + "-" + cmd + extForFormat(outputFormatCombo.getValue()));
-			}
 		}
 	}
 
@@ -174,7 +167,8 @@ public class ReduceClarifyController extends AbstractCommandController implement
 		FileChooser fc = buildContextChooserForSave(I18n.get("label.output.file"), false);
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null) {
-			outputFileField.setText(f.getAbsolutePath());
+			outputFileField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
+					inputFileField.getText().trim()));
 			AppPreferences.setLastDirectory(f.getParent());
 			autoDetectFormat(f.getName(), outputFormatCombo);
 		}
@@ -217,9 +211,6 @@ public class ReduceClarifyController extends AbstractCommandController implement
 		if (to > 0)
 			builder.timeout(to);
 
-		if (!outputFileField.getText().isBlank())
-			AppPreferences.saveOutputForInput(descriptor.getName(), inputFileField.getText().trim(),
-					outputFileField.getText().trim());
 		if (onRun != null)
 			onRun.accept(builder);
 	}
@@ -249,17 +240,10 @@ public class ReduceClarifyController extends AbstractCommandController implement
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
-		inputFileField.setText(path);
+		String cmd = descriptor != null ? descriptor.getName() : "CLARIFY";
+		applyInputWithOutput(inputFileField, outputFileField, path,
+				"-" + cmd.toLowerCase(), () -> extForFormat(outputFormatCombo.getValue()));
 		autoDetectFormat(new File(path).getName(), inputFormatCombo);
-
-		if (outputFileField.getText().isBlank()) {
-			String cmd = descriptor != null ? descriptor.getName() : "CLARIFY";
-			String base = path.replaceAll("\\.[^.]+$", "");
-			String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-			outputFileField.setText(
-					savedOutput.isBlank() ? base + "-" + cmd.toLowerCase() + extForFormat(outputFormatCombo.getValue())
-							: savedOutput);
-		}
 	}
 
 	public String getInputFile() {
@@ -275,7 +259,7 @@ public class ReduceClarifyController extends AbstractCommandController implement
 		AppPreferences.saveBool(cmd + ".xa", xaCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
-		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
+		persistOutputForInput(inputFileField, outputFileField);
 		if ("REDUCE".equals(cmd))
 			AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
 	}
@@ -302,9 +286,5 @@ public class ReduceClarifyController extends AbstractCommandController implement
 
 		if ("REDUCE".equals(cmd))
 			groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
-
-		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
-		if (!savedOutput.isBlank())
-			outputFileField.setText(savedOutput);
 	}
 }

@@ -8,6 +8,7 @@ import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
@@ -23,6 +24,8 @@ import javafx.stage.FileChooser;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Classe abstraite regroupant le comportement commun des contrôleurs
@@ -168,6 +171,54 @@ public abstract class AbstractCommandController {
      */
     protected String commandName() {
         return descriptor != null ? descriptor.getName() : "UNKNOWN";
+    }
+
+    // ── Historisation des sorties par (commande, entrée) ─────────────────────
+
+    /**
+     * Met à jour entrée + sortie de façon cohérente :
+     *  1) persiste la sortie de l'entrée précédente dans l'historique ;
+     *  2) restaure la sortie historisée pour la nouvelle (cmd, entrée) si elle existe ;
+     *  3) sinon construit un nom par défaut (entrée + suffixe + extension courante).
+     */
+    protected void applyInputWithOutput(TextField inputField, TextField outputField,
+                                        String newPath, String defaultSuffix,
+                                        Supplier<String> extSupplier) {
+        if (newPath == null || newPath.isBlank()) return;
+        String cmd = commandName();
+        String prevInput = inputField.getText().trim();
+        String prevOut   = outputField.getText().trim();
+        if (!prevInput.isBlank() && !prevInput.equals(newPath) && !prevOut.isBlank())
+            AppPreferences.saveOutputForInput(cmd, prevInput,
+                    Utilities.toAbsoluteOutput(prevOut, prevInput));
+
+        inputField.setText(newPath);
+
+        String hist = AppPreferences.loadOutputForInput(cmd, newPath);
+        if (!hist.isBlank())
+            outputField.setText(Utilities.relativizeForDisplay(hist, newPath));
+        else
+            outputField.setText(Utilities.defaultOutputName(newPath, defaultSuffix,
+                    extSupplier == null ? "" : extSupplier.get()));
+    }
+
+    /** Persiste la sortie courante (forme absolue canonique) pour (cmd, entrée). */
+    protected void persistOutputForInput(TextField inputField, TextField outputField) {
+        String input = inputField.getText().trim();
+        String out   = outputField.getText().trim();
+        if (!input.isBlank() && !out.isBlank())
+            AppPreferences.saveOutputForInput(commandName(), input,
+                    Utilities.toAbsoluteOutput(out, input));
+    }
+
+    /** Détail 1 : synchronise l'extension du champ de sortie sur le format choisi. */
+    protected void bindOutputExtension(ComboBox<String> formatCombo, TextField outputField,
+                                       Function<String, String> extForFormat) {
+        formatCombo.valueProperty().addListener((obs, old, val) -> {
+            String cur = outputField.getText().trim();
+            if (!cur.isBlank() && val != null)
+                outputField.setText(Utilities.replaceExtension(cur, extForFormat.apply(val)));
+        });
     }
 
     // ── Méthodes à implémenter ───────────────────────────────────────────────

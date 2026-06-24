@@ -58,7 +58,7 @@
                 <Label text="%label.min.support.hint"
                        style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
             </HBox>
-            <CheckBox fx:id="disableNativeCodeCheckBox" text="%checkbox.disable.native.code"/>
+            <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
         </VBox>
     </TitledPane>
 

@@ -40,6 +40,7 @@ public class GraphExporter {
     private final Button btnExportPdf;
     private final Button btnMagnifier;
     private final Label dotFileLabel;
+    private final Label structureStatsLabel;
     private final Consumer<String> console;
     private final WindowProvider windowProvider;
 
@@ -56,6 +57,7 @@ public class GraphExporter {
                          Button btnExportSvg, Button btnExportPng,
                          Button btnExportPdf, Button btnMagnifier,
                          Label dotFileLabel,
+                         Label structureStatsLabel,  
                          Consumer<String> console,
                          WindowProvider windowProvider) {
         this.renderer = renderer;
@@ -66,6 +68,7 @@ public class GraphExporter {
         this.btnExportPdf = btnExportPdf;
         this.btnMagnifier = btnMagnifier;
         this.dotFileLabel = dotFileLabel;
+        this.structureStatsLabel = structureStatsLabel;
         this.console = console;
         this.windowProvider = windowProvider;
     }
@@ -110,8 +113,24 @@ public class GraphExporter {
         if (renderer.isMagnifierActive())
             renderer.toggleMagnifier();
         dotFileLabel.setText("");
+        structureStatsLabel.setText("");
+    }
+ // ── Statistiques de structure ─────────────────────────────────────────────
+
+    /** Affiche taille du contexte, nb de concepts et nb d'arcs (concepts/edges peuvent être null). */
+    public void setStructureStats(String objects, String attributes, String concepts, String edges) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(I18n.get("graph.stats.context", objects, attributes));
+        if (concepts != null)
+            sb.append("    \u2022    ").append(I18n.get("graph.stats.concepts", concepts));
+        if (edges != null)
+            sb.append("    \u2022    ").append(I18n.get("graph.stats.edges", edges));
+        structureStatsLabel.setText(sb.toString());
     }
 
+    public void clearStructureStats() {
+        structureStatsLabel.setText("");
+    }
     // ── Loupe ────────────────────────────────────────────────────────────────
 
     public void toggleMagnifier() {

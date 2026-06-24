@@ -88,6 +88,8 @@ public class MainController implements Initializable {
 	@FXML
 	private Label dotFileLabel;
 	@FXML
+    private Label structureStatsLabel; 
+	@FXML
 	private Button btnOpenDot;
 	// ── Onglet RCA Family ─────────────────────────────────────────────────────
 	@FXML
@@ -261,7 +263,8 @@ public class MainController implements Initializable {
 		}
 		// ── Toolbar graphe + status bar ───────────────────────────────────────────
 		graphExporter = new GraphExporter(renderer, btnOpenDot, btnSaveDot, btnExportSvg, btnExportPng, btnExportPdf,
-				btnMagnifier, dotFileLabel, this::appendConsole, () -> graphWebView.getScene().getWindow());
+                btnMagnifier, dotFileLabel, structureStatsLabel, this::appendConsole,
+                () -> graphWebView.getScene().getWindow());
 		graphExporter.setupToolbar();
 		updateStatusBar();
 		if (btnHelp != null) {
@@ -914,7 +917,10 @@ public class MainController implements Initializable {
 		final String inputFile = args.size() > 1 ? args.get(1) : "";
 		final boolean isRules = "RULEBASIS".equals(commandName) || "DBASIS".equals(commandName);
 		final boolean isGraph = !isRules && !"BINARIZE".equals(commandName) && !"FAMILY_IMPORT".equals(commandName);
-
+        final boolean isStructure = "LATTICE".equals(commandName) || "AOCPOSET".equals(commandName);
+        // Force -v pour récupérer "concepts: N edges: M" dans stdout (stats du volet)
+        if (isStructure && !args.contains("-v"))
+            args.add("-v");
 		// ── Console ───────────────────────────────────────────────────────────────
 		consoleArea.clear();
 		appendConsole("$ " + builder.toDisplayString());
@@ -967,7 +973,11 @@ public class MainController implements Initializable {
 				} else if (isGraph) {
 					lastGraphInputFile = inputFile;
 					tryRenderDot(builder);
-				}
+                    if (isStructure)
+                        updateStructureStatsFromOutput(result.stdout());
+                    else
+                        graphExporter.clearStructureStats();
+ 				}
 
 				// Mettre à jour les récents
 				if (args.size() > 1 && !"BINARIZE".equals(commandName) && !"FAMILY_IMPORT".equals(commandName)) {
@@ -1044,7 +1054,35 @@ public class MainController implements Initializable {
 		});
 		showOverlayDelayed();
 	}
+	// ── Stats de structure (parsing stdout FCA4J) ─────────────────────────────
 
+    private static final java.util.regex.Pattern STRUCT_SIZE_PATTERN =
+            java.util.regex.Pattern.compile("\\(\\s*(\\d+)\\s*x\\s*(\\d+)\\s*\\)");
+    private static final java.util.regex.Pattern STRUCT_COUNTS_PATTERN =
+            java.util.regex.Pattern.compile("concepts:\\s*(\\d+)\\s+edges:\\s*(\\d+)");
+
+    private void updateStructureStatsFromOutput(String stdout) {
+        if (stdout == null || stdout.isBlank()) {
+            graphExporter.clearStructureStats();
+            return;
+        }
+        String objects = null, attributes = null, concepts = null, edges = null;
+
+        java.util.regex.Matcher ms = STRUCT_SIZE_PATTERN.matcher(stdout);
+        if (ms.find()) {
+            objects = ms.group(1);
+            attributes = ms.group(2);
+        }
+        java.util.regex.Matcher mc = STRUCT_COUNTS_PATTERN.matcher(stdout);
+        if (mc.find()) {
+            concepts = mc.group(1);
+            edges = mc.group(2);
+        }
+        if (objects != null)
+            graphExporter.setStructureStats(objects, attributes, concepts, edges);
+        else
+            graphExporter.clearStructureStats();
+    }
 	private void tryOpenRules(CommandBuilder builder) {
 		if (!"RULEBASIS".equals(builder.getCommand()) && !"DBASIS".equals(builder.getCommand()))
 			return;

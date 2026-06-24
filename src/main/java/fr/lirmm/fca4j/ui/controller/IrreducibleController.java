@@ -74,7 +74,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
 		inputFormatCombo.setValue("(auto)");
 
-		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "HASHSET", "TREESET", "INT_ARRAY",
+		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP","BITSET_PACKED", "SPARSE_BITSET", "HASHSET", "TREESET", "INT_ARRAY",
 				"ARRAYLIST", "BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
@@ -113,10 +113,6 @@ public class IrreducibleController extends AbstractCommandController implements 
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
 			autoDetectFormat(f.getName(),inputFormatCombo);
-			if (outputFileField.getText().isBlank()) {
-				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-				outputFileField.setText(base + "-irreducible.txt");
-			}
 		}
 	}
 
@@ -128,7 +124,8 @@ public class IrreducibleController extends AbstractCommandController implements 
 		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Texte", "*.txt"));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null)
-			outputFileField.setText(f.getAbsolutePath());
+			outputFileField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
+					inputFileField.getText().trim()));
 	}
 
 	@FXML
@@ -159,9 +156,6 @@ public class IrreducibleController extends AbstractCommandController implements 
 		if (to > 0)
 			builder.timeout(to);
 
-		if (!outputFileField.getText().isBlank())
-			AppPreferences.saveOutputForInput("IRREDUCIBLE", inputFileField.getText().trim(),
-					outputFileField.getText().trim());
 		if (onRun != null)
 			onRun.accept(builder);
 	}
@@ -173,14 +167,8 @@ public class IrreducibleController extends AbstractCommandController implements 
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
-		inputFileField.setText(path);
+		applyInputWithOutput(inputFileField, outputFileField, path, "-irreducible", () -> ".txt");
 		autoDetectFormat(new File(path).getName(), inputFormatCombo);
-
-		if (outputFileField.getText().isBlank()) {
-			String base = path.replaceAll("\\.[^.]+$", "");
-			String savedOutput = AppPreferences.loadOutputForInput("IRREDUCIBLE", path);
-			outputFileField.setText(savedOutput.isBlank() ? base + "-irreducible.txt" : savedOutput);
-		}
 	}
 
 	public String getInputFile() {
@@ -196,7 +184,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 		AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
-		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
+		persistOutputForInput(inputFileField, outputFileField);
 	}
 
 	public void loadPrefs() {
@@ -215,10 +203,6 @@ public class IrreducibleController extends AbstractCommandController implements 
 		groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
-
-		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
-		if (!savedOutput.isBlank())
-			outputFileField.setText(savedOutput);
 	}
 
 }

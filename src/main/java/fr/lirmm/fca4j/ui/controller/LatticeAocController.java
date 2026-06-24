@@ -10,9 +10,6 @@ import java.nio.file.Path;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
 
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
-
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
@@ -92,12 +89,16 @@ public class LatticeAocController extends AbstractCommandController implements I
 	@FXML
 	private ComboBox<String> implCombo;
 	@FXML
-	private CheckBox disableNativeCodeCheckBox;
+	private CheckBox enableNativeCodeCheckBox;
 	@FXML
 	private Spinner<Integer> timeoutSpinner;
 	@FXML
 	private CheckBox verboseCheckBox;
 
+	/** Extension correspondant au format de sortie sélectionné. */
+	private static String extForFormat(String fmt) {
+		return "JSON".equals(fmt) ? ".json" : ".xml";
+	}
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
@@ -106,26 +107,18 @@ public class LatticeAocController extends AbstractCommandController implements I
 
 		outputFormatCombo.getItems().addAll("XML", "JSON");
 		outputFormatCombo.setValue("XML");
+		// Détail 1 : l'extension du fichier de sortie suit le format sélectionné
+		bindOutputExtension(outputFormatCombo, outputFileField, LatticeAocController::extForFormat);
 
 		displayModeCombo.getItems().addAll("SIMPLIFIED", "FULL", "MINIMAL");
 		displayModeCombo.setValue("SIMPLIFIED");
 
-		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "HASHSET", "TREESET", "INT_ARRAY",
+		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "BITSET_PACKED","SPARSE_BITSET", "HASHSET", "TREESET", "INT_ARRAY",
 				"ARRAYLIST", "BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		icebergSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50, 5));
-
-		// Quand le natif est actif (checkbox non cochée) → forcer ROARING_BITMAP
-		disableNativeCodeCheckBox.selectedProperty().addListener((obs, old, disabled) -> {
-			if (!disabled) {
-				implCombo.setValue("ROARING_BITMAP");
-				implCombo.setDisable(true);
-			} else {
-				implCombo.setDisable(false);
-			}
-		});
 
 		// Contrôles DOT désactivés jusqu'à ce que la case soit cochée
 		dotFileField.setDisable(true);
@@ -173,7 +166,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 
 	/**
 	 * Indique si le couple (commande, algorithme) dispose d'une implémentation
-	 * native C activable via -dnc.
+	 * native C activable via -native.
 	 */
 	private static boolean hasNativeImpl(String cmd, String algo) {
 		if (cmd == null || algo == null)
@@ -212,21 +205,15 @@ public class LatticeAocController extends AbstractCommandController implements I
 		// portage natif (LATTICE+ADD_EXTENT ou AOCPOSET+HERMES).
 		final String cmdName = desc.getName();
 		boolean showNativeInit = hasNativeImpl(cmdName, algoCombo.getValue());
-		disableNativeCodeCheckBox.setVisible(showNativeInit);
-		disableNativeCodeCheckBox.setManaged(showNativeInit);
+		enableNativeCodeCheckBox.setVisible(showNativeInit);
+		enableNativeCodeCheckBox.setManaged(showNativeInit);
 
 		// Mettre à jour la visibilité quand l'algo change
-		algoCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean showNative = hasNativeImpl(cmdName, val);
-			disableNativeCodeCheckBox.setVisible(showNative);
-			disableNativeCodeCheckBox.setManaged(showNative);
-			if (!showNative) {
-				implCombo.setDisable(false);
-			} else if (!disableNativeCodeCheckBox.isSelected()) {
-				implCombo.setValue("ROARING_BITMAP");
-				implCombo.setDisable(true);
-			}
-		});
+				algoCombo.valueProperty().addListener((obs, old, val) -> {
+					boolean showNative = hasNativeImpl(cmdName, val);
+					enableNativeCodeCheckBox.setVisible(showNative);
+					enableNativeCodeCheckBox.setManaged(showNative);
+				});
 		loadPrefs();
 	}
 
@@ -247,12 +234,6 @@ public class LatticeAocController extends AbstractCommandController implements I
 				onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
 			autoDetectFormat(f.getName(),inputFormatCombo);
-			String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-			if (outputFileField.getText().isBlank())
-				outputFileField.setText(base + "-result.xml");
-			// Proposer le .dot si la case est cochée et le champ est vide
-			if (dotCheckBox.isSelected() && dotFileField.getText().isBlank())
-				dotFileField.setText(base + ".dot");
 		}
 	}
 
@@ -265,7 +246,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 				new FileChooser.ExtensionFilter("JSON", "*.json"));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null) {
-			outputFileField.setText(f.getAbsolutePath());
+			outputFileField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
+					inputFileField.getText().trim()));
 			String name = f.getName().toLowerCase();
 			if (name.endsWith(".json"))
 				outputFormatCombo.setValue("JSON");
@@ -339,15 +321,12 @@ public class LatticeAocController extends AbstractCommandController implements I
 
 		// Native code (couples avec portage natif : LATTICE+ADD_EXTENT,  LATTICE+PARALLEL_CBO, AOCPOSET+HERMES)
 		if (hasNativeImpl(descriptor.getName(), algoCombo.getValue())
-				&& disableNativeCodeCheckBox.isSelected())
-			builder.disableNativeCode(true);
+				&& enableNativeCodeCheckBox.isSelected())
+			builder.enableNativeCode(true);
 
 		int to = timeoutSpinner.getValue();
 		if (to > 0)
 			builder.timeout(to);
-		if (!outputFileField.getText().isBlank())
-			AppPreferences.saveOutputForInput(descriptor.getName(), inputFileField.getText().trim(),
-					outputFileField.getText().trim());
 
 		if (noDirectSiblings.isSelected())
 			builder.noDirectSiblings(true);
@@ -357,26 +336,16 @@ public class LatticeAocController extends AbstractCommandController implements I
 
 	// ── Utilitaires ───────────────────────────────────────────────────────────
 
-
-
 	public void setInputFile(String path) {
 		if (path == null || path.isBlank())
 			return;
-		inputFileField.setText(path);
+		applyInputWithOutput(inputFileField, outputFileField, path, "-result",
+				() -> extForFormat(outputFormatCombo.getValue()));
 		autoDetectFormat(new File(path).getName(), inputFormatCombo);
-
-		String cmd = descriptor != null ? descriptor.getName() : "LATTICE";
-		String base = path.replaceAll("\\.[^.]+$", "");
-		String ext = "XML".equals(AppPreferences.loadString(cmd + ".outputFormat", "XML")) ? ".xml" : ".json";
-
-		if (outputFileField.getText().isBlank()) {
-			String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-			outputFileField.setText(savedOutput.isBlank() ? base + "-result" + ext : savedOutput);
-		}
 
 		// DOT : recalculer seulement si le champ est vide
 		if (dotCheckBox.isSelected() && dotFileField.getText().isBlank())
-			dotFileField.setText(base + ".dot");
+			dotFileField.setText(path.replaceAll("\\.[^.]+$", "") + ".dot");
 	}
 
 	public String getInputFile() {
@@ -398,11 +367,11 @@ public class LatticeAocController extends AbstractCommandController implements I
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
 		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
 		AppPreferences.saveInt(cmd + ".iceberg", icebergSpinner.getValue());
-		AppPreferences.saveString(cmd + ".outputFile", outputFileField.getText().trim());
+		persistOutputForInput(inputFileField, outputFileField);
 		AppPreferences.saveString(cmd + ".dotFile", dotCheckBox.isSelected() ? dotFileField.getText().trim() : "");
 		// Native code (commandes avec portage natif)
 		if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd))
-			AppPreferences.saveBool(cmd + ".disableNativeCode", disableNativeCodeCheckBox.isSelected());
+			AppPreferences.saveBool(cmd + ".enableNativeCode", enableNativeCodeCheckBox.isSelected());
 		// Datalog
 		AppPreferences.saveBool(cmd + ".nds", noDirectSiblings.isSelected());
 		AppPreferences.saveString(cmd + ".datalogFolder", datalogFolderField.getText().trim());
@@ -433,17 +402,11 @@ public class LatticeAocController extends AbstractCommandController implements I
 		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
 		icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".iceberg", 50));
 		// Native code (commandes avec portage natif)
-		if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd)) {
-			boolean dnc = AppPreferences.loadBool(cmd + ".disableNativeCode", false);
-			disableNativeCodeCheckBox.setSelected(dnc);
-			if (!dnc && hasNativeImpl(cmd, algoCombo.getValue())) {
-				implCombo.setValue("ROARING_BITMAP");
-				implCombo.setDisable(true);
-			}
-		}
+				if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd)) {
+					enableNativeCodeCheckBox.setSelected(
+							AppPreferences.loadBool(cmd + ".enableNativeCode", false));
+				}
 		noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
-		String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
-		if (!savedOutput.isBlank()) outputFileField.setText(savedOutput);
 		String savedDot = AppPreferences.loadString(cmd + ".dotFile", "");
 		if (!savedDot.isBlank()) dotFileField.setText(savedDot);
 		String savedDatalogFolder = AppPreferences.loadString(cmd + ".datalogFolder", "");

@@ -79,7 +79,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	@FXML
 	private Spinner<Integer> minSupportSpinner;
 	@FXML
-	private CheckBox disableNativeCodeCheckBox;
+	private CheckBox enableNativeCodeCheckBox;
 
 	// ── Options communes ──────────────────────────────────────────────────────
 	@FXML
@@ -95,6 +95,16 @@ public class RuleBasisController extends AbstractCommandController implements In
 	@FXML
 	private CheckBox verboseCheckBox;
 
+	/** Extension correspondant au format de sortie sélectionné. */
+	private static String extForFormat(String fmt) {
+		return switch (fmt) {
+			case "JSON"    -> ".json";
+			case "XML"     -> ".xml";
+			case "DATALOG" -> ".dlgp";
+			default        -> ".txt"; // TXT
+		};
+	}
+
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "CEX", "XML", "CSV");
@@ -103,6 +113,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 		outputFormatCombo.getItems().addAll("TXT", "JSON", "XML", "DATALOG");
 		outputFormatCombo.setValue("TXT");
+		// Détail 1 : l'extension du fichier de sortie suit le format sélectionné
+		bindOutputExtension(outputFormatCombo, outputFileField, RuleBasisController::extForFormat);
 
 		closureCombo.getItems().addAll("BASIC", "WITH_HISTORY");
 		closureCombo.setValue("BASIC");
@@ -119,19 +131,9 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 		minSupportSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000, 0, 1));
 
-		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "SPARSE_BITSET", "TREESET", "INT_ARRAY", "ARRAYLIST",
+		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "BITSET_PACKED", "SPARSE_BITSET", "TREESET", "INT_ARRAY", "ARRAYLIST",
 				"BOOL_ARRAY");
 		implCombo.setValue("BITSET");
-
-		// Quand le natif est actif (checkbox non cochée) → forcer ROARING_BITMAP
-		disableNativeCodeCheckBox.selectedProperty().addListener((obs, old, disabled) -> {
-			if (!disabled) {
-				implCombo.setValue("ROARING_BITMAP");
-				implCombo.setDisable(true);
-			} else {
-				implCombo.setDisable(false);
-			}
-		});
 
 		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
@@ -155,6 +157,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		boolean isDbasis = "DBASIS".equals(desc.getName());
 
 		// Panneau algo : RULEBASIS seulement
+		algoPane.setText("LinCbO options");
 		algoPane.setVisible(isRuleBasis);
 		algoPane.setManaged(isRuleBasis);
 		if (isRuleBasis) {
@@ -209,10 +212,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 			if (onInputChanged != null) onInputChanged.accept(f.getAbsolutePath());
 			AppPreferences.setLastDirectory(f.getParent());
 			autoDetectFormat(f.getName(),inputFormatCombo);
-			if (outputFileField.getText().isBlank()) {
-				String base = f.getAbsolutePath().replaceAll("\\.[^.]+$", "");
-				outputFileField.setText(base + "-rules.txt");
-			}
 		}
 	}
 
@@ -228,7 +227,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null) {
-			outputFileField.setText(f.getAbsolutePath());
+			outputFileField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
+					inputFileField.getText().trim()));
 			String name = f.getName().toLowerCase();
 			if (name.endsWith(".json"))
 				outputFormatCombo.setValue("JSON");
@@ -300,16 +300,11 @@ public class RuleBasisController extends AbstractCommandController implements In
 			int ms = minSupportSpinner.getValue();
 			if (ms > 0)
 				builder.minimalSupport(ms);
-			if (disableNativeCodeCheckBox.isSelected())
-				builder.disableNativeCode(true);
+			if (enableNativeCodeCheckBox.isSelected())
+				builder.enableNativeCode(true);
 			if (!reportFileField.getText().isBlank())
 				builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
 		}
-    	if (!outputFileField.getText().isBlank())
-    	    AppPreferences.saveOutputForInput(
-    	        descriptor.getName(),
-    	        inputFileField.getText().trim(),
-    	        outputFileField.getText().trim());
 
 		if (onRun != null)
 			onRun.accept(builder);
@@ -317,15 +312,9 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 	public void setInputFile(String path) {
 	    if (path == null || path.isBlank()) return;
-	    inputFileField.setText(path);
+	    applyInputWithOutput(inputFileField, outputFileField, path, "-rules",
+	            () -> extForFormat(outputFormatCombo.getValue()));
 	    autoDetectFormat(new File(path).getName(), inputFormatCombo);
-
-	    if (outputFileField.getText().isBlank()) {
-	        String cmd = descriptor != null ? descriptor.getName() : "RULEBASIS";
-	        String base = path.replaceAll("\\.[^.]+$", "");
-	        String savedOutput = AppPreferences.loadOutputForInput(cmd, path);
-	        outputFileField.setText(savedOutput.isBlank() ? base + "-rules.txt" : savedOutput);
-	    }
 	}
 
 	public String getInputFile() {
@@ -338,7 +327,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    AppPreferences.saveString(cmd + ".poolMode",     poolModeCombo.getValue());
 	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
 	    AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
-	    AppPreferences.saveString(cmd + ".outputFile",   outputFileField.getText().trim());
+	    persistOutputForInput(inputFileField, outputFileField);
 	    AppPreferences.saveString(cmd + ".reportFile",   reportFileField.getText().trim());
 
 	    if ("RULEBASIS".equals(cmd)) {
@@ -351,7 +340,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
-	        AppPreferences.saveBool(cmd + ".disableNativeCode", disableNativeCodeCheckBox.isSelected());
+	        AppPreferences.saveBool(cmd + ".enableNativeCode", enableNativeCodeCheckBox.isSelected());
 	    }
 	}
 
@@ -386,18 +375,9 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    if ("DBASIS".equals(cmd)) {
 	        minSupportSpinner.getValueFactory().setValue(
 	            AppPreferences.loadInt(cmd + ".minSupport", 0));
-	        boolean dnc = AppPreferences.loadBool(cmd + ".disableNativeCode", false);
-	        disableNativeCodeCheckBox.setSelected(dnc);
-	        // Appliquer l'état du combo selon la checkbox
-	        if (!dnc) {
-	            implCombo.setValue("ROARING_BITMAP");
-	            implCombo.setDisable(true);
-	        } else {
-	            implCombo.setDisable(false);
-	        }
+	        enableNativeCodeCheckBox.setSelected(
+	            AppPreferences.loadBool(cmd + ".enableNativeCode", false));
 	    }
-	    String savedOutput = AppPreferences.loadString(cmd + ".outputFile", "");
-	    if (!savedOutput.isBlank()) outputFileField.setText(savedOutput);
 	    String savedReport = AppPreferences.loadString(cmd + ".reportFile", "");
 	    if (!savedReport.isBlank()) reportFileField.setText(savedReport);
 	    if ("RULEBASIS".equals(cmd)) {

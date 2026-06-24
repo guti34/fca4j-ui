@@ -379,6 +379,7 @@ class CommandBuilderTest {
         String display = new CommandBuilder()
                 .command("LATTICE").inputFile("ctx.cxt")
                 .toDisplayString();
-        assertTrue(display.startsWith("java -jar fca4j.jar LATTICE ctx.cxt"));
+        assertTrue(display.startsWith("java"));
+        assertTrue(display.contains("-jar fca4j.jar LATTICE ctx.cxt"));
     }
 }
