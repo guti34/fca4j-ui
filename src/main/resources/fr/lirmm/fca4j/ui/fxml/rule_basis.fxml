@@ -22,6 +22,51 @@
         </VBox>
     </TitledPane>
 
+    <!-- Algorithme : section unique toujours visible -->
+    <!--  - ligne algorithme + fermeture + clarification : RULEBASIS (masquées pour DBASIS) -->
+    <!--  - implémentation : toujours visible -->
+    <!--  - code natif : DBASIS (masqué pour RULEBASIS) -->
+    <!--  - multithreading (mode + seuil) : en fin de section -->
+    <TitledPane text="%section.algorithm" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox fx:id="algoRow" spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.algorithm" minWidth="110"/>
+                <ComboBox fx:id="algoCombo" prefWidth="160"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="closureLabel" text="%label.closure" minWidth="110"/>
+                <ComboBox fx:id="closureCombo" prefWidth="140"/>
+            </HBox>
+            <CheckBox fx:id="clarifyCheckBox" text="%checkbox.clarify"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.implementation" minWidth="110"/>
+                <ComboBox fx:id="implCombo" prefWidth="160"/>
+            </HBox>
+            <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
+            <Separator/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.pool.mode" minWidth="110"/>
+                <ComboBox fx:id="poolModeCombo" prefWidth="150"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="thresholdLabel" text="%label.threshold" minWidth="110"/>
+                <Spinner fx:id="thresholdSpinner" prefWidth="80"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
+    <!-- Options D-Basis (support minimal) : DBASIS seulement -->
+    <TitledPane fx:id="dbasisPane" collapsible="false">
+        <VBox spacing="8" style="-fx-padding: 8;">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.min.support"/>
+                <Spinner fx:id="minSupportSpinner" prefWidth="90"/>
+                <Label text="%label.min.support.hint"
+                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+            </HBox>
+        </VBox>
+    </TitledPane>
+
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <HBox spacing="6">
@@ -36,52 +81,9 @@
         </VBox>
     </TitledPane>
 
-    <TitledPane fx:id="algoPane" collapsible="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.algorithm"/>
-                <ComboBox fx:id="algoCombo" prefWidth="160"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="closureLabel" text="%label.closure"/>
-                <ComboBox fx:id="closureCombo" prefWidth="140"/>
-            </HBox>
-            <CheckBox fx:id="clarifyCheckBox" text="%checkbox.clarify"/>
-        </VBox>
-    </TitledPane>
-
-    <TitledPane fx:id="dbasisPane" collapsible="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.min.support"/>
-                <Spinner fx:id="minSupportSpinner" prefWidth="90"/>
-                <Label text="%label.min.support.hint"
-                       style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
-            </HBox>
-            <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
-        </VBox>
-    </TitledPane>
-
-    <TitledPane fx:id="threadPane" collapsible="true" expanded="false">
-        <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.pool.mode"/>
-                <ComboBox fx:id="poolModeCombo" prefWidth="150"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="thresholdLabel" text="%label.threshold"/>
-                <Spinner fx:id="thresholdSpinner" prefWidth="80"/>
-            </HBox>
-        </VBox>
-    </TitledPane>
-
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <CheckBox fx:id="sortBySupportCheckBox" text="%checkbox.sort.support"/>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.implementation"/>
-                <ComboBox fx:id="implCombo" prefWidth="160"/>
-            </HBox>
             <Label text="%label.report.file"/>
             <HBox spacing="6">
                 <TextField fx:id="reportFileField" HBox.hgrow="ALWAYS"/>

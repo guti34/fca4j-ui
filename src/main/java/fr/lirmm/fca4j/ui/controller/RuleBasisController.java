@@ -16,6 +16,7 @@ import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -32,8 +33,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private TitledPane inputPane;
 	@FXML
 	private TitledPane outputPane;
-	@FXML
-	private TitledPane threadPane;
 	@FXML
 	private TitledPane advancedPane;
 	@FXML
@@ -53,9 +52,13 @@ public class RuleBasisController extends AbstractCommandController implements In
 	@FXML
 	private ComboBox<String> outputFormatCombo;
 
-	// ── Algorithme (RULEBASIS seulement) ──────────────────────────────────────
+	// ── Algorithme ────────────────────────────────────────────────────────────
+	// La ligne algorithme (algoRow), la fermeture et la clarification sont
+	// propres à RULEBASIS ; l'implémentation est commune ; le code natif est
+	// propre à DBASIS. Ces éléments vivent désormais dans une unique section
+	// "Algorithme" toujours visible (cf. rule_basis.fxml).
 	@FXML
-	private TitledPane algoPane;
+	private HBox algoRow;
 	@FXML
 	private ComboBox<String> algoCombo;
 	@FXML
@@ -149,17 +152,18 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 		inputPane.setText(I18n.get("section.input"));
 		outputPane.setText(I18n.get("section.output"));
-		threadPane.setText(I18n.get("section.multithreading"));
 		advancedPane.setText(I18n.get("section.advanced"));
 		dbasisPane.setText(I18n.get("section.dbasis"));
 
 		boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
 		boolean isDbasis = "DBASIS".equals(desc.getName());
 
-		// Panneau algo : RULEBASIS seulement
-		algoPane.setText("LinCbO options");
-		algoPane.setVisible(isRuleBasis);
-		algoPane.setManaged(isRuleBasis);
+		// Section "Algorithme" (toujours visible) :
+		//  - ligne algorithme + fermeture + clarification : RULEBASIS seulement
+		//  - implémentation : toujours visible
+		//  - code natif : DBASIS seulement
+		algoRow.setVisible(isRuleBasis);
+		algoRow.setManaged(isRuleBasis);
 		if (isRuleBasis) {
 			algoCombo.getItems().setAll(desc.getAlgorithms());
 			algoCombo.setValue(desc.getDefaultAlgorithm());
@@ -171,6 +175,9 @@ public class RuleBasisController extends AbstractCommandController implements In
 		closureLabel.setManaged(isRuleBasis);
 		closureCombo.setVisible(isRuleBasis);
 		closureCombo.setManaged(isRuleBasis);
+
+		enableNativeCodeCheckBox.setVisible(isDbasis);
+		enableNativeCodeCheckBox.setManaged(isDbasis);
 
 		// Pool mode selon la commande
 		poolModeCombo.getItems().clear();

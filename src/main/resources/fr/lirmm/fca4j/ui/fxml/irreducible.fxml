@@ -23,6 +23,12 @@
         </VBox>
     </TitledPane>
 
+    <!-- Algorithme : un seul champ (implémentation) affiché directement sous l'entrée, sans TitledPane -->
+    <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-padding: 0 8 0 8;">
+        <Label text="%label.implementation" minWidth="110"/>
+        <ComboBox fx:id="implCombo" prefWidth="160"/>
+    </HBox>
+
     <!-- Sortie optionnelle -->
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
@@ -48,10 +54,6 @@
     <!-- Options avancées -->
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.implementation"/>
-                <ComboBox fx:id="implCombo" prefWidth="160"/>
-            </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.timeout"/>
                 <Spinner fx:id="timeoutSpinner" prefWidth="80"/>
