@@ -801,7 +801,7 @@ public class MainController implements Initializable {
 
 	private void openContextInEditor(IBinaryContext ctx) {
 		if (contextEditorController != null) {
-			mainTabPane.getSelectionModel().select(2);
+			mainTabPane.getSelectionModel().select(contextEditorTab);
 			contextEditorController.loadContextFromFamily(ctx, modifiedCtx -> {
 				Platform.runLater(() -> {
 					RCAFamily currentFamily = familyEditorController.getFamily();
@@ -812,7 +812,7 @@ public class MainController implements Initializable {
 					rcfIntegrityService.synchronize(currentFamily, modifiedCtx.getName());
 					familyEditorController.reloadFamily(currentFamily);
 					familyEditorController.markModified();
-					mainTabPane.getSelectionModel().select(3);
+					mainTabPane.getSelectionModel().select(familyEditorTab);
 				});
 			});
 		}
@@ -836,7 +836,7 @@ public class MainController implements Initializable {
 			AppPreferences.addRecentContext(filePath.toString(), separator);
 			recentFilesManager.refresh();
 			contextEditorController.openFile(filePath, separator);
-			mainTabPane.getSelectionModel().select(2);
+			mainTabPane.getSelectionModel().select(contextEditorTab);
 			selectCommandTabFor(filePath.toString()); // ← ajouter
 		}
 		updateCurrentFileInfo();
@@ -849,14 +849,14 @@ public class MainController implements Initializable {
 			AppPreferences.addRecentFamily(filePath.toString());
 			recentFilesManager.refresh();
 			familyEditorController.openFile(filePath);
-			mainTabPane.getSelectionModel().select(3);
+			mainTabPane.getSelectionModel().select(familyEditorTab);
 			selectCommandTabFor(filePath.toString()); // ← ajouter
 		}
 		updateCurrentFileInfo();
 	}
 
 	private void openDotInGraph(Path dotFile) {
-		mainTabPane.getSelectionModel().select(0);
+		mainTabPane.getSelectionModel().select(conceptStructureTab);
 		graphExporter.setDotFileLabel(dotFile.getFileName().toString());
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
 		renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
@@ -1164,28 +1164,28 @@ public class MainController implements Initializable {
 	private void onNewContext() {
 		onNewInputContext("");
 		contextEditorController.onNewContext();
-		mainTabPane.getSelectionModel().select(2);
+		mainTabPane.getSelectionModel().select(contextEditorTab);
 		updateCurrentFileInfo();
 	}
 
 	@FXML
 	private void onNewFamily() {
 		familyEditorController.onNew();
-		mainTabPane.getSelectionModel().select(3);
+		mainTabPane.getSelectionModel().select(familyEditorTab);
 		updateCurrentFileInfo();
 	}
 
 	@FXML
 	private void onNewModel() {
 		modelEditorController.onNew();
-		mainTabPane.getSelectionModel().select(4);
+		mainTabPane.getSelectionModel().select(modelEditorTab);
 		updateCurrentFileInfo();
 	}
 
 	@FXML
 	private void onOpenModel() {
 		modelEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(4);
+		mainTabPane.getSelectionModel().select(modelEditorTab);
 	}
 
 	public void openInModelEditor(Path path) {
@@ -1195,7 +1195,7 @@ public class MainController implements Initializable {
 			AppPreferences.addRecentModel(path.toString());
 			recentFilesManager.refresh();
 			modelEditorController.openFile(path);
-			mainTabPane.getSelectionModel().select(4);
+			mainTabPane.getSelectionModel().select(modelEditorTab);
 			selectCommandTabFor(path.toString());
 		}
 		updateCurrentFileInfo();
@@ -1204,13 +1204,13 @@ public class MainController implements Initializable {
 	@FXML
 	private void onOpenContext() {
 		contextEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(2);
+		mainTabPane.getSelectionModel().select(contextEditorTab);
 	}
 
 	@FXML
 	private void onOpenFamily() {
 		familyEditorController.onOpen();
-		mainTabPane.getSelectionModel().select(3);
+		mainTabPane.getSelectionModel().select(familyEditorTab);
 	}
 
 	@FXML

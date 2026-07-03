@@ -96,8 +96,10 @@ public class HelpDialogs {
         }
 
         alert.getDialogPane().setContent(content);
+        alert.initOwner(owner);
+        alert.initModality(Modality.APPLICATION_MODAL);
         alert.showAndWait();
-    }
+        }
 
     // ── Dialogue Raccourcis clavier ───────────────────────────────────────────
 

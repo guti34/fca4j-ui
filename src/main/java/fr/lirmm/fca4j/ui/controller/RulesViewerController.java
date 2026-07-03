@@ -9,6 +9,7 @@ import fr.lirmm.fca4j.ui.util.I18n;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.util.Duration;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -516,59 +517,66 @@ public class RulesViewerController implements Initializable {
 
 	private class RuleCell extends javafx.scene.control.ListCell<Rule> {
 
-		private final HBox row;
-		private final Label badge;
-		private final Label premises;
-		private final Label arrow;
-		private final Label conclusions;
+	    private final HBox row;
+	    private final Label badge;
+	    private final Label premises;
+	    private final Label arrow;
+	    private final Label conclusions;
+	    private final Tooltip tooltip;          // ← nouveau
 
-		RuleCell() {
-			row = new HBox(10);
-			row.setAlignment(Pos.CENTER_LEFT);
-			row.setPadding(new Insets(6, 12, 6, 12));
-			row.setMinHeight(36);
+	    RuleCell() {
+	        row = new HBox(10);
+	        row.setAlignment(Pos.CENTER_LEFT);
+	        row.setPadding(new Insets(6, 12, 6, 12));
+	        row.setMinHeight(36);
 
-			badge = new Label();
-			badge.setFont(Font.font(11));
-			badge.setPadding(new Insets(2, 7, 2, 7));
-			badge.setMinWidth(34);
-			badge.setAlignment(Pos.CENTER);
+	        badge = new Label();
+	        badge.setFont(Font.font(11));
+	        badge.setPadding(new Insets(2, 7, 2, 7));
+	        badge.setMinWidth(34);
+	        badge.setAlignment(Pos.CENTER);
 
-			premises = new Label();
-			premises.setStyle("-fx-text-fill: " + COLOR_PREMISE + "; -fx-font-size: 12px;");
+	        premises = new Label();
+	        premises.setStyle("-fx-text-fill: " + COLOR_PREMISE + "; -fx-font-size: 12px;");
 
-			arrow = new Label("  \u27F9  ");
-			arrow.setStyle("-fx-text-fill: " + COLOR_ARROW + "; -fx-font-size: 14px;");
+	        arrow = new Label("  \u27F9  ");
+	        arrow.setStyle("-fx-text-fill: " + COLOR_ARROW + "; -fx-font-size: 14px;");
 
-			conclusions = new Label();
-			conclusions.setStyle("-fx-text-fill: " + COLOR_CONCLUSION + "; -fx-font-size: 12px;");
-			HBox.setHgrow(conclusions, Priority.ALWAYS);
+	        conclusions = new Label();
+	        conclusions.setStyle("-fx-text-fill: " + COLOR_CONCLUSION + "; -fx-font-size: 12px;");
+	        HBox.setHgrow(conclusions, Priority.ALWAYS);
 
-			row.getChildren().addAll(badge, premises, arrow, conclusions);
-			setGraphic(row);
-			setText(null);
-			setPadding(Insets.EMPTY);
-		}
+	        row.getChildren().addAll(badge, premises, arrow, conclusions);
 
-		@Override
-		protected void updateItem(Rule rule, boolean empty) {
-			super.updateItem(rule, empty);
-			if (empty || rule == null) {
-				setGraphic(null);
-				return;
-			}
-			badge.setText(String.valueOf(rule.support()));
-			badge.setStyle("-fx-background-radius: 999; -fx-font-weight: bold;" + " -fx-background-color: "
-					+ supportColor(rule.support()) + ";" + " -fx-text-fill: " + supportTextColor(rule.support()) + ";");
+	        tooltip = new Tooltip();                 // ← nouveau
+	        tooltip.setShowDelay(Duration.millis(150)); // ← apparition rapide
+	        Tooltip.install(row, tooltip);            // ← nouveau
 
-			premises.setText(String.join(", ", rule.premises()));
-			conclusions.setText(String.join(", ", rule.conclusions()));
+	        setGraphic(row);
+	        setText(null);
+	        setPadding(Insets.EMPTY);
+	    }
 
-			int idx = getIndex();
-			row.setStyle("-fx-background-color: " + (idx % 2 == 0 ? ROW_ODD : ROW_EVEN) + ";");
+	    @Override
+	    protected void updateItem(Rule rule, boolean empty) {
+	        super.updateItem(rule, empty);
+	        if (empty || rule == null) {
+	            setGraphic(null);
+	            return;
+	        }
+	        badge.setText(String.valueOf(rule.support()));
+	        badge.setStyle("-fx-background-radius: 999; -fx-font-weight: bold;" + " -fx-background-color: "
+	                + supportColor(rule.support()) + ";" + " -fx-text-fill: " + supportTextColor(rule.support()) + ";");
 
-			setGraphic(row);
-		}
+	        premises.setText(String.join(", ", rule.premises()));
+	        conclusions.setText(String.join(", ", rule.conclusions()));
+	        tooltip.setText(I18n.get("rules.tooltip.sizes",              // ← nouveau
+	                rule.premises().size(), rule.conclusions().size()));
+
+	        int idx = getIndex();
+	        row.setStyle("-fx-background-color: " + (idx % 2 == 0 ? ROW_ODD : ROW_EVEN) + ";");
+
+	        setGraphic(row);
+	    }
 	}
-
 }

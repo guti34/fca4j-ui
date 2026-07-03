@@ -99,20 +99,20 @@ L'installeur embarque le JRE complet — **les testeurs n'ont pas besoin d'insta
 ### Instructions pour les testeurs
 
 **Windows :**
-1. Télécharger `FCA4J-UI-0.1.0.msi`
+1. Télécharger `FCA4J-UI-1.0.0.msi`
 2. Double-cliquer pour installer
 3. FCA4J UI apparaît dans le menu Démarrer
-4. Au premier lancement : **Fichier > Préférences** → configurer le chemin vers `fca4j-cli-0.4.6.jar`
+4. Au premier lancement : **Fichier > Préférences** → configurer le chemin vers `fca4j.jar`
 5. Configurer éventuellement le chemin vers `dot` (GraphViz) si installé
 
 **Linux :**
 ```bash
-sudo dpkg -i fca4j-ui_0.1.0-1_amd64.deb
+sudo dpkg -i fca4j-ui_1.0.0_amd64.deb
 fca4j-ui   # ou depuis le menu Applications > Science
 ```
 
 **macOS :**
-1. Télécharger `FCA4J-UI-0.1.0.dmg`
+1. Télécharger `FCA4J-UI-1.0.0.dmg`
 2. Ouvrir le DMG et glisser l'application dans `/Applications`
 3. Au premier lancement : clic droit → Ouvrir (nécessaire si non signé)
 
