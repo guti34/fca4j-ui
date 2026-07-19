@@ -21,6 +21,7 @@ import fr.lirmm.fca4j.ui.service.ContextIOService;
 import fr.lirmm.fca4j.ui.service.ContextIOService.ContextFormat;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -614,7 +615,8 @@ public class ContextEditorController implements Initializable {
         FileChooser fc = buildOpenFC(I18n.get("editor.open.title"));
         File f = fc.showOpenDialog(mainCanvasPane.getScene().getWindow());
         if (f == null) return;
-        Path path = f.toPath(); AppPreferences.setLastDirectory(f.getParent());
+        Path path = f.toPath(); 
+        AppPreferences.setLastDirectory(f.getParent());
         if (onLoadStart != null) onLoadStart.run();
         java.util.concurrent.CompletableFuture.supplyAsync(() -> {
             try { return ioService.read(path); } catch (Exception e) { throw new RuntimeException(e); }
@@ -900,7 +902,7 @@ public class ContextEditorController implements Initializable {
 
     private FileChooser buildOpenFC(String title) {
         FileChooser fc = new FileChooser(); fc.setTitle(title);
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
                 "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
@@ -909,8 +911,9 @@ public class ContextEditorController implements Initializable {
     }
 
     private FileChooser buildSaveFC(String title) {
-        FileChooser fc = new FileChooser(); fc.setTitle(title);
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        FileChooser fc = new FileChooser(); 
+        fc.setTitle(title);
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
             new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),

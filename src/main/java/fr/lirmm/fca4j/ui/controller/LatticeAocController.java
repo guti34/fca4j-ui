@@ -150,12 +150,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 				dotFileField.setText(base + ".dot");
 			}
 		});
-		// Zone Iceberg visible seulement si algo = ICEBERG
-		algoCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean isIceberg = "ICEBERG".equals(val);
-			icebergBox.setVisible(isIceberg);
-			icebergBox.setManaged(isIceberg);
-		});
+		// L'état grisé du paramètre iceberg et de la case native est géré dans
+		// configure() (un seul listener), une fois l'algo par défaut connu.
 		icebergSpinner.valueProperty().addListener((obs, old, val) -> {});
 		Utilities.bindPathTooltip(inputFileField);
 		Utilities.bindPathTooltip(outputFileField);
@@ -173,8 +169,21 @@ public class LatticeAocController extends AbstractCommandController implements I
 			return false;
 		if ("LATTICE".equals(cmd))
 			if("ADD_EXTENT".equals(algo) || "PARALLEL_CBO".equals(algo)) return true;
-		if ("AOCPOSET".equals(cmd) && "HERMES".equals(algo))     return true;
+		if ("AOCPOSET".equals(cmd))
+			if("HERMES".equals(algo)||"PLUTON".equals(algo))     return true;
 		return false;
+	}
+
+	/** Active le paramètre iceberg (spinner) seulement pour l'algo ICEBERG. */
+	private void updateIcebergState() {
+		icebergBox.setDisable(!"ICEBERG".equals(algoCombo.getValue()));
+	}
+
+	/** Active la case "native" seulement pour les couples (commande, algo) portés en C. */
+	private void updateNativeCodeState() {
+		boolean nativeCapable = hasNativeImpl(descriptor.getName(), algoCombo.getValue());
+		enableNativeCodeCheckBox.setDisable(!nativeCapable);
+		if (!nativeCapable) enableNativeCodeCheckBox.setSelected(false);
 	}
 
 	/**
@@ -197,23 +206,21 @@ public class LatticeAocController extends AbstractCommandController implements I
 		algoCombo.getItems().setAll(desc.getAlgorithms());
 		algoCombo.setValue(desc.getDefaultAlgorithm());
 
-		// Zone Iceberg : masquée par défaut
-		icebergBox.setVisible(false);
-		icebergBox.setManaged(false);
+		// Paramètre iceberg : présent uniquement pour les commandes qui le
+		// supportent (LATTICE). Sur AOCPoset il n'existe pas → masqué.
+		icebergBox.setVisible(desc.hasIcebergPercent());
+		icebergBox.setManaged(desc.hasIcebergPercent());
 
-		// Checkbox native code : visible si le couple (commande, algo) a un
-		// portage natif (LATTICE+ADD_EXTENT ou AOCPOSET+HERMES).
-		final String cmdName = desc.getName();
-		boolean showNativeInit = hasNativeImpl(cmdName, algoCombo.getValue());
-		enableNativeCodeCheckBox.setVisible(showNativeInit);
-		enableNativeCodeCheckBox.setManaged(showNativeInit);
+		// Paramètre iceberg et case native : grisés (et non masqués) selon l'algo
+		// sélectionné. Case native : couples avec portage natif C
+		// (LATTICE+ADD_EXTENT, LATTICE+PARALLEL_CBO, AOCPOSET+HERMES).
+		algoCombo.valueProperty().addListener((obs, old, val) -> {
+			updateIcebergState();
+			updateNativeCodeState();
+		});
+		updateIcebergState();
+		updateNativeCodeState();
 
-		// Mettre à jour la visibilité quand l'algo change
-				algoCombo.valueProperty().addListener((obs, old, val) -> {
-					boolean showNative = hasNativeImpl(cmdName, val);
-					enableNativeCodeCheckBox.setVisible(showNative);
-					enableNativeCodeCheckBox.setManaged(showNative);
-				});
 		loadPrefs();
 	}
 
@@ -241,7 +248,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private void onBrowseOutput() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("label.output.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("XML", "*.xml"),
 				new FileChooser.ExtensionFilter("JSON", "*.json"));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
@@ -260,7 +267,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private void onBrowseDot() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("label.dot.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("GraphViz DOT", "*.dot"));
 		File f = fc.showSaveDialog(dotFileField.getScene().getWindow());
 		if (f != null)
@@ -271,7 +278,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private void onBrowseDatalogFolder() {
 		javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
 		dc.setTitle(I18n.get("rca.browse.datalog.folder"));
-		dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(dc, AppPreferences.getLastDirectory());
 		File f = dc.showDialog(datalogFolderField.getScene().getWindow());
 		if (f != null)
 			datalogFolderField.setText(f.getAbsolutePath());
@@ -281,7 +288,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private void onBrowseDatalogFile() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("rca.browse.datalog.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Datalog", "*.dlgp", "*.dl"));
 		File f = fc.showSaveDialog(datalogFileField.getScene().getWindow());
 		if (f != null)
@@ -406,6 +413,9 @@ public class LatticeAocController extends AbstractCommandController implements I
 					enableNativeCodeCheckBox.setSelected(
 							AppPreferences.loadBool(cmd + ".enableNativeCode", false));
 				}
+		// Réappliquer l'état grisé (iceberg + native) selon l'algo restauré
+		updateIcebergState();
+		updateNativeCodeState();
 		noDirectSiblings.setSelected(AppPreferences.loadBool(cmd + ".nds", false));
 		String savedDot = AppPreferences.loadString(cmd + ".dotFile", "");
 		if (!savedDot.isBlank()) dotFileField.setText(savedDot);

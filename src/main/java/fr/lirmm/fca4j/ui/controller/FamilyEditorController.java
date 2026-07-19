@@ -263,7 +263,7 @@ public class FamilyEditorController implements Initializable {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("family.menu.export"));
         fc.setInitialFileName(selFc.getName());
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
             new FileChooser.ExtensionFilter("SLF (HTK)",              "*.slf"),
@@ -816,7 +816,10 @@ public class FamilyEditorController implements Initializable {
         if (!confirmDiscard()) return;
         FileChooser fc = buildFamilyChooser(I18n.get("family.open.title"));
         File f = fc.showOpenDialog(graphCanvas.getScene().getWindow());
-        if (f != null) { loadFamily(f.toPath()); AppPreferences.setLastDirectory(f.getParent()); }
+        if (f != null) { 
+        	loadFamily(f.toPath()); 
+        	AppPreferences.setLastDirectory(f.getParent()); 
+        	}
     }
 
     @FXML public void onSave() {
@@ -832,19 +835,6 @@ public class FamilyEditorController implements Initializable {
         // Ajuster le format selon l'extension choisie si nécessaire
         saveToFile(f.toPath());
     }
-/*    @FXML private void onSaveAs() {
-        FileChooser fc = buildFamilyChooser(I18n.get("family.saveas.title"));
-        fc.getExtensionFilters().clear();
-        fc.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("RCFT", "*.rcft"),
-            new FileChooser.ExtensionFilter("RCFGZ (compressed)", "*.rcfgz"));
-        File f = fc.showSaveDialog(graphCanvas.getScene().getWindow());
-        if (f != null) {
-            currentFile = f.toPath(); saveToFile(currentFile);
-            AppPreferences.setLastDirectory(f.getParent());
-        }
-    }
-*/
     private void saveToFile(Path path) {
         try {
             rcfService.write(family, path);
@@ -924,7 +914,7 @@ public class FamilyEditorController implements Initializable {
     private FileChooser buildFamilyContextChooser() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("family.dialog.context.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
            new FileChooser.ExtensionFilter("SLF (HTK)",              "*.slf"),
@@ -1066,7 +1056,7 @@ public class FamilyEditorController implements Initializable {
     private FileChooser buildFamilyChooser(String title) {
         FileChooser fc = new FileChooser();
         fc.setTitle(title);
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("RCFT", "*.rcft"),
             new FileChooser.ExtensionFilter("RCFGZ (compressed)", "*.rcfgz"),

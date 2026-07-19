@@ -107,7 +107,7 @@ public class FamilyImportController implements Initializable {
     @FXML private void onBrowseInput() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("label.input.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("JSON", "*.json"),
             new FileChooser.ExtensionFilter("XML",  "*.xml"),
@@ -133,7 +133,7 @@ public class FamilyImportController implements Initializable {
     @FXML private void onBrowseOutput() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("label.output.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("RCFT", "*.rcft"),
             new FileChooser.ExtensionFilter("RCFGZ", "*.rcfgz"),

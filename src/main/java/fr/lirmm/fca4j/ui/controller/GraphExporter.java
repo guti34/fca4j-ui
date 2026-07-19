@@ -7,6 +7,7 @@ package fr.lirmm.fca4j.ui.controller;
 import fr.lirmm.fca4j.ui.service.GraphRenderer;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
 
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
@@ -219,7 +220,7 @@ public class GraphExporter {
     public void openDot(Runnable onRenderStarted, Runnable onRenderDone) {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("graph.btn.open.dot"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("GraphViz DOT", "*.dot"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));

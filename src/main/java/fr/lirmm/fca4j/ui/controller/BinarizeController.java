@@ -129,7 +129,7 @@ public class BinarizeController implements Initializable {
     private void onBrowseInput() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("label.input.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("CSV", "*.csv"),
             new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*")
@@ -149,7 +149,7 @@ public class BinarizeController implements Initializable {
     private void onBrowseOutput() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("label.output.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("CXT (Burmeister)", "*.cxt"),
            new FileChooser.ExtensionFilter("SLF (HTK)",        "*.slf"),

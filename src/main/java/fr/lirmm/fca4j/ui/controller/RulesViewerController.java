@@ -6,6 +6,7 @@ package fr.lirmm.fca4j.ui.controller;
 
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -124,7 +125,7 @@ public class RulesViewerController implements Initializable {
 	private void onOpen() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("rules.open.title"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(
 				new FileChooser.ExtensionFilter("Rules files", "*.txt", "*.json", "*.xml", "*.dlgp"),
 				new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));

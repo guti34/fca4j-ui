@@ -10,6 +10,8 @@ import fr.lirmm.fca4j.ui.model.ImportModel.RelationalContextDef;
 import fr.lirmm.fca4j.ui.service.ImportModelService;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
@@ -371,7 +373,7 @@ public class ModelEditorController implements Initializable {
 			return;
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("model.browse.csv.title"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("CSV", "*.csv"),
 				new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
 		File f = fc.showOpenDialog(attrsTable.getScene().getWindow());
@@ -570,7 +572,7 @@ public class ModelEditorController implements Initializable {
 			return;
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("model.browse.csv.title"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
 		File f = fc.showOpenDialog(relationsTable.getScene().getWindow());
 		if (f == null)
@@ -997,7 +999,7 @@ public class ModelEditorController implements Initializable {
 		Button browseBtn = new Button(I18n.get("button.browse"));
 		browseBtn.setOnAction(ev -> {
 			FileChooser fc2 = new FileChooser();
-			fc2.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+	        Utilities.setSafeInitialDirectory(fc2, AppPreferences.getLastDirectory());
 			fc2.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
 			File f = fc2.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
 			if (f != null) {
@@ -1112,7 +1114,7 @@ public class ModelEditorController implements Initializable {
 	private FileChooser buildChooser(String title) {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(title);
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter("JSON", "*.json"),
 				new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
 		return fc;

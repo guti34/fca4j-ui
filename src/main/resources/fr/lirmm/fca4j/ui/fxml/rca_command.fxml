@@ -23,6 +23,21 @@
         </VBox>
     </TitledPane>
 
+    <!-- Algorithme -->
+    <TitledPane fx:id="algoPane" collapsible="true" expanded="false">
+        <VBox spacing="6" style="-fx-padding: 8;">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="%label.algorithm"/>
+                <ComboBox fx:id="algoCombo" prefWidth="140"/>
+            </HBox>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
+                <Spinner fx:id="icebergSpinner" prefWidth="75"/>
+            </HBox>
+            <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
+        </VBox>
+    </TitledPane>
+
     <!-- Sortie -->
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="6" style="-fx-padding: 8;">
@@ -49,20 +64,6 @@
                 <CheckBox fx:id="buildJson"             text="%rca.build.json"/>
             </VBox>
         </TitledPane>
-        </VBox>
-    </TitledPane>
-
-    <!-- Algorithme -->
-    <TitledPane fx:id="algoPane" collapsible="true" expanded="false">
-        <VBox spacing="6" style="-fx-padding: 8;">
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.algorithm"/>
-                <ComboBox fx:id="algoCombo" prefWidth="140"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="icebergLabel" text="%label.iceberg.percent"/>
-                <Spinner fx:id="icebergSpinner" prefWidth="75"/>
-            </HBox>
         </VBox>
     </TitledPane>
 

@@ -4,8 +4,12 @@
  */
 package fr.lirmm.fca4j.ui.util;
 
+import java.io.File;
+
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 
 public class Utilities {
     /**
@@ -131,5 +135,46 @@ public class Utilities {
     private static String normalizeExt(String ext) {
         if (ext == null || ext.isEmpty()) return "";
         return ext.startsWith(".") ? ext : "." + ext;
+    }
+    /**
+     * Positionne le dossier initial de façon sûre : remonte vers le premier
+     * ancêtre existant, et n'applique rien si aucun n'est trouvé.
+     * macOS (Glass) rejette un dossier invalide avec IllegalArgumentException,
+     * contrairement à Windows qui l'ignore silencieusement.
+     */
+    public static void setSafeInitialDirectory(FileChooser chooser, String savedPath) {
+        File dir = resolveExistingDirectory(savedPath);
+        if (dir != null) {
+            chooser.setInitialDirectory(dir);
+        }
+        // sinon : on ne fait rien → l'OS choisit un défaut raisonnable
+    }
+
+    public static void setSafeInitialDirectory(DirectoryChooser chooser, String savedPath) {
+        File dir = resolveExistingDirectory(savedPath);
+        if (dir != null) {
+            chooser.setInitialDirectory(dir);
+        }
+    }
+
+    private static File resolveExistingDirectory(String savedPath) {
+        if (savedPath == null || savedPath.isBlank()) {
+            return null;
+        }
+        File f;
+        try {
+            f = new File(savedPath).getAbsoluteFile();
+        } catch (Exception e) {
+            return null;
+        }
+        // Si on a mémorisé un fichier plutôt qu'un dossier, on prend son parent
+        if (f.isFile()) {
+            f = f.getParentFile();
+        }
+        // Remonte jusqu'au premier ancêtre réellement existant
+        while (f != null && !(f.exists() && f.isDirectory())) {
+            f = f.getParentFile();
+        }
+        return f;
     }
 }

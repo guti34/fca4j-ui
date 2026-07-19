@@ -80,7 +80,7 @@ public class InspectController extends AbstractCommandController implements Init
 	private void onBrowseInput() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("label.input.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
 				"*.slf", "*.cex", "*.xml", "*.csv"), new FileChooser.ExtensionFilter(I18n.get("filter.all"), "*.*"));
 		File f = fc.showOpenDialog(inputFileField.getScene().getWindow());

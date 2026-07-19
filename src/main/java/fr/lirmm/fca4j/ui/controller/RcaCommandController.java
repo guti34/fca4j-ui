@@ -67,6 +67,7 @@ public class RcaCommandController implements Initializable {
     @FXML private ComboBox<String> algoCombo;
     @FXML private Label            icebergLabel;
     @FXML private Spinner<Integer> icebergSpinner;
+    @FXML private CheckBox         enableNativeCodeCheckBox;
 
     // Renommage
     @FXML private CheckBox renameRA;
@@ -111,15 +112,17 @@ public class RcaCommandController implements Initializable {
 
         algoCombo.getItems().addAll(
             "HERMES", "ARES", "CERES", "PLUTON",
-            "ADD_EXTENT", "ADD_INTENT", "ICEBERG");
+            "ADD_EXTENT", "PARALLEL_CBO", "ADD_INTENT", "ICEBERG");
         algoCombo.setValue("HERMES");
+
+        // Paramètre ICEBERG et case "native" : grisés selon l'algo sélectionné
         algoCombo.valueProperty().addListener((obs, old, val) -> {
-            boolean iceberg = "ICEBERG".equals(val);
-            icebergLabel.setVisible(iceberg);
-            icebergSpinner.setVisible(iceberg);
+            updateIcebergState();
+            updateNativeCodeState();
+            updateAlgoTitle();
         });
-        icebergLabel.setVisible(false);
-        icebergSpinner.setVisible(false);
+        updateIcebergState();
+        updateNativeCodeState();
 
         displayModeCombo.getItems().addAll("SIMPLIFIED", "FULL", "MINIMAL");
         displayModeCombo.setValue("SIMPLIFIED");
@@ -160,13 +163,6 @@ public class RcaCommandController implements Initializable {
                 if (val != null && outputFolder != null && openInGraph != null)
                     openInGraph.accept(outputFolder.resolve(val));
             });
-        algoCombo.valueProperty().addListener((obs, old, val) -> {
-            boolean iceberg = "ICEBERG".equals(val);
-            icebergLabel.setVisible(iceberg);
-            icebergSpinner.setVisible(iceberg);
-            updateAlgoTitle(); // ← ajouter
-        });
-
         icebergSpinner.valueProperty().addListener((obs, old, val) ->
             updateAlgoTitle()); 
 
@@ -190,6 +186,27 @@ public class RcaCommandController implements Initializable {
         boolean any = renameRA.isSelected() || renameRAI.isSelected() || renameRI.isSelected();
         nativeOnly.setDisable(!any);
         if (!any) nativeOnly.setSelected(false);
+    }
+
+    /** Algos disposant d'une implémentation native C (option -native). */
+    private static boolean hasNativeImpl(String algo) {
+        return "ADD_EXTENT".equals(algo)
+            || "PARALLEL_CBO".equals(algo)
+            || "HERMES".equals(algo);
+    }
+
+    /** Active la case "native" seulement pour les algos portés en C. */
+    private void updateNativeCodeState() {
+        boolean nativeCapable = hasNativeImpl(algoCombo.getValue());
+        enableNativeCodeCheckBox.setDisable(!nativeCapable);
+        if (!nativeCapable) enableNativeCodeCheckBox.setSelected(false);
+    }
+
+    /** Active le paramètre iceberg (label + spinner) seulement pour l'algo ICEBERG. */
+    private void updateIcebergState() {
+        boolean iceberg = "ICEBERG".equals(algoCombo.getValue());
+        icebergLabel.setDisable(!iceberg);
+        icebergSpinner.setDisable(!iceberg);
     }
 
     public void configure(Consumer<CommandBuilder> onRun,
@@ -252,7 +269,7 @@ public class RcaCommandController implements Initializable {
     @FXML private void onBrowseFamily() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("rca.browse.family"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter("RCFT", "*.rcft"),
             new FileChooser.ExtensionFilter("RCFGZ", "*.rcfgz"),
@@ -297,7 +314,8 @@ public class RcaCommandController implements Initializable {
         String cur = outputFolderField.getText().trim();
         File init = cur.isBlank() ? new File(AppPreferences.getLastDirectory())
                                   : new File(cur).getParentFile();
-        if (init != null && init.exists()) dc.setInitialDirectory(init);
+        if (init != null && init.exists()) 
+        	dc.setInitialDirectory(init);
         File f = dc.showDialog(outputFolderField.getScene().getWindow());
         if (f != null) outputFolderField.setText(f.getAbsolutePath());
     }
@@ -305,7 +323,7 @@ public class RcaCommandController implements Initializable {
     @FXML private void onBrowseDatalogFolder() {
         DirectoryChooser dc = new DirectoryChooser();
         dc.setTitle(I18n.get("rca.browse.datalog.folder"));
-        dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(dc, AppPreferences.getLastDirectory());
         File f = dc.showDialog(datalogFolderField.getScene().getWindow());
         if (f != null) datalogFolderField.setText(f.getAbsolutePath());
     }
@@ -313,7 +331,7 @@ public class RcaCommandController implements Initializable {
     @FXML private void onBrowseDatalogFile() {
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("rca.browse.datalog.file"));
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().add(
             new FileChooser.ExtensionFilter("Datalog", "*.dlgp", "*.dl"));
         File f = fc.showSaveDialog(datalogFileField.getScene().getWindow());
@@ -350,6 +368,8 @@ public class RcaCommandController implements Initializable {
         String algo = algoCombo.getValue();
         builder.algorithm(algoCombo.getValue()); 
         if ("ICEBERG".equals(algo)) builder.icebergPercent(icebergSpinner.getValue());
+        if (hasNativeImpl(algo) && enableNativeCodeCheckBox.isSelected())
+            builder.enableNativeCode(true);
 
         if (renameRA.isSelected())    builder.rcaRenameRA(true);
         if (renameRAI.isSelected())   builder.rcaRenameRAI(true);
@@ -465,6 +485,7 @@ public class RcaCommandController implements Initializable {
         AppPreferences.saveBool  (P + "rai",           renameRAI.isSelected());
         AppPreferences.saveBool  (P + "ri",            renameRI.isSelected());
         AppPreferences.saveBool  (P + "na",            nativeOnly.isSelected());
+        AppPreferences.saveBool  (P + "enableNativeCode", enableNativeCodeCheckBox.isSelected());
         AppPreferences.saveBool  (P + "clean",         cleanOption.isSelected());
         AppPreferences.saveBool  (P + "nds",           noDirectSiblings.isSelected());
         AppPreferences.saveBool  (P + "verbose",       verboseCheckBox.isSelected());
@@ -494,6 +515,8 @@ public class RcaCommandController implements Initializable {
         renameRAI.setSelected(AppPreferences.loadBool(P + "rai",       false));
         renameRI.setSelected(AppPreferences.loadBool(P + "ri",         false));
         nativeOnly.setSelected(AppPreferences.loadBool(P + "na",       false));
+        enableNativeCodeCheckBox.setSelected(AppPreferences.loadBool(P + "enableNativeCode", false));
+        updateNativeCodeState();
         cleanOption.setSelected(AppPreferences.loadBool(P + "clean",   false));
         noDirectSiblings.setSelected(AppPreferences.loadBool(P + "nds", false));
         verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));

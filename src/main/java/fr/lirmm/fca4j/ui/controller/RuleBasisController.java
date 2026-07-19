@@ -208,7 +208,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private void onBrowseInput() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("browse.input.title"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().addAll(
 				   new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
 					        "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),
@@ -231,7 +231,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		    new FileChooser.ExtensionFilter(I18n.get("filter.json"), "*.json"),
 		    new FileChooser.ExtensionFilter(I18n.get("filter.xml"), "*.xml"),
 		    new FileChooser.ExtensionFilter(I18n.get("filter.datalog"), "*.dlgp"));		
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null) {
 			outputFileField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
@@ -254,7 +254,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		fc.setTitle(I18n.get("browse.report.title"));
 		fc.getExtensionFilters().add(
 		    new FileChooser.ExtensionFilter(I18n.get("filter.text"), "*.txt"));		
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		File f = fc.showSaveDialog(reportFileField.getScene().getWindow());
 		if (f != null)
 			reportFileField.setText(f.getAbsolutePath());
@@ -264,7 +264,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private void onBrowseImplFolder() {
 		javafx.stage.DirectoryChooser dc = new javafx.stage.DirectoryChooser();
 		dc.setTitle(I18n.get("browse.impl.folder.title"));
-		dc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(dc, AppPreferences.getLastDirectory());
 		File f = dc.showDialog(implFolderField.getScene().getWindow());
 		if (f != null)
 			implFolderField.setText(f.getAbsolutePath());

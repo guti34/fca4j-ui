@@ -120,7 +120,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 	private void onBrowseOutput() {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(I18n.get("label.output.file"));
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Texte", "*.txt"));
 		File f = fc.showSaveDialog(outputFileField.getScene().getWindow());
 		if (f != null)

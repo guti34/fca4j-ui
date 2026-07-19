@@ -134,7 +134,7 @@ public abstract class AbstractCommandController {
     protected FileChooser buildContextChooser(String title) {
         FileChooser fc = new FileChooser();
         fc.setTitle(title);
-        fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
         fc.getExtensionFilters().addAll(
             new FileChooser.ExtensionFilter(I18n.get("filter.context.all"),
                 "*.cxt", "*.slf", "*.cex", "*.xml", "*.csv"),

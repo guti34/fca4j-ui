@@ -220,7 +220,7 @@ public class ReduceClarifyController extends AbstractCommandController implement
 	private FileChooser buildContextChooserForSave(String title, boolean forOpen) {
 		FileChooser fc = new FileChooser();
 		fc.setTitle(title);
-		fc.setInitialDirectory(new File(AppPreferences.getLastDirectory()));
+        Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
 		if (forOpen) {
 			fc.getExtensionFilters().addAll(new FileChooser.ExtensionFilter(I18n.get("filter.context.all"), "*.cxt",
 					"*.slf", "*.cex", "*.xml", "*.csv"),
