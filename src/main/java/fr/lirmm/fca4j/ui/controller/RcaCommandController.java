@@ -192,7 +192,8 @@ public class RcaCommandController implements Initializable {
     private static boolean hasNativeImpl(String algo) {
         return "ADD_EXTENT".equals(algo)
             || "PARALLEL_CBO".equals(algo)
-            || "HERMES".equals(algo);
+            || "HERMES".equals(algo) 
+            || "PLUTON".equals(algo);
     }
 
     /** Active la case "native" seulement pour les algos portés en C. */
