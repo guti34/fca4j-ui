@@ -14,6 +14,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.kordamp.ikonli.material2.Material2AL;
 import org.kordamp.ikonli.material2.Material2MZ;
 
+import fr.lirmm.fca4j.ui.control.DurationField;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
@@ -89,7 +90,7 @@ public class RcaCommandController implements Initializable {
     @FXML private CheckBox  noDirectSiblings;
 
     // Avancé
-    @FXML private Spinner<Integer> timeoutSpinner;
+    @FXML private DurationField timeoutField;
     @FXML private CheckBox         verboseCheckBox;
 
     // Résultats
@@ -155,8 +156,6 @@ public class RcaCommandController implements Initializable {
             new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 1000, 0, 1));
         icebergSpinner.setValueFactory(
             new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50, 5));
-        timeoutSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 
         dotFilesList.getSelectionModel().selectedItemProperty()
             .addListener((obs, old, val) -> {
@@ -398,9 +397,7 @@ public class RcaCommandController implements Initializable {
             builder.rcaDatalogFile(Utilities.resolveOutput(datalogFileField.getText().trim(),familyFileField));
         if (noDirectSiblings.isSelected()) builder.rcaNoDirectSiblings(true);
 
-        int to = timeoutSpinner.getValue();
-        if (to > 0) builder.timeout(to);
-        
+        int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);        
         if (!outputFolderField.getText().isBlank())
             AppPreferences.saveOutputForInput("RCA",
                 familyFileField.getText().trim(),
@@ -490,7 +487,7 @@ public class RcaCommandController implements Initializable {
         AppPreferences.saveBool  (P + "clean",         cleanOption.isSelected());
         AppPreferences.saveBool  (P + "nds",           noDirectSiblings.isSelected());
         AppPreferences.saveBool  (P + "verbose",       verboseCheckBox.isSelected());
-        AppPreferences.saveInt   (P + "timeout",       timeoutSpinner.getValue());
+        AppPreferences.saveInt(P + ".timeout", timeoutField.getSeconds());
         AppPreferences.saveInt   (P + "limit",         limitStepsSpinner.getValue());
         AppPreferences.saveInt   (P + "iceberg",       icebergSpinner.getValue());
     }
@@ -521,7 +518,7 @@ public class RcaCommandController implements Initializable {
         cleanOption.setSelected(AppPreferences.loadBool(P + "clean",   false));
         noDirectSiblings.setSelected(AppPreferences.loadBool(P + "nds", false));
         verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
-        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+        timeoutField.setSeconds(AppPreferences.loadInt(P + ".timeout", 0));
         limitStepsSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "limit", 0));
         icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "iceberg", 50));
         Platform.runLater(this::updateAlgoTitle);

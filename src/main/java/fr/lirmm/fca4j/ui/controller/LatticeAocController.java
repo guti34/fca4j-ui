@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
 
+import fr.lirmm.fca4j.ui.control.DurationField;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
@@ -17,16 +18,13 @@ import fr.lirmm.fca4j.ui.util.I18n;
 import fr.lirmm.fca4j.ui.util.Utilities;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
 
 public class LatticeAocController extends AbstractCommandController implements Initializable {
@@ -90,9 +88,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 	private ComboBox<String> implCombo;
 	@FXML
 	private CheckBox enableNativeCodeCheckBox;
-	@FXML
-	private Spinner<Integer> timeoutSpinner;
-	@FXML
+	 @FXML private DurationField timeoutField;
+	 @FXML
 	private CheckBox verboseCheckBox;
 
 	/** Extension correspondant au format de sortie sélectionné. */
@@ -117,7 +114,6 @@ public class LatticeAocController extends AbstractCommandController implements I
 				"ARRAYLIST", "BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
-		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		icebergSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100, 50, 5));
 
 		// Contrôles DOT désactivés jusqu'à ce que la case soit cochée
@@ -331,10 +327,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 				&& enableNativeCodeCheckBox.isSelected())
 			builder.enableNativeCode(true);
 
-		int to = timeoutSpinner.getValue();
-		if (to > 0)
-			builder.timeout(to);
-
+		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
 		if (noDirectSiblings.isSelected())
 			builder.noDirectSiblings(true);
 		if (onRun != null)
@@ -372,7 +365,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 		AppPreferences.saveBool(cmd + ".dot", dotCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".stability", stabilityCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
-		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+        AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 		AppPreferences.saveInt(cmd + ".iceberg", icebergSpinner.getValue());
 		persistOutputForInput(inputFileField, outputFileField);
 		AppPreferences.saveString(cmd + ".dotFile", dotCheckBox.isSelected() ? dotFileField.getText().trim() : "");
@@ -406,7 +399,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 		dotCheckBox.setSelected(AppPreferences.loadBool(cmd + ".dot", false));
 		stabilityCheckBox.setSelected(AppPreferences.loadBool(cmd + ".stability", false));
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
-		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+		timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
 		icebergSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".iceberg", 50));
 		// Native code (commandes avec portage natif)
 				if ("LATTICE".equals(cmd) || "AOCPOSET".equals(cmd)) {

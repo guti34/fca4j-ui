@@ -4,28 +4,35 @@
  */
 package fr.lirmm.fca4j.ui.controller;
 
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.ResourceBundle;
+import java.util.function.Consumer;
+
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.material2.Material2AL;
+import org.kordamp.ikonli.material2.Material2MZ;
+
+import fr.lirmm.fca4j.ui.control.DurationField;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
 import fr.lirmm.fca4j.ui.util.Utilities;
-
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
-import org.kordamp.ikonli.material2.Material2MZ;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.net.URL;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
 /**
  * Contrôleur du panneau pour la commande BINARIZE.
@@ -64,7 +71,7 @@ public class BinarizeController implements Initializable {
     @FXML private Label            filterHintLabel;
 
     // ── Options avancées ──────────────────────────────────────────────────────
-    @FXML private Spinner<Integer> timeoutSpinner;
+    @FXML private DurationField timeoutField;
     @FXML private CheckBox         verboseCheckBox;
 
     private Consumer<CommandBuilder> onRun;
@@ -84,9 +91,6 @@ public class BinarizeController implements Initializable {
             outSeparatorLabel.setVisible(csv);
             outSeparatorCombo.setVisible(csv);
         });
-
-        timeoutSpinner.setValueFactory(
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 
         // Supprimer avec la touche Delete sur les listes
         excludeList.setOnKeyPressed(e -> {
@@ -231,7 +235,7 @@ public class BinarizeController implements Initializable {
         if (!includeList.getItems().isEmpty())
             builder.includeAttrs(new ArrayList<>(includeList.getItems()));
 
-        int to = timeoutSpinner.getValue();
+        int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
         if (to > 0) builder.timeout(to);
 
         if (onRun != null) onRun.accept(builder);
@@ -255,7 +259,7 @@ public class BinarizeController implements Initializable {
         AppPreferences.saveString(P + "outputFormat", outputFormatCombo.getValue());
         AppPreferences.saveString(P + "outSeparator", outSeparatorCombo.getValue());
         AppPreferences.saveBool  (P + "verbose",      verboseCheckBox.isSelected());
-        AppPreferences.saveInt   (P + "timeout",      timeoutSpinner.getValue());
+        AppPreferences.saveInt(P + ".timeout", timeoutField.getSeconds());
         // Listes exclude/include — sérialisées en chaîne séparée par |
         AppPreferences.saveString(P + "excludeList",
             String.join("|", excludeList.getItems()));
@@ -271,7 +275,7 @@ public class BinarizeController implements Initializable {
         if (outSeparatorCombo.getItems().contains(outSep)) outSeparatorCombo.setValue(outSep);
 
         verboseCheckBox.setSelected(AppPreferences.loadBool(P + "verbose", false));
-        timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(P + "timeout", 0));
+        timeoutField.setSeconds(AppPreferences.loadInt(P + ".timeout", 0));
 
         // Restaurer les listes
         String excl = AppPreferences.loadString(P + "excludeList", "");

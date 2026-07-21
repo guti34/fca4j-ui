@@ -4,24 +4,27 @@
  */
 package fr.lirmm.fca4j.ui.controller;
 
-import fr.lirmm.fca4j.ui.model.CommandBuilder;
-import fr.lirmm.fca4j.ui.model.CommandDescriptor;
-import fr.lirmm.fca4j.ui.util.AppPreferences;
-import fr.lirmm.fca4j.ui.util.I18n;
-import fr.lirmm.fca4j.ui.util.Utilities;
-
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.stage.FileChooser;
-
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
+
+import fr.lirmm.fca4j.ui.control.DurationField;
+import fr.lirmm.fca4j.ui.model.CommandBuilder;
+import fr.lirmm.fca4j.ui.model.CommandDescriptor;
+import fr.lirmm.fca4j.ui.util.AppPreferences;
+import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.stage.FileChooser;
 
 /**
  * Contrôleur du panneau pour la commande IRREDUCIBLE. Liste les objets et/ou
@@ -64,9 +67,8 @@ public class IrreducibleController extends AbstractCommandController implements 
 	// ── Options avancées ──────────────────────────────────────────────────────
 	@FXML
 	private ComboBox<String> implCombo;
-	@FXML
-	private Spinner<Integer> timeoutSpinner;
-	@FXML
+	 @FXML private DurationField timeoutField;
+	 @FXML
 	private CheckBox verboseCheckBox;
 
 	@Override
@@ -78,7 +80,6 @@ public class IrreducibleController extends AbstractCommandController implements 
 				"ARRAYLIST", "BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
-		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
 		Utilities.bindPathTooltip(outputFileField);
 
@@ -152,10 +153,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 		if (!"BITSET".equals(impl))
 			builder.implementation(impl);
 
-		int to = timeoutSpinner.getValue();
-		if (to > 0)
-			builder.timeout(to);
-
+		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
 		if (onRun != null)
 			onRun.accept(builder);
 	}
@@ -183,7 +181,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 		AppPreferences.saveBool(cmd + ".lattr", lattrCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".group", groupCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
-		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+        AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 		persistOutputForInput(inputFileField, outputFileField);
 	}
 
@@ -202,7 +200,7 @@ public class IrreducibleController extends AbstractCommandController implements 
 		lattrCheckBox.setSelected(AppPreferences.loadBool(cmd + ".lattr", false));
 		groupCheckBox.setSelected(AppPreferences.loadBool(cmd + ".group", false));
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
-		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
-	}
+		timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
+		}
 
 }

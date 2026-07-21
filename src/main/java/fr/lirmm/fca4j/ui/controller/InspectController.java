@@ -4,22 +4,27 @@
  */
 package fr.lirmm.fca4j.ui.controller;
 
-import fr.lirmm.fca4j.ui.model.CommandBuilder;
-import fr.lirmm.fca4j.ui.model.CommandDescriptor;
-import fr.lirmm.fca4j.ui.util.AppPreferences;
-import fr.lirmm.fca4j.ui.util.I18n;
-import fr.lirmm.fca4j.ui.util.Utilities;
-
-import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.stage.FileChooser;
-
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
+
+import fr.lirmm.fca4j.ui.control.DurationField;
+import fr.lirmm.fca4j.ui.model.CommandBuilder;
+import fr.lirmm.fca4j.ui.model.CommandDescriptor;
+import fr.lirmm.fca4j.ui.util.AppPreferences;
+import fr.lirmm.fca4j.ui.util.I18n;
+import fr.lirmm.fca4j.ui.util.Utilities;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
+import javafx.stage.FileChooser;
 
 /**
  * Contrôleur du panneau pour la commande INSPECT. Inspecte un contexte formel
@@ -44,9 +49,8 @@ public class InspectController extends AbstractCommandController implements Init
 	private ComboBox<String> inputFormatCombo;
 
 	// ── Options avancées ──────────────────────────────────────────────────────
-	@FXML
-	private Spinner<Integer> timeoutSpinner;
-	@FXML
+	 @FXML private DurationField timeoutField;
+	 @FXML
 	private CheckBox verboseCheckBox;
 
 	@Override
@@ -54,7 +58,6 @@ public class InspectController extends AbstractCommandController implements Init
 		inputFormatCombo.getItems().addAll("(auto)", "CXT", "SLF", "XML", "CEX", "CSV");
 		inputFormatCombo.setValue("(auto)");
 
-		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
 	}
 
@@ -105,10 +108,8 @@ public class InspectController extends AbstractCommandController implements Init
 		if (!"(auto)".equals(fmt))
 			builder.inputFormat(fmt);
 
-		int to = timeoutSpinner.getValue();
-		if (to > 0)
-			builder.timeout(to);
-
+		int to = timeoutField.getSeconds(); 
+		if (to > 0) builder.timeout(to);
 		if (onRun != null)
 			onRun.accept(builder);
 	}
@@ -134,7 +135,7 @@ public class InspectController extends AbstractCommandController implements Init
 		String cmd = descriptor.getName(); // "INSPECT"
 		AppPreferences.saveString(cmd + ".inputFormat", inputFormatCombo.getValue());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
-		AppPreferences.saveInt(cmd + ".timeout", timeoutSpinner.getValue());
+        AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 	}
 
 	@Override
@@ -144,7 +145,7 @@ public class InspectController extends AbstractCommandController implements Init
 		if (inputFormatCombo.getItems().contains(fmt))
 			inputFormatCombo.setValue(fmt);
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
-		timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+		timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
 	}
 
 }

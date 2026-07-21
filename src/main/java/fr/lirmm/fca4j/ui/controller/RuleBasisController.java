@@ -4,25 +4,30 @@
  */
 package fr.lirmm.fca4j.ui.controller;
 
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Path;
+import java.util.ResourceBundle;
+import java.util.function.Consumer;
+
+import fr.lirmm.fca4j.ui.control.DurationField;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.I18n;
 import fr.lirmm.fca4j.ui.util.Utilities;
-
-import java.nio.file.Path;
-import org.kordamp.ikonli.javafx.FontIcon;
-import org.kordamp.ikonli.material2.Material2AL;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TitledPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.net.URL;
-import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
 /**
  * Contrôleur du panneau de paramètres pour RULEBASIS et DBASIS.
@@ -93,9 +98,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private TextField implFolderField;
 	@FXML
 	private ComboBox<String> implCombo;
-	@FXML
-	private Spinner<Integer> timeoutSpinner;
-	@FXML
+	 @FXML private DurationField timeoutField;
+	 @FXML
 	private CheckBox verboseCheckBox;
 
 	/** Extension correspondant au format de sortie sélectionné. */
@@ -138,7 +142,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 				"BOOL_ARRAY");
 		implCombo.setValue("BITSET");
 
-		timeoutSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 3600, 0, 10));
 		Utilities.bindPathTooltip(inputFileField);
 		Utilities.bindPathTooltip(outputFileField);
 		Utilities.bindPathTooltip(reportFileField);
@@ -288,10 +291,8 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 		builder.poolMode(poolModeCombo.getValue());
 
-		int to = timeoutSpinner.getValue();
-		if (to > 0)
-			builder.timeout(to);
-
+		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
+		
 		if ("RULEBASIS".equals(descriptor.getName())) {
 			builder.algorithm(algoCombo.getValue()).clarify(clarifyCheckBox.isSelected())
 					.closureMethod(closureCombo.getValue()).sortBySupport(sortBySupportCheckBox.isSelected());
@@ -333,7 +334,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
 	    AppPreferences.saveString(cmd + ".poolMode",     poolModeCombo.getValue());
 	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
-	    AppPreferences.saveInt   (cmd + ".timeout",      timeoutSpinner.getValue());
+        AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 	    persistOutputForInput(inputFileField, outputFileField);
 	    AppPreferences.saveString(cmd + ".reportFile",   reportFileField.getText().trim());
 
@@ -364,7 +365,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    if (poolModeCombo.getItems().contains(pool)) poolModeCombo.setValue(pool);
 
 	    verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
-	    timeoutSpinner.getValueFactory().setValue(AppPreferences.loadInt(cmd + ".timeout", 0));
+	    timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
 
 	    if ("RULEBASIS".equals(cmd)) {
 	        String algo = AppPreferences.loadString(cmd + ".algo",
