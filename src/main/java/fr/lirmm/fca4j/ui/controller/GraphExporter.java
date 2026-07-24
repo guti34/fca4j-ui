@@ -25,7 +25,13 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-
+import fr.lirmm.fca4j.ui.service.DotDisplayPreprocessor;
+import fr.lirmm.fca4j.ui.service.SvgTranscoderUtils;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import fr.lirmm.fca4j.ui.util.FileTypeIcon;
+import javafx.scene.Node;
 /**
  * Gère la toolbar du graphe : setup des boutons, ouverture de fichiers DOT,
  * sauvegarde DOT, export SVG/PNG/PDF via GraphViz, et loupe.
@@ -77,23 +83,24 @@ public class GraphExporter {
     // ── Setup toolbar ────────────────────────────────────────────────────────
 
     public void setupToolbar() {
-        setBtn(btnOpenDot,   new FontIcon(Material2AL.FOLDER_OPEN),       I18n.get("graph.btn.open.dot"));
-        setBtn(btnSaveDot,   new FontIcon(Material2MZ.SAVE),              I18n.get("graph.btn.save.dot"));
-        setBtn(btnExportSvg, new FontIcon(Material2AL.IMAGE),             I18n.get("graph.btn.export.svg"));
-        setBtn(btnExportPng, new FontIcon(Material2AL.IMAGE),             I18n.get("graph.btn.export.png"));
-        setBtn(btnExportPdf, new FontIcon(Material2AL.INSERT_DRIVE_FILE), I18n.get("graph.btn.export.pdf"));
-        setBtn(btnMagnifier, new FontIcon(Material2MZ.SEARCH),            I18n.get("graph.btn.magnifier"));
+        setBtn(btnOpenDot,   new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("graph.btn.open.dot"));
+        setBtn(btnSaveDot,   new FontIcon(Material2MZ.SAVE),        I18n.get("graph.btn.save.dot"));
+        setBtn(btnExportSvg, new FileTypeIcon("SVG", 20),           I18n.get("graph.btn.export.svg"));
+        setBtn(btnExportPng, new FileTypeIcon("PNG", 20),           I18n.get("graph.btn.export.png"));
+        setBtn(btnExportPdf, new FileTypeIcon("PDF", 20),           I18n.get("graph.btn.export.pdf"));
+        setBtn(btnMagnifier, new FontIcon(Material2MZ.SEARCH),      I18n.get("graph.btn.magnifier"));
     }
 
-    private void setBtn(Button btn, FontIcon icon, String tooltip) {
+    private void setBtn(Button btn, Node icon, String tooltip) {
         if (btn == null) return;
-        icon.setIconSize(20);
-        icon.setIconColor(Color.valueOf("#444444"));
+        if (icon instanceof FontIcon fi) {
+            fi.setIconSize(20);
+            fi.setIconColor(Color.valueOf("#444444"));
+        }
         btn.setGraphic(icon);
         btn.setText("");
         btn.setTooltip(new Tooltip(tooltip));
     }
-
     // ── Activation / désactivation des boutons ───────────────────────────────
 
     public void enableButtons() {
@@ -176,37 +183,53 @@ public class GraphExporter {
 
         FileChooser fc = new FileChooser();
         fc.setTitle(I18n.get("graph.export." + format));
-        fc.setInitialFileName(src.getFileName().toString()
-            .replace(".dot", "." + format));
+        fc.setInitialFileName(src.getFileName().toString().replace(".dot", "." + format));
         fc.setInitialDirectory(src.getParent().toFile());
-        fc.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter(format.toUpperCase(), extension));
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(format.toUpperCase(), extension));
         File dest = fc.showSaveDialog(windowProvider.get());
         if (dest == null) return;
 
-        String dotExe = AppPreferences.getDotPath();
-        ProcessBuilder pb = new ProcessBuilder(
-            dotExe, "-T" + format, src.toString(), "-o", dest.getAbsolutePath());
-        pb.redirectErrorStream(true);
-
         CompletableFuture.runAsync(() -> {
+            Path tempDot = null, tempSvg = null;
             try {
-                Process proc = pb.start();
-                int exit = proc.waitFor();
-                Platform.runLater(() -> {
-                    if (exit == 0)
-                        console.accept(I18n.get("graph.exported",
-                            format.toUpperCase(), dest.getName()));
-                    else
-                        console.accept("[GraphViz] export " + format
-                            + " failed (exit " + exit + ")");
-                });
+                // 1. pré-traitement cosmétique (symboles Unicode + police), réservé à l'UI
+                String displayDot = DotDisplayPreprocessor.forDisplay(Files.readString(src));
+                tempDot = Files.createTempFile("fca4j-display-", ".dot");
+                Files.writeString(tempDot, displayDot);
+
+                // 2. seul appel externe restant : dot -Tsvg, toujours correct pour l'Unicode
+                tempSvg = Files.createTempFile("fca4j-display-", ".svg");
+                ProcessBuilder pb = new ProcessBuilder(
+                    AppPreferences.getDotPath(), "-Tsvg", tempDot.toString(), "-o", tempSvg.toString());
+                pb.redirectErrorStream(true);
+                int exit = pb.start().waitFor();
+                if (exit != 0) {
+                    Platform.runLater(() -> console.accept("[GraphViz] export " + format + " failed (exit " + exit + ")"));
+                    return;
+                }
+
+                // 3. SVG -> PNG/PDF en Java (Batik/FOP), copie simple pour le SVG
+                switch (format) {
+                    case "svg" -> Files.copy(tempSvg, dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    case "png" -> SvgTranscoderUtils.svgToPng(tempSvg.toFile(), dest, null);
+                    case "pdf" -> SvgTranscoderUtils.svgToPdf(tempSvg.toFile(), dest);
+                    default -> throw new IllegalArgumentException("format non supporté: " + format);
+                }
+                Platform.runLater(() -> console.accept(I18n.get("graph.exported", format.toUpperCase(), dest.getName())));
             } catch (Exception e) {
                 Platform.runLater(() -> console.accept("[GraphViz] " + e.getMessage()));
+            } finally {
+                deleteQuietly(tempDot);
+                deleteQuietly(tempSvg);
             }
         });
     }
 
+    private static void deleteQuietly(Path p) {
+        if (p != null) {
+            try { Files.deleteIfExists(p); } catch (IOException ignored) { }
+        }
+    }
     // ── Open DOT ─────────────────────────────────────────────────────────────
 
     /**

@@ -4,6 +4,7 @@
  */
 package fr.lirmm.fca4j.ui.service;
 
+import java.io.IOException;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Worker;
@@ -100,9 +101,17 @@ public class GraphRenderer {
 	            return null;
 	        });
 	}
+
 	private CompletableFuture<Void> renderWithOptions(Path dotFile, boolean largeMode) {
 	    return CompletableFuture.supplyAsync(() -> {
+	        Path tempDot = null;
 	        try {
+	            // pré-traitement cosmétique (symboles Unicode + police), réservé à l'UI
+	            // (DotDisplayPreprocessor est dans le même package fr.lirmm.fca4j.ui.service)
+	            String displayDot = DotDisplayPreprocessor.forDisplay(Files.readString(dotFile));
+	            tempDot = Files.createTempFile("fca4j-display-", ".dot");
+	            Files.writeString(tempDot, displayDot);
+
 	            Path svgFile = Files.createTempFile("fca4j-graph-", ".svg");
 	            svgFile.toFile().deleteOnExit();
 
@@ -114,7 +123,7 @@ public class GraphRenderer {
 	                cmd.add("-Gnslimit1=2");
 	                cmd.add("-Gmaxiter=500");
 	            }
-	            cmd.add(dotFile.toString());
+	            cmd.add(tempDot.toString());
 	            cmd.add("-o");
 	            cmd.add(svgFile.toString());
 
@@ -129,10 +138,13 @@ public class GraphRenderer {
 	            return Files.readString(svgFile);
 	        } catch (Exception e) {
 	            throw new RuntimeException(e);
+	        } finally {
+	            if (tempDot != null) {
+	                try { Files.deleteIfExists(tempDot); } catch (IOException ignored) { }
+	            }
 	        }
 	    }).thenAccept(svg -> Platform.runLater(() -> loadSvgInWebEngine(svg)));
-	}
-	private void loadSvgInWebEngine(String svgContent) {
+	}	private void loadSvgInWebEngine(String svgContent) {
 		String html = buildHtml(svgContent);
 
 		// Listener à usage unique — retiré dès le premier SUCCEEDED
