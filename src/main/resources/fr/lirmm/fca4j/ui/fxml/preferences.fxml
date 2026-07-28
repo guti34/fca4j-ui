@@ -32,6 +32,16 @@
     </HBox>
 
     <Separator/>
+
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label fx:id="browserLabel" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="browserCombo" prefWidth="240"/>
+		<Button fx:id="refreshBrowsersButton" text="&#x27F3;" onAction="#onRefreshBrowsers"/>
+    </HBox>
+    <Label fx:id="browserHintLabel" maxWidth="480" wrapText="true"
+           style="-fx-text-fill: gray; -fx-font-size: 11px;"/>
+
+    <Separator/>
     <Label fx:id="vmArgsLabel" style="-fx-font-weight: bold;"/>
     <TextField fx:id="vmArgsField" promptText="-Xmx2g -Xms512m"/>
     <Label fx:id="vmArgsHintLabel" style="-fx-text-fill: gray; -fx-font-size: 11px;"/>

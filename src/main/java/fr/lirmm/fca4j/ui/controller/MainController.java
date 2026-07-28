@@ -283,6 +283,7 @@ public class MainController implements Initializable {
 		mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, old, tab) -> updateCurrentFileInfo());
 		commandTabPane.getSelectionModel().selectedItemProperty()
 				.addListener((obs, old, tab) -> updateCurrentFileInfo());
+		browserLauncher.setLogger(this::appendConsole);   // dans MainController.initialize()
 	}
 
 	private void updateCurrentFileInfo() {

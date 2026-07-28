@@ -6,22 +6,21 @@ package fr.lirmm.fca4j.ui.controller;
 
 import com.sun.net.httpserver.HttpServer;
 
+import fr.lirmm.fca4j.ui.util.AppPreferences;
+import fr.lirmm.fca4j.ui.util.BrowserRegistry;
+import fr.lirmm.fca4j.ui.util.BrowserRegistry.Browser;
+import fr.lirmm.fca4j.ui.util.BrowserRegistry.Os;
+
 import javafx.application.Platform;
 
-import java.io.File;
 import java.io.IOException;
+import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -29,337 +28,349 @@ import java.util.function.Consumer;
  * Gère l'ouverture d'URLs dans le navigateur et les serveurs HTTP locaux
  * pour RCAViz et FCAvizIR.
  *
- * <p>Stratégie d'ouverture : on privilégie systématiquement le mécanisme
- * d'association du système (qui respecte le navigateur par défaut de
- * l'utilisateur), et on ne retombe sur des chemins codés en dur qu'en cas
- * d'échec avéré — c'est-à-dire code de sortie non nul, pas simplement
- * « le processus a démarré ».</p>
+ * <h2>Choix du navigateur</h2>
+ * L'utilisateur peut imposer un navigateur dans les préférences. À défaut,
+ * on passe par l'association du système, qui respecte son navigateur par
+ * défaut. La détection et le lancement sont délégués à
+ * {@link BrowserRegistry}.
+ *
+ * <h2>Passage de données à RCAViz / FCAvizIR</h2>
+ * Les deux outils sont servis en HTTPS et récupèrent le fichier via un
+ * paramètre {@code ?data=http://127.0.0.1:PORT/...}. Il s'agit donc d'une
+ * sous-ressource http chargée depuis une page https (« mixed content »).
+ * La spécification W3C exempte les adresses de bouclage, et Chrome, Firefox
+ * et Edge appliquent cette exemption — <b>mais pas WebKit</b>
+ * (bug WebKit 171934, toujours ouvert). Sous Safari la requête est rejetée
+ * avec « due to access control checks » et la page reste vide.
+ *
+ * <p>Conséquence : pour ces deux URLs seulement, et uniquement lorsque
+ * l'utilisateur n'a pas imposé de navigateur, on tente d'abord un navigateur
+ * non-WebKit sous macOS. Si aucun n'est disponible — ou si l'utilisateur a
+ * explicitement choisi un navigateur WebKit — on bascule en dépôt manuel :
+ * le fichier est révélé dans le Finder, à déposer dans la page.</p>
  */
 public class BrowserLauncher {
-
-    private enum Os { WINDOWS, MAC, LINUX }
-
-    private static final Os OS = detectOs();
-
-    /** Limite pratique de ShellExecuteW, utilisé par Desktop.browse() sous Windows. */
-    private static final int SHELL_EXECUTE_LIMIT = 1800;
-
-    /** Au-delà, on considère que le lanceur a rendu la main « assez longtemps ». */
-    private static final long LAUNCHER_TIMEOUT_MS = 5_000L;
 
     private HttpServer rcavizServer;
     private int rcavizPort;
     private HttpServer fcavizirServer;
     private int fcavizirPort;
 
-    /** Callback (titre, message) pour afficher une alerte en cas d'erreur. */
+    /** Callback (titre, message) pour afficher une alerte. */
     private final BiConsumer<String, String> onError;
 
-    /**
-     * @param onError callback appelé en cas d'erreur (titre, message).
-     *                Il sera toujours invoqué sur le thread JavaFX.
-     */
+    /** Trace optionnelle (console applicative). */
+    private volatile Consumer<String> logger = msg -> { };
+
     public BrowserLauncher(BiConsumer<String, String> onError) {
         this.onError = onError;
     }
 
-    // ── API publique ─────────────────────────────────────────────────────────
+    /**
+     * Branche une trace pour diagnostiquer les échanges avec le serveur local.
+     * Typiquement : {@code browserLauncher.setLogger(this::appendConsole)}.
+     */
+    public void setLogger(Consumer<String> logger) {
+        this.logger = (logger != null) ? logger : msg -> { };
+    }
+
+    // ── Ouverture d'URL, usage général ───────────────────────────────────────
 
     /**
-     * Ouvre une URL dans le navigateur par défaut de l'utilisateur.
-     * <p>L'appel est <b>asynchrone</b> : il retourne immédiatement et ne bloque
-     * jamais le thread d'application JavaFX. Une éventuelle erreur est signalée
-     * via le callback {@code onError}.</p>
+     * Ouvre une URL dans le navigateur choisi par l'utilisateur, ou à défaut
+     * dans le navigateur par défaut du système.
+     * <p>Appel <b>asynchrone</b> : ne bloque jamais le thread JavaFX.</p>
      */
     public void openUrlWithFallback(String url) {
-        Thread t = new Thread(() -> {
+        runAsync(() -> {
             if (!openUrlBlocking(url)) {
                 reportError("Browser", "Impossible d'ouvrir le navigateur pour :\n" + url);
             }
-        }, "browser-launcher");
-        t.setDaemon(true);
-        t.start();
+        });
     }
 
-    /**
-     * Variante <b>bloquante</b> : à réserver aux appels hors thread JavaFX
-     * (tests, tâches de fond).
-     *
-     * @return true si un navigateur a effectivement été lancé
-     */
+    /** Variante <b>bloquante</b> : à réserver aux appels hors thread JavaFX. */
     public boolean openUrl(String url) {
         return openUrlBlocking(url);
     }
 
-    // ── Aiguillage par plateforme ────────────────────────────────────────────
-
     private boolean openUrlBlocking(String url) {
-        switch (OS) {
-            case MAC:   return openMac(url);
-            case LINUX: return openLinux(url);
-            default:    return openWindows(url);
-        }
-    }
-
-    // ── macOS ────────────────────────────────────────────────────────────────
-
-    private boolean openMac(String url) {
-        // Chemin absolu : quand l'app est lancée par le Finder / LaunchServices,
-        // le PATH hérité est minimal et parfois vide.
-        // `open <url>` respecte le navigateur par défaut et met la fenêtre au premier plan.
-        if (runAndWait(null, "/usr/bin/open", url)) {
-            return true;
-        }
-        // Repli si aucune association http(s) n'est enregistrée (cas rare).
-        if (runAndWait(null, "/usr/bin/open", "-a", "Safari", url)) {
-            return true;
-        }
-        return desktopBrowse(url);
-    }
-
-    // ── Linux ────────────────────────────────────────────────────────────────
-
-    private boolean openLinux(String url) {
-        List<String[]> launchers = new ArrayList<>();
-        launchers.add(new String[]{"xdg-open", url});
-        launchers.add(new String[]{"gio", "open", url});
-        launchers.add(new String[]{"kde-open5", url});
-        launchers.add(new String[]{"gnome-open", url});
-        launchers.add(new String[]{"x-www-browser", url});
-        launchers.add(new String[]{"sensible-browser", url});
-
-        for (String[] cmd : launchers) {
-            String exe = findOnPath(cmd[0]);
-            if (exe == null) continue;
-            String[] resolved = cmd.clone();
-            resolved[0] = exe;
-            if (runAndWait(BrowserLauncher::sanitizeLinuxEnv, resolved)) {
+        Browser preferred = resolvePreferred();
+        if (preferred != null) {
+            if (BrowserRegistry.launch(preferred, url)) {
+                log("ouverture dans " + preferred.name());
                 return true;
             }
+            log("échec du lancement de " + preferred.name()
+                + ", retour au navigateur par défaut");
         }
-        return desktopBrowse(url);
+        if (BrowserRegistry.launchSystemDefault(url)) return true;
+        return BrowserRegistry.desktopBrowse(url);
     }
 
     /**
-     * Nettoie l'environnement transmis au navigateur.
+     * Navigateur imposé dans les préférences.
      *
-     * <p>Deux familles de variables sont problématiques :</p>
-     * <ul>
-     *   <li>{@code DESKTOP_STARTUP_ID} / {@code XDG_ACTIVATION_TOKEN} : hérités de
-     *       notre propre lancement, ils sont périmés. Le gestionnaire de fenêtres
-     *       refuse alors d'activer la fenêtre du navigateur (protection contre le
-     *       vol de focus) : l'URL s'ouvre mais reste en arrière-plan.</li>
-     *   <li>{@code LD_LIBRARY_PATH} &amp; consorts : injectés par le lanceur
-     *       jpackage, ils pointent vers les bibliothèques embarquées de l'app et
-     *       peuvent faire échouer ou dégrader le démarrage du navigateur.</li>
-     * </ul>
+     * @return null si aucun choix, ou si le navigateur choisi a disparu
      */
-    private static void sanitizeLinuxEnv(Map<String, String> env) {
-        env.remove("DESKTOP_STARTUP_ID");
-        env.remove("XDG_ACTIVATION_TOKEN");
-        env.remove("LD_LIBRARY_PATH");
-        env.remove("LD_PRELOAD");
-        env.remove("GTK_PATH");
-        env.remove("GIO_MODULE_DIR");
-        env.remove("GDK_PIXBUF_MODULE_FILE");
-        env.remove("GSETTINGS_SCHEMA_DIR");
-        env.remove("JAVA_HOME");
+    private Browser resolvePreferred() {
+        String id = AppPreferences.getPreferredBrowserId();
+        if (id == null || id.isBlank()) return null;
+
+        Browser browser = BrowserRegistry.byId(id);
+        if (browser == null) {
+            log("le navigateur choisi dans les préférences n'est plus installé ("
+                + id + ") — utilisation du navigateur par défaut");
+        }
+        return browser;
     }
 
-    // ── Windows ──────────────────────────────────────────────────────────────
+    // ── RCAViz ───────────────────────────────────────────────────────────────
 
-    private boolean openWindows(String url) {
-        boolean shortUrl = url.length() <= SHELL_EXECUTE_LIMIT;
-
-        // Cas nominal : Desktop.browse() passe par ShellExecuteW et respecte
-        // donc le navigateur par défaut.
-        if (shortUrl && desktopBrowse(url)) {
-            return true;
-        }
-
-        // URL trop longue (ou AWT indisponible) : on résout nous-mêmes le
-        // navigateur par défaut via la base de registre, puis on le lance en
-        // argv — ce qui échappe à la limite de 2048 caractères.
-        String exe = findDefaultBrowserExe();
-        if (exe != null && new File(exe).isFile() && runDetached(exe, url)) {
-            return true;
-        }
-
-        for (String candidate : windowsFallbackExes()) {
-            if (new File(candidate).isFile() && runDetached(candidate, url)) {
-                return true;
+    public void openInRcaviz(Path jsonFile) {
+        runAsync(() -> {
+            try {
+                int port = startServer(jsonFile, "application/json", true);
+                String url = "https://rcaviz.lirmm.fr/?data=http://" + loopbackHost()
+                    + ":" + port + "/" + encodeFileName(jsonFile);
+                log("RCAViz : serveur local sur " + loopbackHost() + ":" + port
+                    + " pour " + jsonFile.getFileName());
+                openVisualizationUrl("RCAViz", url, jsonFile);
+            } catch (Exception e) {
+                reportError("RCAViz", String.valueOf(e.getMessage()));
             }
-        }
+        });
+    }
 
-        // Dernier recours : le gestionnaire de protocole, sans passer par cmd.exe
-        // (dont les règles de quoting sont incompatibles avec ProcessBuilder).
-        return shortUrl
-            && runAndWait(null, "rundll32.exe", "url.dll,FileProtocolHandler", url);
+    // ── FCAvizIR ─────────────────────────────────────────────────────────────
+
+    public void openInFcavizir(Path txtFile) {
+        runAsync(() -> {
+            try {
+                int port = startServer(txtFile, "text/plain; charset=utf-8", false);
+                String url = "https://fcavizir.lirmm.fr/?data=http://" + loopbackHost()
+                    + ":" + port + "/" + encodeFileName(txtFile);
+                log("FCAvizIR : serveur local sur " + loopbackHost() + ":" + port
+                    + " pour " + txtFile.getFileName());
+                openVisualizationUrl("FCAvizIR", url, txtFile);
+            } catch (Exception e) {
+                reportError("FCAvizIR", String.valueOf(e.getMessage()));
+            }
+        });
     }
 
     /**
-     * Résout l'exécutable du navigateur par défaut via
-     * {@code UrlAssociations\https\UserChoice} puis {@code shell\open\command}.
+     * Ouvre une URL de visualisation, qui dépend d'un chargement de
+     * sous-ressource depuis le bouclage local.
      *
-     * @return le chemin de l'exécutable, ou null si non déterminable
+     * @param tool     nom de l'outil, pour les messages
+     * @param url      URL complète avec le paramètre data
+     * @param dataFile fichier à révéler en cas de dépôt manuel
      */
-    private static String findDefaultBrowserExe() {
-        String progId = regQuery(
-            "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations"
-                + "\\UrlAssociations\\https\\UserChoice",
-            "ProgId");
-        if (progId == null || progId.isBlank()) return null;
+    private void openVisualizationUrl(String tool, String url, Path dataFile) {
+        Browser preferred = resolvePreferred();
 
-        String command = regQuery("HKCR\\" + progId + "\\shell\\open\\command", null);
-        if (command == null || command.isBlank()) return null;
+        // 1. Choix explicite de l'utilisateur : il fait foi.
+        if (preferred != null) {
+            boolean launched = BrowserRegistry.launch(preferred, url);
+            if (!launched) {
+                log("échec du lancement de " + preferred.name());
+                if (!openUrlBlocking(url)) {
+                    reportError(tool, "Impossible d'ouvrir le navigateur pour :\n" + url);
+                }
+                return;
+            }
+            log("ouverture dans " + preferred.name());
+            if (preferred.webkit()) {
+                // On a lancé quand même, mais le chargement va échouer.
+                fallbackToManualDrop(tool, preferred.name(), dataFile);
+            }
+            return;
+        }
 
-        return extractExecutable(command);
+        // 2. Mode automatique. Sous macOS, le navigateur par défaut est
+        //    fréquemment Safari, qui bloquerait la requête vers le bouclage.
+        if (BrowserRegistry.OS == Os.MAC) {
+            Browser alternative = firstNonWebKit();
+            if (alternative != null && BrowserRegistry.launch(alternative, url)) {
+                log("navigateur retenu pour la visualisation : " + alternative.name());
+                return;
+            }
+            log(tool + " : aucun navigateur non-WebKit détecté, passage en dépôt manuel");
+            openUrlBlocking(url);
+            fallbackToManualDrop(tool, "Safari", dataFile);
+            return;
+        }
+
+        // 3. Windows et Linux : le navigateur par défaut convient.
+        if (!openUrlBlocking(url)) {
+            reportError(tool, "Impossible d'ouvrir le navigateur pour :\n" + url);
+        }
     }
 
-    /** Extrait le chemin de l'exécutable d'une ligne de commande du registre. */
-    private static String extractExecutable(String command) {
-        String c = command.trim();
-        if (c.startsWith("\"")) {
-            int end = c.indexOf('"', 1);
-            return end > 1 ? c.substring(1, end) : null;
-        }
-        int sp = c.indexOf(' ');
-        return sp > 0 ? c.substring(0, sp) : c;
-    }
-
-    /**
-     * Interroge le registre. {@code valueName} à null pour la valeur par défaut.
-     */
-    private static String regQuery(String key, String valueName) {
-        List<String> cmd = new ArrayList<>(List.of("reg.exe", "query", key));
-        if (valueName == null) {
-            cmd.add("/ve");
-        } else {
-            cmd.add("/v");
-            cmd.add(valueName);
-        }
-        try {
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            String out;
-            try (var in = p.getInputStream()) {
-                out = new String(in.readAllBytes(), consoleCharset());
-            }
-            if (!p.waitFor(LAUNCHER_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                p.destroyForcibly();
-                return null;
-            }
-            for (String line : out.split("\\R")) {
-                int idx = line.indexOf("REG_SZ");
-                if (idx < 0) idx = line.indexOf("REG_EXPAND_SZ");
-                if (idx < 0) continue;
-                int typeLen = line.startsWith("REG_EXPAND_SZ", idx) ? 13 : 6;
-                return line.substring(idx + typeLen).trim();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        } catch (Exception ignored) {
-            // registre inaccessible : on laissera jouer les replis
+    private Browser firstNonWebKit() {
+        for (Browser b : BrowserRegistry.installed()) {
+            if (!b.webkit()) return b;
         }
         return null;
     }
 
-    private static List<String> windowsFallbackExes() {
-        List<String> list = new ArrayList<>();
-        String local = System.getenv("LOCALAPPDATA");
-        list.add("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe");
-        list.add("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe");
-        if (local != null) {
-            list.add(local + "\\Google\\Chrome\\Application\\chrome.exe");
-        }
-        list.add("C:\\Program Files\\Mozilla Firefox\\firefox.exe");
-        list.add("C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe");
-        return list;
+    /**
+     * Mode dégradé : le navigateur utilisé ne peut pas charger les données
+     * depuis le serveur local. On révèle le fichier pour que l'utilisateur
+     * le dépose lui-même dans la page.
+     */
+    private void fallbackToManualDrop(String tool, String browserName, Path dataFile) {
+        revealInFileManager(dataFile);
+        reportError(tool,
+            browserName + " ne peut pas charger les données depuis le serveur local\n"
+            + "(restriction WebKit sur le contenu mixte, bug 171934).\n\n"
+            + "Le fichier suivant a été révélé dans l'explorateur :\n"
+            + dataFile.getFileName() + "\n\n"
+            + "Déposez-le dans la page " + tool + " pour poursuivre, ou choisissez\n"
+            + "Chrome, Firefox ou Edge dans Fichier > Préférences.");
     }
 
-    // ── Primitives d'exécution ───────────────────────────────────────────────
-
-    /**
-     * Lance un <i>lanceur</i> (open, xdg-open, rundll32…) et attend son code de
-     * sortie. Ces commandes rendent la main quasi immédiatement : leur code de
-     * sortie est donc exploitable, contrairement au lancement direct d'un
-     * navigateur (qui reste vivant tant que la fenêtre est ouverte).
-     */
-    private static boolean runAndWait(Consumer<Map<String, String>> envCustomizer,
-                                      String... cmd) {
+    /** Ouvre l'explorateur de fichiers en sélectionnant le fichier. */
+    private void revealInFileManager(Path file) {
         try {
-            ProcessBuilder pb = new ProcessBuilder(cmd);
-            if (envCustomizer != null) envCustomizer.accept(pb.environment());
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
-            Process p = pb.start();
-            if (!p.waitFor(LAUNCHER_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-                // Ne rend pas la main : c'est probablement le navigateur lui-même.
-                return true;
+            Path absolute = file.toAbsolutePath();
+            switch (BrowserRegistry.OS) {
+                case MAC ->
+                    BrowserRegistry.runAndWait(null, "/usr/bin/open", "-R", absolute.toString());
+                case WINDOWS ->
+                    BrowserRegistry.runDetached(null, "explorer.exe", "/select," + absolute);
+                default -> {
+                    Path parent = absolute.getParent();
+                    String exe = BrowserRegistry.findOnPath("xdg-open");
+                    if (exe != null && parent != null) {
+                        BrowserRegistry.runAndWait(BrowserRegistry::sanitizeLinuxEnv,
+                                                   exe, parent.toString());
+                    }
+                }
             }
-            return p.exitValue() == 0;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return false;
         } catch (Exception e) {
-            return false;
+            log("révélation du fichier impossible : " + e.getMessage());
         }
     }
 
-    /** Lance un exécutable de navigateur sans attendre sa terminaison. */
-    private static boolean runDetached(String... cmd) {
-        try {
-            new ProcessBuilder(cmd)
-                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .start();
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
+    /**
+     * Le serveur sert le même fichier quel que soit le chemin demandé ; on peut
+     * donc encoder librement le nom, ce qui évite qu'un espace ou un accent
+     * ne casse l'URL transmise à l'outil.
+     */
+    private static String encodeFileName(Path file) {
+        return URLEncoder.encode(file.getFileName().toString(), StandardCharsets.UTF_8)
+                         .replace("+", "%20");
     }
 
-    private boolean desktopBrowse(String url) {
-        try {
-            if (!java.awt.Desktop.isDesktopSupported()) return false;
-            java.awt.Desktop d = java.awt.Desktop.getDesktop();
-            if (!d.isSupported(java.awt.Desktop.Action.BROWSE)) return false;
-            d.browse(new URI(url));
-            return true;
-        } catch (Throwable t) {
-            // Throwable et non Exception : NoClassDefFoundError si le runtime
-            // jlink a été construit sans le module java.desktop.
-            return false;
+    // ── Serveurs HTTP locaux ─────────────────────────────────────────────────
+
+    private synchronized int startServer(Path file, String contentType, boolean isRcaviz)
+            throws Exception {
+        if (isRcaviz) {
+            if (rcavizServer != null) rcavizServer.stop(0);
+            rcavizServer = createFileServer(file, contentType);
+            rcavizPort = rcavizServer.getAddress().getPort();
+            return rcavizPort;
         }
+        if (fcavizirServer != null) fcavizirServer.stop(0);
+        fcavizirServer = createFileServer(file, contentType);
+        fcavizirPort = fcavizirServer.getAddress().getPort();
+        return fcavizirPort;
     }
 
-    private static String findOnPath(String name) {
-        String path = System.getenv("PATH");
-        if (path == null) return null;
-        for (String dir : path.split(File.pathSeparator)) {
-            if (dir.isBlank()) continue;
-            File f = new File(dir, name);
-            if (f.isFile() && f.canExecute()) return f.getAbsolutePath();
-        }
-        return null;
+    private HttpServer createFileServer(Path file, String contentType)
+            throws Exception {
+        // Bouclage uniquement : le fichier de contexte n'a aucune raison
+        // d'être exposé au réseau local, et cela évite la demande
+        // d'autorisation du pare-feu applicatif macOS.
+        HttpServer server = HttpServer.create(
+            new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+
+        server.createContext("/", exchange -> {
+            String method = exchange.getRequestMethod();
+            log("HTTP " + method + " " + exchange.getRequestURI()
+                + "  Origin=" + header(exchange.getRequestHeaders().getFirst("Origin"))
+                + "  UA=" + header(exchange.getRequestHeaders().getFirst("User-Agent")));
+
+            var headers = exchange.getResponseHeaders();
+            headers.add("Access-Control-Allow-Origin", "*");
+            headers.add("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+            headers.add("Access-Control-Allow-Headers", "*");
+            headers.add("Cache-Control", "no-store");
+
+            if ("OPTIONS".equals(method)) {
+                exchange.sendResponseHeaders(204, -1);
+                exchange.close();
+                return;
+            }
+
+            byte[] bytes;
+            try {
+                bytes = Files.readAllBytes(file);
+            } catch (IOException e) {
+                log("lecture impossible : " + e.getMessage());
+                exchange.sendResponseHeaders(500, -1);
+                exchange.close();
+                return;
+            }
+
+            headers.add("Content-Type", contentType);
+
+            if ("HEAD".equals(method)) {
+                headers.add("Content-Length", String.valueOf(bytes.length));
+                exchange.sendResponseHeaders(200, -1);
+                exchange.close();
+                return;
+            }
+
+            // -1 et non 0 pour un corps vide : 0 signifierait « longueur inconnue ».
+            exchange.sendResponseHeaders(200, bytes.length == 0 ? -1 : bytes.length);
+            try (var os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+            log("  -> " + bytes.length + " octets servis");
+        });
+
+        server.setExecutor(null);
+        server.start();
+        return server;
     }
 
-    private static Os detectOs() {
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("win")) return Os.WINDOWS;
-        if (os.contains("mac") || os.contains("darwin")) return Os.MAC;
-        return Os.LINUX;
+    /** Arrête les serveurs HTTP locaux. À appeler dans shutdown(). */
+    public synchronized void stopServers() {
+        if (rcavizServer != null) rcavizServer.stop(0);
+        if (fcavizirServer != null) fcavizirServer.stop(0);
     }
 
-    private static Charset consoleCharset() {
-        try {
-            String enc = System.getProperty("native.encoding");
-            if (enc != null) return Charset.forName(enc);
-        } catch (Exception ignored) {
-            // jeu de caractères inconnu
+    /** Adresse littérale de bouclage, crochetée si IPv6. */
+    private static String loopbackHost() {
+        InetAddress addr = InetAddress.getLoopbackAddress();
+        String host = addr.getHostAddress();
+        return (addr instanceof Inet6Address) ? "[" + host + "]" : host;
+    }
+
+    private static String header(String value) {
+        return (value == null) ? "-" : value;
+    }
+
+    // ── Utilitaires internes ─────────────────────────────────────────────────
+
+    private static void runAsync(Runnable task) {
+        Thread t = new Thread(task, "browser-launcher");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void log(String message) {
+        Consumer<String> l = logger;
+        if (l == null) return;
+        if (Platform.isFxApplicationThread()) {
+            l.accept("[viz] " + message);
+        } else {
+            Platform.runLater(() -> l.accept("[viz] " + message));
         }
-        return Charset.defaultCharset();
     }
 
     private void reportError(String title, String message) {
@@ -369,85 +380,5 @@ public class BrowserLauncher {
         } else {
             Platform.runLater(() -> onError.accept(title, message));
         }
-    }
-
-    // ── RCAViz ───────────────────────────────────────────────────────────────
-
-    public void openInRcaviz(Path jsonFile) {
-        try {
-            startServer(jsonFile, "application/json", true);
-            String url = "https://rcaviz.lirmm.fr/?data=http://localhost:"
-                + rcavizPort + "/" + encodeFileName(jsonFile);
-            openUrlWithFallback(url);
-        } catch (Exception e) {
-            reportError("RCAViz", String.valueOf(e.getMessage()));
-        }
-    }
-
-    // ── FCAvizIR ─────────────────────────────────────────────────────────────
-
-    public void openInFcavizir(Path txtFile) {
-        try {
-            startServer(txtFile, "text/plain; charset=utf-8", false);
-            String url = "https://fcavizir.lirmm.fr/?data=http://localhost:"
-                + fcavizirPort + "/" + encodeFileName(txtFile);
-            openUrlWithFallback(url);
-        } catch (Exception e) {
-            reportError("FCAvizIR", String.valueOf(e.getMessage()));
-        }
-    }
-
-    /**
-     * Le serveur sert le même fichier quel que soit le chemin demandé ; on peut
-     * donc encoder librement le nom, ce qui évite qu'un espace ou un accent ne
-     * casse l'URL transmise à RCAViz / FCAvizIR.
-     */
-    private static String encodeFileName(Path file) {
-        return URLEncoder.encode(file.getFileName().toString(), StandardCharsets.UTF_8)
-                         .replace("+", "%20");
-    }
-
-    // ── Serveurs HTTP locaux ─────────────────────────────────────────────────
-
-    private void startServer(Path file, String contentType, boolean isRcaviz)
-            throws Exception {
-        if (isRcaviz) {
-            if (rcavizServer != null) rcavizServer.stop(0);
-            rcavizServer = createFileServer(file, contentType);
-            rcavizPort = rcavizServer.getAddress().getPort();
-        } else {
-            if (fcavizirServer != null) fcavizirServer.stop(0);
-            fcavizirServer = createFileServer(file, contentType);
-            fcavizirPort = fcavizirServer.getAddress().getPort();
-        }
-    }
-
-    private HttpServer createFileServer(Path file, String contentType)
-            throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/", exchange -> {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
-            exchange.getResponseHeaders().add("Content-Type", contentType);
-            byte[] bytes = Files.readAllBytes(file);
-            exchange.sendResponseHeaders(200, bytes.length);
-            try (var os = exchange.getResponseBody()) {
-                os.write(bytes);
-            }
-        });
-        server.setExecutor(null);
-        server.start();
-        return server;
-    }
-
-    /** Arrête les serveurs HTTP locaux. À appeler dans shutdown(). */
-    public void stopServers() {
-        if (rcavizServer != null) rcavizServer.stop(0);
-        if (fcavizirServer != null) fcavizirServer.stop(0);
     }
 }

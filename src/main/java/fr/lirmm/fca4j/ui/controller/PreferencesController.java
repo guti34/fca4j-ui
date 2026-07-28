@@ -6,7 +6,10 @@ package fr.lirmm.fca4j.ui.controller;
 
 import fr.lirmm.fca4j.ui.service.Fca4jRunner;
 import fr.lirmm.fca4j.ui.util.AppPreferences;
+import fr.lirmm.fca4j.ui.util.BrowserRegistry;
+import fr.lirmm.fca4j.ui.util.BrowserRegistry.Browser;
 import fr.lirmm.fca4j.ui.util.I18n;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -15,27 +18,33 @@ import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
 public class PreferencesController implements Initializable {
 
-    @FXML private Label            titleLabel;
-    @FXML private Label            jarLabel;
-    @FXML private Label            jarHintLabel;
-    @FXML private Label            dotLabel;
-    @FXML private Label            dotHintLabel;
-    @FXML private Label            langLabel;
-    @FXML private Label            vmArgsLabel;
-    @FXML private Label            vmArgsHintLabel;
-    @FXML private TextField        jarPathField;
-    @FXML private TextField        dotPathField;
-    @FXML private TextField        vmArgsField;
-    @FXML private ComboBox<Locale> languageCombo;
-    @FXML private Button           saveButton;
-    @FXML private Button           cancelButton;
-    @FXML private CheckBox         useExternalJarCheckBox;
-    @FXML private Button           browseJarButton;
+    @FXML private Label             titleLabel;
+    @FXML private Label             jarLabel;
+    @FXML private Label             jarHintLabel;
+    @FXML private Label             dotLabel;
+    @FXML private Label             dotHintLabel;
+    @FXML private Label             langLabel;
+    @FXML private Label             browserLabel;
+    @FXML private Label             browserHintLabel;
+    @FXML private Label             vmArgsLabel;
+    @FXML private Label             vmArgsHintLabel;
+    @FXML private TextField         jarPathField;
+    @FXML private TextField         dotPathField;
+    @FXML private TextField         vmArgsField;
+    @FXML private ComboBox<Locale>  languageCombo;
+    @FXML private ComboBox<Browser> browserCombo;
+    @FXML private Button            refreshBrowsersButton;
+    @FXML private Button            saveButton;
+    @FXML private Button            cancelButton;
+    @FXML private CheckBox          useExternalJarCheckBox;
+    @FXML private Button            browseJarButton;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -48,6 +57,9 @@ public class PreferencesController implements Initializable {
         dotPathField.setPromptText(I18n.get("prefs.dot.prompt"));
         dotHintLabel.setText(I18n.get("prefs.dot.hint"));
         langLabel.setText(I18n.get("prefs.language.label"));
+        browserLabel.setText(I18n.get("prefs.browser.label"));
+        browserHintLabel.setText(I18n.get("prefs.browser.hint"));
+        refreshBrowsersButton.setTooltip(new Tooltip(I18n.get("prefs.browser.refresh")));
         saveButton.setText(I18n.get("button.save"));
         cancelButton.setText(I18n.get("button.cancel"));
         useExternalJarCheckBox.setText(I18n.get("prefs.jar.external"));
@@ -85,7 +97,94 @@ public class PreferencesController implements Initializable {
             @Override public Locale fromString(String s) { return null; }
         });
         languageCombo.setValue(I18n.getLocale());
+
+        // Sélecteur de navigateur
+        initBrowserCombo();
     }
+
+    // ── Navigateur ───────────────────────────────────────────────────────────
+
+    private void initBrowserCombo() {
+        browserCombo.setConverter(new StringConverter<>() {
+            @Override public String toString(Browser b) {
+                if (b == null) return "";
+                if (b.isSystemDefault()) return I18n.get("prefs.browser.default");
+                return b.webkit()
+                    ? b.name() + " " + I18n.get("prefs.browser.webkit.suffix")
+                    : b.name();
+            }
+            @Override public Browser fromString(String s) { return null; }
+        });
+
+        browserCombo.getSelectionModel().selectedItemProperty()
+            .addListener((obs, old, val) -> updateBrowserHint(val));
+
+        loadBrowsersAsync();
+    }
+
+    /**
+     * La détection interroge la base de registre sous Windows et Spotlight
+     * sous macOS : elle ne doit pas s'exécuter sur le thread JavaFX.
+     */
+    private void loadBrowsersAsync() {
+        browserCombo.getItems().setAll(Browser.systemDefault());
+        browserCombo.getSelectionModel().selectFirst();
+        browserCombo.setDisable(true);
+        refreshBrowsersButton.setDisable(true);
+        browserHintLabel.setText(I18n.get("prefs.browser.detecting"));
+
+        Task<List<Browser>> task = new Task<>() {
+            @Override protected List<Browser> call() {
+                return BrowserRegistry.installed();
+            }
+        };
+        task.setOnSucceeded(e -> {
+            List<Browser> items = new ArrayList<>();
+            items.add(Browser.systemDefault());
+            items.addAll(task.getValue());
+            browserCombo.getItems().setAll(items);
+
+            String saved = AppPreferences.getPreferredBrowserId();
+            Browser selected = items.stream()
+                .filter(b -> b.id().equals(saved))
+                .findFirst()
+                .orElse(items.get(0));
+            browserCombo.getSelectionModel().select(selected);
+
+            browserCombo.setDisable(false);
+            refreshBrowsersButton.setDisable(false);
+            updateBrowserHint(selected);
+        });
+        task.setOnFailed(e -> {
+            browserCombo.setDisable(false);
+            refreshBrowsersButton.setDisable(false);
+            browserHintLabel.setText(I18n.get("prefs.browser.hint"));
+        });
+
+        Thread thread = new Thread(task, "browser-detect");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void updateBrowserHint(Browser browser) {
+        if (browser != null && browser.webkit()) {
+            browserHintLabel.setText(I18n.get("prefs.browser.webkit.warning"));
+            browserHintLabel.setStyle(
+                "-fx-text-fill: #b35c00; -fx-font-size: 11px; -fx-wrap-text: true;");
+        } else {
+            browserHintLabel.setText(I18n.get("prefs.browser.hint"));
+            browserHintLabel.setStyle(
+                "-fx-text-fill: gray; -fx-font-size: 11px; -fx-wrap-text: true;");
+        }
+    }
+
+    @FXML
+    private void onRefreshBrowsers() {
+        BrowserRegistry.refresh();
+        loadBrowsersAsync();
+    }
+
+    // ── Actions ──────────────────────────────────────────────────────────────
 
     @FXML
     private void onBrowseJar() {
@@ -111,6 +210,9 @@ public class PreferencesController implements Initializable {
         AppPreferences.setFca4jJarPath(jarPathField.getText().trim());
         AppPreferences.setDotPath(dotPathField.getText().trim());
         AppPreferences.setVmArgs(vmArgsField.getText().trim());
+
+        Browser browser = browserCombo.getValue();
+        AppPreferences.setPreferredBrowserId(browser == null ? "" : browser.id());
 
         Locale selected = languageCombo.getValue();
         if (selected != null && !selected.equals(I18n.getLocale())) {

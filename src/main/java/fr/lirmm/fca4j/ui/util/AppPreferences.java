@@ -223,4 +223,22 @@ public class AppPreferences {
     public static void setVmArgs(String vmArgs) {
         PREFS.put(KEY_VM_ARGS, vmArgs == null ? "" : vmArgs.trim());
     }
+    private static final String KEY_BROWSER = "ui.browser.id";
+
+    /**
+     * Identifiant du navigateur imposé par l'utilisateur.
+     *
+     * @return chaîne vide si l'utilisateur laisse le système décider
+     */
+    public static String getPreferredBrowserId() {
+        return PREFS.get(KEY_BROWSER, "");
+    }
+
+    /**
+     * @param id identifiant issu de {@code BrowserRegistry.Browser#id()},
+     *           ou chaîne vide / null pour revenir au navigateur par défaut
+     */
+    public static void setPreferredBrowserId(String id) {
+        PREFS.put(KEY_BROWSER, id == null ? "" : id.trim());
+    }
 }
