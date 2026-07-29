@@ -9,6 +9,7 @@
     <!-- ── Toolbar ── -->
     <ToolBar styleClass="editor-toolbar">
         <Button fx:id="btnOpen" styleClass="icon-btn" onAction="#onOpen"/>
+        <Button fx:id="btnSaveAs" styleClass="icon-btn" onAction="#onSaveAs"/>
         <Separator orientation="VERTICAL"/>
         <Label fx:id="fileNameLabel"
                style="-fx-font-weight: bold; -fx-text-fill: #0047B3; -fx-font-size: 12px;"/>

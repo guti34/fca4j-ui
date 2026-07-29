@@ -9,12 +9,15 @@ import fr.lirmm.fca4j.ui.util.AppPreferences;
 import fr.lirmm.fca4j.ui.util.BrowserRegistry;
 import fr.lirmm.fca4j.ui.util.BrowserRegistry.Browser;
 import fr.lirmm.fca4j.ui.util.I18n;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 import javafx.util.StringConverter;
 
 import java.net.URL;
@@ -24,6 +27,14 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 
 public class PreferencesController implements Initializable {
+
+    /** Style de base de l'aide sous le sélecteur de navigateur. */
+    private static final String HINT_STYLE_NEUTRAL =
+        "-fx-text-fill: gray; -fx-font-size: 11px;";
+
+    /** Même style, en teinte d'avertissement. */
+    private static final String HINT_STYLE_WARNING =
+        "-fx-text-fill: #b35c00; -fx-font-size: 11px;";
 
     @FXML private Label             titleLabel;
     @FXML private Label             jarLabel;
@@ -131,7 +142,7 @@ public class PreferencesController implements Initializable {
         browserCombo.getSelectionModel().selectFirst();
         browserCombo.setDisable(true);
         refreshBrowsersButton.setDisable(true);
-        browserHintLabel.setText(I18n.get("prefs.browser.detecting"));
+        setBrowserHint(I18n.get("prefs.browser.detecting"), false);
 
         Task<List<Browser>> task = new Task<>() {
             @Override protected List<Browser> call() {
@@ -158,7 +169,7 @@ public class PreferencesController implements Initializable {
         task.setOnFailed(e -> {
             browserCombo.setDisable(false);
             refreshBrowsersButton.setDisable(false);
-            browserHintLabel.setText(I18n.get("prefs.browser.hint"));
+            updateBrowserHint(browserCombo.getValue());
         });
 
         Thread thread = new Thread(task, "browser-detect");
@@ -167,15 +178,39 @@ public class PreferencesController implements Initializable {
     }
 
     private void updateBrowserHint(Browser browser) {
-        if (browser != null && browser.webkit()) {
-            browserHintLabel.setText(I18n.get("prefs.browser.webkit.warning"));
-            browserHintLabel.setStyle(
-                "-fx-text-fill: #b35c00; -fx-font-size: 11px; -fx-wrap-text: true;");
-        } else {
-            browserHintLabel.setText(I18n.get("prefs.browser.hint"));
-            browserHintLabel.setStyle(
-                "-fx-text-fill: gray; -fx-font-size: 11px; -fx-wrap-text: true;");
-        }
+        boolean warning = (browser != null && browser.webkit());
+        setBrowserHint(
+            warning ? I18n.get("prefs.browser.webkit.warning")
+                    : I18n.get("prefs.browser.hint"),
+            warning);
+    }
+
+    /**
+     * Change le texte de l'aide et réajuste la fenêtre.
+     *
+     * <p>Le texte définitif n'est connu qu'après la détection asynchrone,
+     * donc après que la fenêtre a été dimensionnée sur le texte provisoire.
+     * Sans réajustement, les lignes supplémentaires sont rognées.</p>
+     */
+    private void setBrowserHint(String text, boolean warning) {
+        browserHintLabel.setText(text);
+        browserHintLabel.setStyle(warning ? HINT_STYLE_WARNING : HINT_STYLE_NEUTRAL);
+        resizeWindowToContent();
+    }
+
+    /**
+     * Redimensionne la fenêtre pour englober son contenu, après que la
+     * disposition a été recalculée.
+     */
+    private void resizeWindowToContent() {
+        Platform.runLater(() -> {
+            Scene scene = browserHintLabel.getScene();
+            if (scene == null) return;
+            Window window = scene.getWindow();
+            if (window instanceof Stage stage && stage.isShowing()) {
+                stage.sizeToScene();
+            }
+        });
     }
 
     @FXML

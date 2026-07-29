@@ -45,6 +45,8 @@ public class RulesViewerController implements Initializable {
 	@FXML
 	private Button btnOpen;
 	@FXML
+	private Button btnSaveAs;
+	@FXML
 	private Button btnCopy;
 	@FXML
 	private Label fileNameLabel;
@@ -84,7 +86,9 @@ public class RulesViewerController implements Initializable {
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
 		// Toolbar
-		setIcon(btnOpen, new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("editor.tooltip.open"));
+		setIcon(btnOpen, new FontIcon(Material2AL.FOLDER_OPEN), I18n.get("rules.tooltip.open"));
+		setIcon(btnSaveAs, new FontIcon(Material2MZ.SAVE_ALT), I18n.get("rules.tooltip.saveas"));
+		btnSaveAs.setDisable(true);
 		setIcon(btnCopy, new FontIcon(Material2AL.CONTENT_COPY), I18n.get("rules.tooltip.copy"));
 		FontIcon iconFcavizir = new FontIcon(Material2MZ.OPEN_IN_BROWSER);
 		iconFcavizir.setIconSize(16);
@@ -133,6 +137,45 @@ public class RulesViewerController implements Initializable {
 		if (f != null) {
 			AppPreferences.setLastDirectory(f.getParent());
 			loadFile(f.toPath());
+		}
+	}
+
+	/**
+	 * Enregistre les règles actuellement affichées (filtrées et triées) dans
+	 * un nouveau fichier. Le format d'écriture (TXT / JSON / XML / Datalog)
+	 * est déterminé par l'extension choisie dans le FileChooser.
+	 */
+	@FXML
+	private void onSaveAs() {
+		if (filteredRules.isEmpty())
+			return;
+		FileChooser fc = new FileChooser();
+		fc.setTitle(I18n.get("rules.saveas.title"));
+		Utilities.setSafeInitialDirectory(fc, AppPreferences.getLastDirectory());
+		fc.getExtensionFilters().addAll(
+				new FileChooser.ExtensionFilter(I18n.get("filter.text"), "*.txt"),
+				new FileChooser.ExtensionFilter(I18n.get("filter.json"), "*.json"),
+				new FileChooser.ExtensionFilter(I18n.get("filter.xml"), "*.xml"),
+				new FileChooser.ExtensionFilter(I18n.get("filter.datalog"), "*.dlgp"));
+		File f = fc.showSaveDialog(btnSaveAs.getScene().getWindow());
+		if (f == null)
+			return;
+		try {
+			String name = f.getName().toLowerCase();
+			String content;
+			if (name.endsWith(".json"))
+				content = buildJson();
+			else if (name.endsWith(".xml"))
+				content = buildXml();
+			else if (name.endsWith(".dlgp"))
+				content = buildDlgp();
+			else
+				content = buildTxt();
+			Files.writeString(f.toPath(), content, StandardCharsets.UTF_8);
+			AppPreferences.setLastDirectory(f.getParent());
+			statusLabel.setText(I18n.get("editor.status.saved", f.getName()));
+		} catch (Exception e) {
+			statusLabel.setText(I18n.get("editor.error.write.title") + " : " + e.getMessage());
 		}
 	}
 
@@ -346,6 +389,60 @@ public class RulesViewerController implements Initializable {
 		return Arrays.stream(s.split(",")).map(String::trim).filter(t -> !t.isEmpty()).collect(Collectors.toList());
 	}
 
+	// ── Écrivains (Save As) ──────────────────────────────────────────────────
+	// Symétriques des parseurs ci-dessus ; opèrent sur filteredRules (la vue
+	// actuellement affichée : filtre + tri appliqués).
+
+	private String buildTxt() {
+		return filteredRules.stream().map(Rule::toTxt).collect(Collectors.joining("\n")) + "\n";
+	}
+
+	private String buildJson() {
+		StringBuilder sb = new StringBuilder("[\n");
+		for (int i = 0; i < filteredRules.size(); i++) {
+			Rule r = filteredRules.get(i);
+			sb.append("  {\"support\":").append(r.support()).append(",\"premise\":[")
+					.append(r.premises().stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(",")))
+					.append("],\"conclusion\":[")
+					.append(r.conclusions().stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(",")))
+					.append("]}");
+			if (i < filteredRules.size() - 1)
+				sb.append(",");
+			sb.append("\n");
+		}
+		sb.append("]\n");
+		return sb.toString();
+	}
+
+	private String buildXml() {
+		StringBuilder sb = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rules>\n");
+		for (Rule r : filteredRules) {
+			sb.append("  <rule support=\"").append(r.support()).append("\">\n")
+					.append("    <premise>").append(String.join(", ", r.premises())).append("</premise>\n")
+					.append("    <conclusion>").append(String.join(", ", r.conclusions())).append("</conclusion>\n")
+					.append("  </rule>\n");
+		}
+		sb.append("</rules>\n");
+		return sb.toString();
+	}
+
+	private String buildDlgp() {
+		StringBuilder sb = new StringBuilder();
+		for (Rule r : filteredRules) {
+			sb.append("% support=").append(String.format("%03d", r.support())).append("\n");
+			sb.append(r.conclusions().stream().map(this::toDlgpAtom).collect(Collectors.joining(",")));
+			sb.append(" :- ");
+			sb.append(r.premises().stream().map(this::toDlgpAtom).collect(Collectors.joining(",")));
+			sb.append(".\n");
+		}
+		return sb.toString();
+	}
+
+	/** Ajoute la variable (X) à un terme s'il n'a pas déjà d'arité explicite. */
+	private String toDlgpAtom(String term) {
+		return term.contains("(") ? term : term + "(X)";
+	}
+
 	// ── Filtre et tri ─────────────────────────────────────────────────────────
 
 	private void applyFilterAndSort() {
@@ -378,6 +475,7 @@ public class RulesViewerController implements Initializable {
 		// ListView virtualisée : O(1) quel que soit le nombre de règles
 		rulesList.setItems(javafx.collections.FXCollections.observableList(filteredRules));
 		btnFcavizir.setDisable(false);
+		btnSaveAs.setDisable(filteredRules.isEmpty());
 	}
 
 	public void clearRules() {
@@ -386,6 +484,7 @@ public class RulesViewerController implements Initializable {
 		rulesList.setItems(javafx.collections.FXCollections.emptyObservableList());
 		fileNameLabel.setText("");
 		btnFcavizir.setDisable(true);
+		btnSaveAs.setDisable(true);
 	}
 
 	private HBox buildRuleRow(Rule rule, int index) {
