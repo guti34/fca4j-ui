@@ -90,6 +90,10 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private CheckBox enableNativeCodeCheckBox;
 
 	// ── Options communes ──────────────────────────────────────────────────────
+	// sortBySupportCheckBox (-b, RULEBASIS seulement) et implFolderField
+	// (-folder, commun aux deux) vivent dans la section "Sortie" (cf.
+	// rule_basis.fxml) ; leur affectation par @FXML ne dépend pas de leur
+	// emplacement dans le FXML.
 	@FXML
 	private CheckBox sortBySupportCheckBox;
 	@FXML
@@ -196,7 +200,10 @@ public class RuleBasisController extends AbstractCommandController implements In
 		dbasisPane.setVisible(isDbasis);
 		dbasisPane.setManaged(isDbasis);
 
-		// Tri par support : RULEBASIS seulement
+		// Tri par support (-b) : RULEBASIS seulement. DBASIS n'a plus cette
+		// option : l'ordre des implications y est contraint (binaires triées
+		// en tête), donc un tri global par support n'a pas de sens.
+		// Dossier de résultats par support (-folder) reste commun aux deux.
 		sortBySupportCheckBox.setVisible(isRuleBasis);
 		sortBySupportCheckBox.setManaged(isRuleBasis);
 		loadPrefs();
@@ -270,7 +277,11 @@ public class RuleBasisController extends AbstractCommandController implements In
         Utilities.setSafeInitialDirectory(dc, AppPreferences.getLastDirectory());
 		File f = dc.showDialog(implFolderField.getScene().getWindow());
 		if (f != null)
-			implFolderField.setText(f.getAbsolutePath());
+			// Comme pour le fichier de sortie : afficher un chemin relatif au
+			// contexte courant quand c'est possible, résolu en absolu à l'exécution
+			// (cf. onRun / Utilities.resolveOutput).
+			implFolderField.setText(Utilities.relativizeForDisplay(f.getAbsolutePath(),
+					inputFileField.getText().trim()));
 	}
 
 	@FXML
@@ -292,16 +303,20 @@ public class RuleBasisController extends AbstractCommandController implements In
 		builder.poolMode(poolModeCombo.getValue());
 
 		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
-		
+
+		// Options communes à RULEBASIS et DBASIS : rapport d'exécution (-r)
+		// et dossier de résultats par support (-folder).
+		if (!reportFileField.getText().isBlank())
+			builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
+		if (!implFolderField.getText().isBlank())
+			builder.implFolder(Utilities.resolveOutput(implFolderField.getText().trim(),inputFileField));
+
 		if ("RULEBASIS".equals(descriptor.getName())) {
 			builder.algorithm(algoCombo.getValue()).clarify(clarifyCheckBox.isSelected())
-					.closureMethod(closureCombo.getValue()).sortBySupport(sortBySupportCheckBox.isSelected());
+					.closureMethod(closureCombo.getValue())
+					.sortBySupport(sortBySupportCheckBox.isSelected()); // -b : RULEBASIS seulement
 			if (!"MONO".equals(poolModeCombo.getValue()))
 				builder.threadThreshold(thresholdSpinner.getValue());
-			if (!reportFileField.getText().isBlank())
-				builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
-			if (!implFolderField.getText().isBlank())
-				builder.implFolder(implFolderField.getText().trim());
 		}
 
 		if ("DBASIS".equals(descriptor.getName())) {
@@ -310,8 +325,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 				builder.minimalSupport(ms);
 			if (enableNativeCodeCheckBox.isSelected())
 				builder.enableNativeCode(true);
-			if (!reportFileField.getText().isBlank())
-				builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
 		}
 
 		if (onRun != null)
@@ -337,6 +350,7 @@ public class RuleBasisController extends AbstractCommandController implements In
         AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 	    persistOutputForInput(inputFileField, outputFileField);
 	    AppPreferences.saveString(cmd + ".reportFile",   reportFileField.getText().trim());
+	    AppPreferences.saveString(cmd + ".implFolder",   implFolderField.getText().trim());
 
 	    if ("RULEBASIS".equals(cmd)) {
 	        AppPreferences.saveString(cmd + ".algo",     algoCombo.getValue());
@@ -344,7 +358,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 	        AppPreferences.saveBool  (cmd + ".clarify",  clarifyCheckBox.isSelected());
 	        AppPreferences.saveBool  (cmd + ".sort",     sortBySupportCheckBox.isSelected());
 	        AppPreferences.saveInt   (cmd + ".threshold",thresholdSpinner.getValue());
-	        AppPreferences.saveString(cmd + ".implFolder", implFolderField.getText().trim());
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
@@ -388,9 +401,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    }
 	    String savedReport = AppPreferences.loadString(cmd + ".reportFile", "");
 	    if (!savedReport.isBlank()) reportFileField.setText(savedReport);
-	    if ("RULEBASIS".equals(cmd)) {
-	        String savedImplFolder = AppPreferences.loadString(cmd + ".implFolder", "");
-	        if (!savedImplFolder.isBlank()) implFolderField.setText(savedImplFolder);
-	    }
+	    String savedImplFolder = AppPreferences.loadString(cmd + ".implFolder", "");
+	    if (!savedImplFolder.isBlank()) implFolderField.setText(savedImplFolder);
 	}
 	}

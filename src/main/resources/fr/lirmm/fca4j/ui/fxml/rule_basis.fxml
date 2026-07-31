@@ -68,8 +68,11 @@
         </VBox>
     </TitledPane>
 
+    <!-- Sortie : fichier/format de sortie, tri par support et dossier de -->
+    <!-- résultats par support (RULEBASIS seulement pour ces deux derniers) -->
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
+            <CheckBox fx:id="sortBySupportCheckBox" text="%checkbox.sort.support"/>
             <HBox spacing="6">
                 <TextField fx:id="outputFileField" HBox.hgrow="ALWAYS"
                            promptText="%label.output.file"/>
@@ -79,21 +82,20 @@
                 <Label text="%label.output.format"/>
                 <ComboBox fx:id="outputFormatCombo" prefWidth="110"/>
             </HBox>
+            <Label text="%label.impl.folder"/>
+            <HBox spacing="6">
+                <TextField fx:id="implFolderField" HBox.hgrow="ALWAYS"/>
+                <Button text="%button.browse" onAction="#onBrowseImplFolder"/>
+            </HBox>
         </VBox>
     </TitledPane>
 
     <TitledPane fx:id="advancedPane" collapsible="true" expanded="false">
         <VBox spacing="8" style="-fx-padding: 8;">
-            <CheckBox fx:id="sortBySupportCheckBox" text="%checkbox.sort.support"/>
             <Label text="%label.report.file"/>
             <HBox spacing="6">
                 <TextField fx:id="reportFileField" HBox.hgrow="ALWAYS"/>
                 <Button text="%button.browse" onAction="#onBrowseReport"/>
-            </HBox>
-            <Label text="%label.impl.folder"/>
-            <HBox spacing="6">
-                <TextField fx:id="implFolderField" HBox.hgrow="ALWAYS"/>
-                <Button text="%button.browse" onAction="#onBrowseImplFolder"/>
             </HBox>
          	<HBox spacing="8" alignment="CENTER_LEFT">
 	    		<Label text="%label.timeout"/>
