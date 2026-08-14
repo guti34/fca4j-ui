@@ -166,7 +166,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 		if ("LATTICE".equals(cmd))
 			if("ADD_EXTENT".equals(algo) || "PARALLEL_CBO".equals(algo)) return true;
 		if ("AOCPOSET".equals(cmd))
-			if("HERMES".equals(algo)||"PLUTON".equals(algo))     return true;
+			return true;
 		return false;
 	}
 
