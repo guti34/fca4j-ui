@@ -113,7 +113,7 @@ public class RcaCommandController implements Initializable {
 
         algoCombo.getItems().addAll(
             "HERMES", "ARES", "CERES", "PLUTON",
-            "ADD_EXTENT", "PARALLEL_CBO", "ADD_INTENT", "ICEBERG");
+            "PARALLEL_CBO", "ADD_EXTENT", "ICEBERG");
         algoCombo.setValue("HERMES");
 
         // Paramètre ICEBERG et case "native" : grisés selon l'algo sélectionné
@@ -189,10 +189,7 @@ public class RcaCommandController implements Initializable {
 
     /** Algos disposant d'une implémentation native C (option -native). */
     private static boolean hasNativeImpl(String algo) {
-        return "ADD_EXTENT".equals(algo)
-            || "PARALLEL_CBO".equals(algo)
-            || "HERMES".equals(algo) 
-            || "PLUTON".equals(algo);
+        return true;
     }
 
     /** Active la case "native" seulement pour les algos portés en C. */

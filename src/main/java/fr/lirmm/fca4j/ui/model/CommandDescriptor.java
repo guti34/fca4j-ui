@@ -49,7 +49,7 @@ public class CommandDescriptor {
     public static final CommandDescriptor LATTICE = new CommandDescriptor(
         "LATTICE",
         "Construit un treillis de concepts.",
-        List.of("PARALLEL_CBO","ADD_EXTENT", "ADD_INTENT", "ICEBERG"),
+        List.of("PARALLEL_CBO","ADD_EXTENT", "ICEBERG"),
         "PARALLEL_CBO", true, CommandFamily.LATTICE_AOC
     );
 
