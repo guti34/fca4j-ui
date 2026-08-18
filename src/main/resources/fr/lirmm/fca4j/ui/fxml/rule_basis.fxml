@@ -45,13 +45,13 @@
             </HBox>
             <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
             <Separator/>
-            <HBox spacing="8" alignment="CENTER_LEFT">
+            <!-- Mode de parallélisme : DBASIS seulement. RULEBASIS n'a plus
+                 cette option côté moteur (l'option -t/FORKJOINPOOL a été
+                 supprimée : elle dégradait les performances au lieu de les
+                 améliorer). -->
+            <HBox fx:id="poolModeRow" spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.pool.mode" minWidth="110"/>
                 <ComboBox fx:id="poolModeCombo" prefWidth="150"/>
-            </HBox>
-            <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label fx:id="thresholdLabel" text="%label.threshold" minWidth="110"/>
-                <Spinner fx:id="thresholdSpinner" prefWidth="80"/>
             </HBox>
         </VBox>
     </TitledPane>

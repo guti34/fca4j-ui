@@ -110,15 +110,12 @@ class CommandBuilderTest {
                 .command("RULEBASIS").inputFile("ctx.cxt").outputFile("rules.txt")
                 .algorithm("LINCBOPRUNING")
                 .clarify(true).closureMethod("WITH_HISTORY")
-                .poolMode("FORKJOINPOOL").threadThreshold(100)
-                .sortBySupport(true)
+                 .sortBySupport(true)
                 .reportFile("report.txt").implFolder("/tmp/results")
                 .build();
 
         assertTrue(args.contains("-clarify"));
         assertEquals("WITH_HISTORY", args.get(args.indexOf("-c") + 1));
-        assertEquals("FORKJOINPOOL", args.get(args.indexOf("-t") + 1));
-        assertEquals("100", args.get(args.indexOf("-h") + 1));
         assertTrue(args.contains("-b"));
         assertEquals("report.txt", args.get(args.indexOf("-r") + 1));
         assertEquals("/tmp/results", args.get(args.indexOf("-folder") + 1));
@@ -129,7 +126,6 @@ class CommandBuilderTest {
     void rulebasisDefaultThreshold() {
         List<String> args = new CommandBuilder()
                 .command("RULEBASIS").inputFile("ctx.cxt")
-                .poolMode("FORKJOINPOOL").threadThreshold(50)
                 .build();
         assertFalse(args.contains("-h"));
     }

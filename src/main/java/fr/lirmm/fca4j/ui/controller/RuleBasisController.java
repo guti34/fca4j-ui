@@ -73,13 +73,12 @@ public class RuleBasisController extends AbstractCommandController implements In
 	@FXML
 	private CheckBox clarifyCheckBox;
 
-	// ── Multithreading ────────────────────────────────────────────────────────
+	// ── Multithreading (DBASIS uniquement — RULEBASIS n'a plus cette option,
+	// cf. RuleBasisBuilder : -t/FORKJOINPOOL a été supprimé côté moteur) ──────
+	@FXML
+	private HBox poolModeRow;
 	@FXML
 	private ComboBox<String> poolModeCombo;
-	@FXML
-	private Label thresholdLabel;
-	@FXML
-	private Spinner<Integer> thresholdSpinner;
 
 	// ── Options DBASIS ────────────────────────────────────────────────────────
 	@FXML
@@ -130,16 +129,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 		closureCombo.getItems().addAll("BASIC", "WITH_HISTORY");
 		closureCombo.setValue("BASIC");
 
-		thresholdSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 10000, 50, 10));
-		thresholdLabel.setVisible(false);
-		thresholdSpinner.setVisible(false);
-		poolModeCombo.valueProperty().addListener((obs, old, val) -> {
-			boolean mt = !"MONO".equals(val);
-			boolean rb = descriptor != null && "RULEBASIS".equals(descriptor.getName());
-			thresholdLabel.setVisible(mt && rb);
-			thresholdSpinner.setVisible(mt && rb);
-		});
-
 		minSupportSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 100000, 0, 1));
 
 		implCombo.getItems().addAll("BITSET", "ROARING_BITMAP", "BITSET_PACKED", "SPARSE_BITSET", "TREESET", "INT_ARRAY", "ARRAYLIST",
@@ -168,7 +157,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		// Section "Algorithme" (toujours visible) :
 		//  - ligne algorithme + fermeture + clarification : RULEBASIS seulement
 		//  - implémentation : toujours visible
-		//  - code natif : DBASIS seulement
+		//  - code natif : toujours visible
 		algoRow.setVisible(isRuleBasis);
 		algoRow.setManaged(isRuleBasis);
 		if (isRuleBasis) {
@@ -183,16 +172,18 @@ public class RuleBasisController extends AbstractCommandController implements In
 		closureCombo.setVisible(isRuleBasis);
 		closureCombo.setManaged(isRuleBasis);
 
-		enableNativeCodeCheckBox.setVisible(isDbasis);
-		enableNativeCodeCheckBox.setManaged(isDbasis);
+		enableNativeCodeCheckBox.setVisible(true);
+		enableNativeCodeCheckBox.setManaged(true);
 
-		// Pool mode selon la commande
-		poolModeCombo.getItems().clear();
-		if (isRuleBasis) {
-			poolModeCombo.getItems().addAll("MONO", "FORKJOINPOOL");
-			poolModeCombo.setValue("MONO");
-		} else {
-			poolModeCombo.getItems().addAll("MONO", "MULTITHREAD");
+		// Mode de parallélisme : DBASIS uniquement. RULEBASIS n'a plus cette
+		// option côté moteur (RuleBasisBuilder n'accepte plus -t depuis la
+		// suppression de FORKJOINPOOL, qui dégradait les performances au lieu
+		// de les améliorer) : le contrôle est masqué pour RULEBASIS plutôt que
+		// de proposer un choix qui ferait échouer la commande.
+		poolModeRow.setVisible(isDbasis);
+		poolModeRow.setManaged(isDbasis);
+		if (isDbasis) {
+			poolModeCombo.getItems().setAll("MONO", "MULTITHREAD");
 			poolModeCombo.setValue("MULTITHREAD");
 		}
 
@@ -300,8 +291,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 		if (!"(auto)".equals(fmt))
 			builder.inputFormat(fmt);
 
-		builder.poolMode(poolModeCombo.getValue());
-
 		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
 
 		// Options communes à RULEBASIS et DBASIS : rapport d'exécution (-r)
@@ -315,8 +304,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 			builder.algorithm(algoCombo.getValue()).clarify(clarifyCheckBox.isSelected())
 					.closureMethod(closureCombo.getValue())
 					.sortBySupport(sortBySupportCheckBox.isSelected()); // -b : RULEBASIS seulement
-			if (!"MONO".equals(poolModeCombo.getValue()))
-				builder.threadThreshold(thresholdSpinner.getValue());
 		}
 
 		if ("DBASIS".equals(descriptor.getName())) {
@@ -325,6 +312,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 				builder.minimalSupport(ms);
 			if (enableNativeCodeCheckBox.isSelected())
 				builder.enableNativeCode(true);
+			builder.poolMode(poolModeCombo.getValue());
 		}
 
 		if (onRun != null)
@@ -345,23 +333,22 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    String cmd = descriptor.getName(); // "RULEBASIS" ou "DBASIS"
 	    AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
-	    AppPreferences.saveString(cmd + ".poolMode",     poolModeCombo.getValue());
 	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
         AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
 	    persistOutputForInput(inputFileField, outputFileField);
 	    AppPreferences.saveString(cmd + ".reportFile",   reportFileField.getText().trim());
 	    AppPreferences.saveString(cmd + ".implFolder",   implFolderField.getText().trim());
+	    AppPreferences.saveBool(cmd + ".enableNativeCode", enableNativeCodeCheckBox.isSelected());
 
 	    if ("RULEBASIS".equals(cmd)) {
 	        AppPreferences.saveString(cmd + ".algo",     algoCombo.getValue());
 	        AppPreferences.saveString(cmd + ".closure",  closureCombo.getValue());
 	        AppPreferences.saveBool  (cmd + ".clarify",  clarifyCheckBox.isSelected());
 	        AppPreferences.saveBool  (cmd + ".sort",     sortBySupportCheckBox.isSelected());
-	        AppPreferences.saveInt   (cmd + ".threshold",thresholdSpinner.getValue());
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        AppPreferences.saveInt(cmd + ".minSupport", minSupportSpinner.getValue());
-	        AppPreferences.saveBool(cmd + ".enableNativeCode", enableNativeCodeCheckBox.isSelected());
+	        AppPreferences.saveString(cmd + ".poolMode", poolModeCombo.getValue());
 	    }
 	}
 
@@ -372,10 +359,6 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 	    String impl = AppPreferences.loadString(cmd + ".impl", "BITSET");
 	    if (implCombo.getItems().contains(impl)) implCombo.setValue(impl);
-
-	    String pool = AppPreferences.loadString(cmd + ".poolMode",
-	        "RULEBASIS".equals(cmd) ? "MONO" : "MULTITHREAD");
-	    if (poolModeCombo.getItems().contains(pool)) poolModeCombo.setValue(pool);
 
 	    verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 	    timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
@@ -390,15 +373,15 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 	        clarifyCheckBox.setSelected(AppPreferences.loadBool(cmd + ".clarify",   false));
 	        sortBySupportCheckBox.setSelected(AppPreferences.loadBool(cmd + ".sort", false));
-	        thresholdSpinner.getValueFactory().setValue(
-	            AppPreferences.loadInt(cmd + ".threshold", 50));
 	    }
 	    if ("DBASIS".equals(cmd)) {
 	        minSupportSpinner.getValueFactory().setValue(
 	            AppPreferences.loadInt(cmd + ".minSupport", 0));
-	        enableNativeCodeCheckBox.setSelected(
-	            AppPreferences.loadBool(cmd + ".enableNativeCode", false));
+	        String pool = AppPreferences.loadString(cmd + ".poolMode", "MULTITHREAD");
+	        if (poolModeCombo.getItems().contains(pool)) poolModeCombo.setValue(pool);
 	    }
+	    enableNativeCodeCheckBox.setSelected(
+	            AppPreferences.loadBool(cmd + ".enableNativeCode", false));
 	    String savedReport = AppPreferences.loadString(cmd + ".reportFile", "");
 	    if (!savedReport.isBlank()) reportFileField.setText(savedReport);
 	    String savedImplFolder = AppPreferences.loadString(cmd + ".implFolder", "");

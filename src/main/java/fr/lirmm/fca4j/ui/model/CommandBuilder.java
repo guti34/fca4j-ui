@@ -39,8 +39,6 @@ public class CommandBuilder {
     // ── RULEBASIS ────────────────────────────────────────────────────────────
     private boolean clarify        = false;
     private String  closureMethod;          // BASIC | WITH_HISTORY
-    private String  poolMode;               // MONO | FORKJOINPOOL | MULTITHREAD
-    private Integer threadThreshold;        // -h
     private boolean sortBySupport  = false; // -b
     private String  reportFile;             // -r
     private String  implFolder;             // -folder
@@ -50,6 +48,11 @@ public class CommandBuilder {
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
     private boolean enableNativeCode = false; // -native
+    private String  poolMode;               // MONO | MULTITHREAD (DBASIS uniquement :
+                                             // RULEBASIS n'a plus de mode de parallélisme,
+                                             // l'option -t/FORKJOINPOOL a été supprimée
+                                             // côté moteur, elle dégradait les performances
+                                             // au lieu de les améliorer)
 
     // ── CLARIFY / REDUCE ─────────────────────────────────────────────────────
     private boolean clarifyObjects    = false; // -xo
@@ -109,14 +112,13 @@ public class CommandBuilder {
     // RULEBASIS
     public CommandBuilder clarify(boolean v)        { this.clarify = v;           return this; }
     public CommandBuilder closureMethod(String v)   { this.closureMethod = v;     return this; }
-    public CommandBuilder poolMode(String v)        { this.poolMode = v;          return this; }
-    public CommandBuilder threadThreshold(int v)    { this.threadThreshold = v;   return this; }
     public CommandBuilder sortBySupport(boolean v)  { this.sortBySupport = v;     return this; }
     public CommandBuilder reportFile(String v)      { this.reportFile = v;        return this; }
     public CommandBuilder implFolder(String v)      { this.implFolder = v;        return this; }
     // DBASIS
     public CommandBuilder minimalSupport(int v)     { this.minimalSupport = v;    return this; }
     public CommandBuilder enableNativeCode(boolean v) { this.enableNativeCode = v;    return this; }
+    public CommandBuilder poolMode(String v)        { this.poolMode = v;          return this; }
     // CLARIFY / REDUCE
     public CommandBuilder clarifyObjects(boolean v)    { this.clarifyObjects = v;    return this; }
     public CommandBuilder clarifyAttributes(boolean v) { this.clarifyAttributes = v; return this; }
@@ -167,7 +169,7 @@ public class CommandBuilder {
         if (outputFile != null && !outputFile.isBlank())
             args.add(outputFile);
 
-        // Algorithme (-a pour LATTICE/AOCPOSET/RULEBASIS ; -t pour pool RULEBASIS/DBASIS)
+        // Algorithme (-a pour LATTICE/AOCPOSET/RULEBASIS ; -t pour pool DBASIS uniquement)
         if (algorithm != null && !algorithm.isBlank())
             add(args, "-a", algorithm);
 
@@ -215,13 +217,6 @@ public class CommandBuilder {
                 && !"BASIC".equals(closureMethod))
             add(args, "-c", closureMethod);
 
-        // for RULEBASIS and DBASIS
-        if (poolMode != null && !poolMode.isBlank())
-            add(args, "-t", poolMode);
-
-        if (threadThreshold != null && threadThreshold != 50)
-            add(args, "-h", String.valueOf(threadThreshold));
-
         if (sortBySupport) args.add("-b");
 
         if (reportFile != null && !reportFile.isBlank())
@@ -234,6 +229,10 @@ public class CommandBuilder {
         if (minimalSupport != null && minimalSupport > 0)
             add(args, "-x", String.valueOf(minimalSupport));
         if (enableNativeCode) args.add("-native");
+        // mode de parallélisme : DBASIS uniquement (RuleBasisBuilder n'a plus
+        // d'option -t depuis la suppression de FORKJOINPOOL)
+        if (poolMode != null && !poolMode.isBlank())
+            add(args, "-t", poolMode);
 
 
         // ── Options CLARIFY / REDUCE ──────────────────────────────────────────
