@@ -10,7 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  FCA4J_VERSION: '0.5.0'
+  FCA4J_VERSION: '0.5.1'
   FCA4J_JAR_URL: 'https://github.com/guti34/fca4j-project/releases/download/continuous/fca4j.jar'
 
 jobs:

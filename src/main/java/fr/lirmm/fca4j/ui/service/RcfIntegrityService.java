@@ -67,8 +67,7 @@ public class RcfIntegrityService {
         int newAttrCount = tgtCtx.getObjectCount(); // colonnes = objets du target
 
         // Reconstruire un nouveau contexte relationnel avec les bons objets
-        BinaryContext newRel = new BinaryContext(
-            newObjCount, newAttrCount, rel.getName(), new BitSetFactory());
+        BinaryContext newRel = new BinaryContext(newObjCount, newAttrCount, rel.getName(), new BitSetFactory());
 
         // Noms des lignes = objets de la source
         for (int i = 0; i < newObjCount; i++)

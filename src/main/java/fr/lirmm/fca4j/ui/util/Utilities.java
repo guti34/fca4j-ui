@@ -128,7 +128,7 @@ public class Utilities {
                 return out.toString();
             return rel.toString();
         } catch (IllegalArgumentException e) {
-            return outputPath; // relativize impossible → absolu
+            return outputPath; // relativize impossible on prend le chemin absolu
         }
     }
 
