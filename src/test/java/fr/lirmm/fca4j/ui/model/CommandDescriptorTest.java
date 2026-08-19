@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class CommandDescriptorTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS",
+    @ValueSource(strings = {"LATTICE", "AOCPOSET", "DG_BASIS", "DBASIS",
             "CLARIFY", "REDUCE", "IRREDUCIBLE", "INSPECT", "BINARIZE"})
     @DisplayName("forName() retourne un descripteur non-null pour chaque commande connue")
     void forNameKnown(String name) {
@@ -54,10 +54,10 @@ class CommandDescriptorTest {
     }
 
     @Test
-    @DisplayName("RULEBASIS et DBASIS ont la famille RULE_BASIS")
+    @DisplayName("DG_BASIS et DBASIS ont la famille RULE_BASIS")
     void ruleBasisFamily() {
         assertEquals(CommandDescriptor.CommandFamily.RULE_BASIS,
-                CommandDescriptor.RULEBASIS.getFamily());
+                CommandDescriptor.DG_BASIS.getFamily());
         assertEquals(CommandDescriptor.CommandFamily.RULE_BASIS,
                 CommandDescriptor.DBASIS.getFamily());
     }

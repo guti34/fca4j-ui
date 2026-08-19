@@ -92,22 +92,22 @@ class CommandBuilderTest {
         assertEquals("HERMES", args.get(args.indexOf("-a") + 1));
     }
 
-    // ── RULEBASIS ────────────────────────────────────────────────────────────
+    // ── DG_BASIS ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("RULEBASIS : format TXT par défaut non émis")
+    @DisplayName("DG_BASIS : format TXT par défaut non émis")
     void rulebasisDefaultFormat() {
         List<String> args = new CommandBuilder()
-                .command("RULEBASIS").inputFile("ctx.cxt").outputFormat("TXT")
+                .command("DG_BASIS").inputFile("ctx.cxt").outputFormat("TXT")
                 .build();
         assertFalse(args.contains("-o"));
     }
 
     @Test
-    @DisplayName("RULEBASIS complet avec toutes les options")
+    @DisplayName("DG_BASIS complet avec toutes les options")
     void rulebasisFull() {
         List<String> args = new CommandBuilder()
-                .command("RULEBASIS").inputFile("ctx.cxt").outputFile("rules.txt")
+                .command("DG_BASIS").inputFile("ctx.cxt").outputFile("rules.txt")
                 .algorithm("LINCBOPRUNING")
                 .clarify(true).closureMethod("WITH_HISTORY")
                  .sortBySupport(true)
@@ -122,10 +122,10 @@ class CommandBuilderTest {
     }
 
     @Test
-    @DisplayName("RULEBASIS : threshold par défaut 50 non émis")
+    @DisplayName("DG_BASIS : threshold par défaut 50 non émis")
     void rulebasisDefaultThreshold() {
         List<String> args = new CommandBuilder()
-                .command("RULEBASIS").inputFile("ctx.cxt")
+                .command("DG_BASIS").inputFile("ctx.cxt")
                 .build();
         assertFalse(args.contains("-h"));
     }

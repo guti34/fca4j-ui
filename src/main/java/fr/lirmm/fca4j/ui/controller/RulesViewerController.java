@@ -35,7 +35,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
- * Viewer de règles d'implication (RULEBASIS / DBASIS). Supporte les formats
+ * Viewer de règles d'implication (DG_BASIS / DBASIS). Supporte les formats
  * TXT, JSON, XML et Datalog. Affiche les règles avec mise en valeur visuelle et
  * propose filtre, tri par support et copie presse-papier.
  */

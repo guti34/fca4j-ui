@@ -176,7 +176,7 @@ public class MainController implements Initializable {
 		renderer.setOnNodeClick(nodeLabel -> appendConsole(I18n.get("console.node.selected", nodeLabel)));
 		renderer.setOnConsoleMessage(this::appendConsole);
 		setTabGraphic(conceptStructureTab, Material2MZ.VISIBILITY, I18n.get("tab.graph"), "#3B6D11");
-		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "RULEBASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
+		commandCombo.getItems().addAll("LATTICE", "AOCPOSET", "DG_BASIS", "DBASIS", "CLARIFY", "REDUCE", "IRREDUCIBLE",
 				"INSPECT");
 		String lastCommand = AppPreferences.loadString("lastCommand", "LATTICE");
 		if (!commandCombo.getItems().contains(lastCommand))
@@ -916,7 +916,7 @@ public class MainController implements Initializable {
 		final var args = builder.build();
 		final String commandName = args.get(0);
 		final String inputFile = args.size() > 1 ? args.get(1) : "";
-		final boolean isRules = "RULEBASIS".equals(commandName) || "DBASIS".equals(commandName);
+		final boolean isRules = "DG_BASIS".equals(commandName) || "DBASIS".equals(commandName);
 		final boolean isGraph = !isRules && !"BINARIZE".equals(commandName) && !"FAMILY_IMPORT".equals(commandName);
         final boolean isStructure = "LATTICE".equals(commandName) || "AOCPOSET".equals(commandName);
         // Force -v pour récupérer "concepts: N edges: M" dans stdout (stats du volet)
@@ -1085,7 +1085,7 @@ public class MainController implements Initializable {
             graphExporter.clearStructureStats();
     }
 	private void tryOpenRules(CommandBuilder builder) {
-		if (!"RULEBASIS".equals(builder.getCommand()) && !"DBASIS".equals(builder.getCommand()))
+		if (!"DG_BASIS".equals(builder.getCommand()) && !"DBASIS".equals(builder.getCommand()))
 			return;
 
 		// Cas 1 : fichier unique

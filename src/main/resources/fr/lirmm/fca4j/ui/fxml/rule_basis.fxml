@@ -24,9 +24,9 @@
     </TitledPane>
 
     <!-- Algorithme : section unique toujours visible -->
-    <!--  - ligne algorithme + fermeture + clarification : RULEBASIS (masquées pour DBASIS) -->
+    <!--  - ligne algorithme + fermeture + clarification : DG_BASIS (masquées pour DBASIS) -->
     <!--  - implémentation : toujours visible -->
-    <!--  - code natif : DBASIS (masqué pour RULEBASIS) -->
+    <!--  - code natif : toujours visible -->
     <!--  - multithreading (mode + seuil) : en fin de section -->
     <TitledPane text="%section.algorithm" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
@@ -45,10 +45,7 @@
             </HBox>
             <CheckBox fx:id="enableNativeCodeCheckBox" text="%checkbox.enable.native.code"/>
             <Separator/>
-            <!-- Mode de parallélisme : DBASIS seulement. RULEBASIS n'a plus
-                 cette option côté moteur (l'option -t/FORKJOINPOOL a été
-                 supprimée : elle dégradait les performances au lieu de les
-                 améliorer). -->
+            <!-- Mode de parallélisme : DBASIS seulement.  -->
             <HBox fx:id="poolModeRow" spacing="8" alignment="CENTER_LEFT">
                 <Label text="%label.pool.mode" minWidth="110"/>
                 <ComboBox fx:id="poolModeCombo" prefWidth="150"/>
@@ -69,7 +66,7 @@
     </TitledPane>
 
     <!-- Sortie : fichier/format de sortie, tri par support et dossier de -->
-    <!-- résultats par support (RULEBASIS seulement pour ces deux derniers) -->
+    <!-- résultats par support (DG_BASIS seulement pour ces deux derniers) -->
     <TitledPane fx:id="outputPane" collapsible="false">
         <VBox spacing="8" style="-fx-padding: 8;">
             <CheckBox fx:id="sortBySupportCheckBox" text="%checkbox.sort.support"/>

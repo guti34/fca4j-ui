@@ -60,8 +60,8 @@ public class CommandDescriptor {
         "HERMES", false, CommandFamily.LATTICE_AOC
     );
 
-    public static final CommandDescriptor RULEBASIS = new CommandDescriptor(
-        "RULEBASIS",
+    public static final CommandDescriptor DG_BASIS = new CommandDescriptor(
+        "DG_BASIS",
         "Calcule la base canonique d'implications (Duquenne-Guigues).",
         List.of("LINCBOPRUNING", "LINCBO"),
         "LINCBOPRUNING", false, CommandFamily.RULE_BASIS
@@ -107,7 +107,7 @@ public class CommandDescriptor {
             return switch (name) {
                 case "LATTICE"   -> LATTICE;
                 case "AOCPOSET"  -> AOCPOSET;
-                case "RULEBASIS" -> RULEBASIS;
+                case "DG_BASIS" -> DG_BASIS;
                 case "DBASIS"    -> DBASIS;
                 case "CLARIFY"   -> CLARIFY;
                 case "REDUCE"    -> REDUCE;

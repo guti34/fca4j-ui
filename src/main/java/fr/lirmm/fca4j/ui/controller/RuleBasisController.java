@@ -30,7 +30,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 
 /**
- * Contrôleur du panneau de paramètres pour RULEBASIS et DBASIS.
+ * Contrôleur du panneau de paramètres pour DG_BASIS et DBASIS.
  */
 public class RuleBasisController extends AbstractCommandController implements Initializable {
 
@@ -59,7 +59,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 	// ── Algorithme ────────────────────────────────────────────────────────────
 	// La ligne algorithme (algoRow), la fermeture et la clarification sont
-	// propres à RULEBASIS ; l'implémentation est commune ; le code natif est
+	// propres à DG_BASIS ; l'implémentation est commune ; le code natif est
 	// propre à DBASIS. Ces éléments vivent désormais dans une unique section
 	// "Algorithme" toujours visible (cf. rule_basis.fxml).
 	@FXML
@@ -73,7 +73,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	@FXML
 	private CheckBox clarifyCheckBox;
 
-	// ── Multithreading (DBASIS uniquement — RULEBASIS n'a plus cette option,
+	// ── Multithreading (DBASIS uniquement — DG_BASIS n'a plus cette option,
 	// cf. RuleBasisBuilder : -t/FORKJOINPOOL a été supprimé côté moteur) ──────
 	@FXML
 	private HBox poolModeRow;
@@ -89,7 +89,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	private CheckBox enableNativeCodeCheckBox;
 
 	// ── Options communes ──────────────────────────────────────────────────────
-	// sortBySupportCheckBox (-b, RULEBASIS seulement) et implFolderField
+	// sortBySupportCheckBox (-b, DG_BASIS seulement) et implFolderField
 	// (-folder, commun aux deux) vivent dans la section "Sortie" (cf.
 	// rule_basis.fxml) ; leur affectation par @FXML ne dépend pas de leur
 	// emplacement dans le FXML.
@@ -151,11 +151,11 @@ public class RuleBasisController extends AbstractCommandController implements In
 		advancedPane.setText(I18n.get("section.advanced"));
 		dbasisPane.setText(I18n.get("section.dbasis"));
 
-		boolean isRuleBasis = "RULEBASIS".equals(desc.getName());
+		boolean isRuleBasis = "DG_BASIS".equals(desc.getName());
 		boolean isDbasis = "DBASIS".equals(desc.getName());
 
 		// Section "Algorithme" (toujours visible) :
-		//  - ligne algorithme + fermeture + clarification : RULEBASIS seulement
+		//  - ligne algorithme + fermeture + clarification : DG_BASIS seulement
 		//  - implémentation : toujours visible
 		//  - code natif : toujours visible
 		algoRow.setVisible(isRuleBasis);
@@ -175,10 +175,10 @@ public class RuleBasisController extends AbstractCommandController implements In
 		enableNativeCodeCheckBox.setVisible(true);
 		enableNativeCodeCheckBox.setManaged(true);
 
-		// Mode de parallélisme : DBASIS uniquement. RULEBASIS n'a plus cette
+		// Mode de parallélisme : DBASIS uniquement. DG_BASIS n'a plus cette
 		// option côté moteur (RuleBasisBuilder n'accepte plus -t depuis la
 		// suppression de FORKJOINPOOL, qui dégradait les performances au lieu
-		// de les améliorer) : le contrôle est masqué pour RULEBASIS plutôt que
+		// de les améliorer) : le contrôle est masqué pour DG_BASIS plutôt que
 		// de proposer un choix qui ferait échouer la commande.
 		poolModeRow.setVisible(isDbasis);
 		poolModeRow.setManaged(isDbasis);
@@ -191,7 +191,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		dbasisPane.setVisible(isDbasis);
 		dbasisPane.setManaged(isDbasis);
 
-		// Tri par support (-b) : RULEBASIS seulement. DBASIS n'a plus cette
+		// Tri par support (-b) : DG_BASIS seulement. DBASIS n'a plus cette
 		// option : l'ordre des implications y est contraint (binaires triées
 		// en tête), donc un tri global par support n'a pas de sens.
 		// Dossier de résultats par support (-folder) reste commun aux deux.
@@ -293,17 +293,17 @@ public class RuleBasisController extends AbstractCommandController implements In
 
 		int to = timeoutField.getSeconds(); if (to > 0) builder.timeout(to);
 
-		// Options communes à RULEBASIS et DBASIS : rapport d'exécution (-r)
+		// Options communes à DG_BASIS et DBASIS : rapport d'exécution (-r)
 		// et dossier de résultats par support (-folder).
 		if (!reportFileField.getText().isBlank())
 			builder.reportFile(Utilities.resolveOutput(reportFileField.getText().trim(),inputFileField));
 		if (!implFolderField.getText().isBlank())
 			builder.implFolder(Utilities.resolveOutput(implFolderField.getText().trim(),inputFileField));
 
-		if ("RULEBASIS".equals(descriptor.getName())) {
+		if ("DG_BASIS".equals(descriptor.getName())) {
 			builder.algorithm(algoCombo.getValue()).clarify(clarifyCheckBox.isSelected())
 					.closureMethod(closureCombo.getValue())
-					.sortBySupport(sortBySupportCheckBox.isSelected()); // -b : RULEBASIS seulement
+					.sortBySupport(sortBySupportCheckBox.isSelected()); // -b : DG_BASIS seulement
 		}
 
 		if ("DBASIS".equals(descriptor.getName())) {
@@ -330,7 +330,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 		return inputFileField.getText();
 	}
 	public void savePrefs() {
-	    String cmd = descriptor.getName(); // "RULEBASIS" ou "DBASIS"
+	    String cmd = descriptor.getName(); // "DG_BASIS" ou "DBASIS"
 	    AppPreferences.saveString(cmd + ".outputFormat", outputFormatCombo.getValue());
 	    AppPreferences.saveString(cmd + ".impl",         implCombo.getValue());
 	    AppPreferences.saveBool  (cmd + ".verbose",      verboseCheckBox.isSelected());
@@ -340,7 +340,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    AppPreferences.saveString(cmd + ".implFolder",   implFolderField.getText().trim());
 	    AppPreferences.saveBool(cmd + ".enableNativeCode", enableNativeCodeCheckBox.isSelected());
 
-	    if ("RULEBASIS".equals(cmd)) {
+	    if ("DG_BASIS".equals(cmd)) {
 	        AppPreferences.saveString(cmd + ".algo",     algoCombo.getValue());
 	        AppPreferences.saveString(cmd + ".closure",  closureCombo.getValue());
 	        AppPreferences.saveBool  (cmd + ".clarify",  clarifyCheckBox.isSelected());
@@ -363,7 +363,7 @@ public class RuleBasisController extends AbstractCommandController implements In
 	    verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 	    timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));
 
-	    if ("RULEBASIS".equals(cmd)) {
+	    if ("DG_BASIS".equals(cmd)) {
 	        String algo = AppPreferences.loadString(cmd + ".algo",
 	            descriptor.getDefaultAlgorithm());
 	        if (algoCombo.getItems().contains(algo)) algoCombo.setValue(algo);

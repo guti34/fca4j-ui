@@ -36,7 +36,7 @@ public class CommandBuilder {
     private String  datalogFile;
     private boolean noDirectSiblings = false;
 
-    // ── RULEBASIS ────────────────────────────────────────────────────────────
+    // ── DG_BASIS ────────────────────────────────────────────────────────────
     private boolean clarify        = false;
     private String  closureMethod;          // BASIC | WITH_HISTORY
     private boolean sortBySupport  = false; // -b
@@ -45,14 +45,11 @@ public class CommandBuilder {
     public String getOutputFile() { return outputFile; }
     public String getCommand()    { return command; }
     public String getImplFolder() { return implFolder; }
+
     // ── DBASIS ───────────────────────────────────────────────────────────────
     private Integer minimalSupport;         // -x
     private boolean enableNativeCode = false; // -native
-    private String  poolMode;               // MONO | MULTITHREAD (DBASIS uniquement :
-                                             // RULEBASIS n'a plus de mode de parallélisme,
-                                             // l'option -t/FORKJOINPOOL a été supprimée
-                                             // côté moteur, elle dégradait les performances
-                                             // au lieu de les améliorer)
+    private String  poolMode;               // MONO | MULTITHREAD (DBASIS uniquement) 
 
     // ── CLARIFY / REDUCE ─────────────────────────────────────────────────────
     private boolean clarifyObjects    = false; // -xo
@@ -109,7 +106,7 @@ public class CommandBuilder {
     public CommandBuilder datalogFolder(String v)   { this.datalogFolder = v;     return this; }
     public CommandBuilder datalogFile(String v)     { this.datalogFile = v;       return this; }
     public CommandBuilder noDirectSiblings(boolean v){ this.noDirectSiblings = v; return this; }
-    // RULEBASIS
+    // DG_BASIS
     public CommandBuilder clarify(boolean v)        { this.clarify = v;           return this; }
     public CommandBuilder closureMethod(String v)   { this.closureMethod = v;     return this; }
     public CommandBuilder sortBySupport(boolean v)  { this.sortBySupport = v;     return this; }
@@ -169,7 +166,7 @@ public class CommandBuilder {
         if (outputFile != null && !outputFile.isBlank())
             args.add(outputFile);
 
-        // Algorithme (-a pour LATTICE/AOCPOSET/RULEBASIS ; -t pour pool DBASIS uniquement)
+        // Algorithme (-a pour LATTICE/AOCPOSET/DG_BASIS ; -t pour pool DBASIS uniquement)
         if (algorithm != null && !algorithm.isBlank())
             add(args, "-a", algorithm);
 
@@ -210,7 +207,7 @@ public class CommandBuilder {
             add(args, "-cdu", datalogFile);
         if (noDirectSiblings) args.add("-nds");
 
-        // ── Options RULEBASIS ────────────────────────────────────────────────
+        // ── Options DG_BASIS ────────────────────────────────────────────────
         if (clarify) args.add("-clarify");
 
         if (closureMethod != null && !closureMethod.isBlank()
@@ -316,7 +313,7 @@ public class CommandBuilder {
     /** Retourne le format de sortie par défaut selon la commande. */
     private String defaultOutputFormat() {
         return switch (command) {
-            case "RULEBASIS", "DBASIS" -> "TXT";
+            case "DG_BASIS", "DBASIS" -> "TXT";
             default                    -> "XML";
         };
     }
