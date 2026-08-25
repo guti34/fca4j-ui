@@ -218,6 +218,15 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Déplacer le tag continuous-ui sur le dernier commit
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          git tag -f continuous-ui
+          git push origin continuous-ui --force
+
       - name: Download all installers
         uses: actions/download-artifact@v4
         with:
