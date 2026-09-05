@@ -17,6 +17,7 @@ import org.kordamp.ikonli.material2.Material2MZ;
 
 import fr.lirmm.fca4j.core.IBinaryContext;
 import fr.lirmm.fca4j.core.RCAFamily;
+import fr.lirmm.fca4j.ui.MainApp;
 import fr.lirmm.fca4j.ui.model.CommandBuilder;
 import fr.lirmm.fca4j.ui.model.CommandDescriptor;
 import fr.lirmm.fca4j.ui.service.Fca4jRunner;
@@ -1275,6 +1276,11 @@ public class MainController implements Initializable {
 	@FXML
 	private void onOpenWebsite() {
 		browserLauncher.openUrlWithFallback("https://www.lirmm.fr/fca4j/");
+	}
+
+	@FXML
+	private void onOpenForum() {
+		browserLauncher.openUrlWithFallback(MainApp.APP_FORUM);
 	}
 
 	private static String toPageName(String command) {

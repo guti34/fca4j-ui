@@ -25,6 +25,7 @@ public class MainApp extends Application {
     public static final String APP_VERSION;
     public static final String APP_URL;
     public static final String APP_SCM;
+    public static final String APP_FORUM;
     public static final String APP_ORG_NAME;
     public static final String APP_ORG_URL;
     public static final String APP_INCEPTION;
@@ -40,6 +41,7 @@ public class MainApp extends Application {
         APP_VERSION   = props.getProperty("app.version",    "0.1.0");
         APP_URL       = props.getProperty("app.url",        "");
         APP_SCM       = props.getProperty("app.scm",        "");
+        APP_FORUM     = props.getProperty("app.forum",      "");
         APP_ORG_NAME  = props.getProperty("app.org.name",   "LIRMM");
         APP_ORG_URL   = props.getProperty("app.org.url",    "");
         APP_INCEPTION = props.getProperty("app.inception",  "2026");

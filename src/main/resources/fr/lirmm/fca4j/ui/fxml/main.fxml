@@ -38,6 +38,7 @@
 					<Menu text="%menu.help">
 					    <MenuItem text="%menu.help.command"   onAction="#onCommandHelp"/>
 					    <MenuItem text="%menu.help.website"   onAction="#onOpenWebsite"/>   <!-- AJOUT -->
+					    <MenuItem text="%menu.help.forum"     onAction="#onOpenForum"/>
 					    <SeparatorMenuItem/>
 					    <MenuItem text="%menu.help.shortcuts" onAction="#onShowShortcuts"/>
 					    <SeparatorMenuItem/>

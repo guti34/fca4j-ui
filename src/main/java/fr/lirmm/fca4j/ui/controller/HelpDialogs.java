@@ -77,6 +77,11 @@ public class HelpDialogs {
         // Source
         nodes.add(text(I18n.get("about.source") + " : ", false));
         nodes.add(hyperlink(MainApp.APP_SCM));
+        nodes.add(text("\n", false));
+
+        // Forum
+        nodes.add(text(I18n.get("about.forum") + " : ", false));
+        nodes.add(hyperlink(MainApp.APP_FORUM));
 
         content.getChildren().addAll(nodes);
 
