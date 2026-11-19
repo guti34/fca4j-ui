@@ -65,7 +65,7 @@
                 <Button fx:id="dotBrowseButton" text="%button.browse" onAction="#onBrowseDot"/>
             </HBox>
             <HBox spacing="8" alignment="CENTER_LEFT">
-                <Label text="%label.display.mode"/>
+                <CheckBox fx:id="displayCheckBox" text="%label.display.mode"/>
                 <ComboBox fx:id="displayModeCombo" prefWidth="130"/>
             </HBox>
             <CheckBox fx:id="stabilityCheckBox" text="%checkbox.stability"/>

@@ -69,6 +69,8 @@ public class LatticeAocController extends AbstractCommandController implements I
 	@FXML
 	private Button dotBrowseButton;
 	@FXML
+	private CheckBox displayCheckBox;
+	@FXML
 	private ComboBox<String> displayModeCombo;
 	@FXML
 	private CheckBox stabilityCheckBox;
@@ -119,13 +121,18 @@ public class LatticeAocController extends AbstractCommandController implements I
 		// Contrôles DOT désactivés jusqu'à ce que la case soit cochée
 		dotFileField.setDisable(true);
 		dotBrowseButton.setDisable(true);
+		displayCheckBox.setDisable(true);
 		displayModeCombo.setDisable(true);
 		stabilityCheckBox.setDisable(true);
+		// "Display" par défaut activé : préserve le comportement historique
+		// (affichage systématique) tant que l'utilisateur ne le décoche pas.
+		displayCheckBox.setSelected(true);
 		dotCheckBox.selectedProperty().addListener((obs, old, val) -> {
 			dotFileField.setDisable(!val);
 			dotBrowseButton.setDisable(!val);
-			displayModeCombo.setDisable(!val);
+			displayCheckBox.setDisable(!val);
 			stabilityCheckBox.setDisable(!val);
+			updateDisplayModeState();
 			if (val && dotFileField.getText().isBlank()) {
 				// Proposer un nom basé sur le fichier d'entrée
 				String input = inputFileField.getText().trim();
@@ -138,6 +145,11 @@ public class LatticeAocController extends AbstractCommandController implements I
 				}
 			}
 		});
+		// "Display" (case décochable) : n'active le combo "Mode" que si la
+		// production du .dot ET l'affichage sont tous deux activés. Permet de
+		// produire le .dot (dot échoue parfois à afficher des structures trop
+		// grosses) sans tenter systématiquement de l'ouvrir.
+		displayCheckBox.selectedProperty().addListener((obs, old, val) -> updateDisplayModeState());
 		// Proposer le .dot automatiquement quand le fichier d'entrée change
 		inputFileField.textProperty().addListener((obs, old, val) -> {
 			if (dotCheckBox.isSelected() && !val.isBlank()) {
@@ -173,6 +185,20 @@ public class LatticeAocController extends AbstractCommandController implements I
 	/** Active le paramètre iceberg (spinner) seulement pour l'algo ICEBERG. */
 	private void updateIcebergState() {
 		icebergBox.setDisable(!"ICEBERG".equals(algoCombo.getValue()));
+	}
+
+	/** Le combo "Mode" n'est actif que si production ET affichage du .dot sont cochés. */
+	private void updateDisplayModeState() {
+		displayModeCombo.setDisable(!(dotCheckBox.isSelected() && displayCheckBox.isSelected()));
+	}
+
+	/**
+	 * Indique si le graphe doit être affiché automatiquement après production
+	 * du .dot (case "Display" cochée, en plus de la production elle-même).
+	 * Appelé par MainController pour décider s'il tente le rendu GraphViz.
+	 */
+	public boolean isDisplayEnabled() {
+		return dotCheckBox.isSelected() && displayCheckBox.isSelected();
 	}
 
 	/** Active la case "native" seulement pour les couples (commande, algo) portés en C. */
@@ -363,6 +389,7 @@ public class LatticeAocController extends AbstractCommandController implements I
 		AppPreferences.saveString(cmd + ".displayMode", displayModeCombo.getValue());
 		AppPreferences.saveString(cmd + ".impl", implCombo.getValue());
 		AppPreferences.saveBool(cmd + ".dot", dotCheckBox.isSelected());
+		AppPreferences.saveBool(cmd + ".display", displayCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".stability", stabilityCheckBox.isSelected());
 		AppPreferences.saveBool(cmd + ".verbose", verboseCheckBox.isSelected());
         AppPreferences.saveInt(cmd + ".timeout", timeoutField.getSeconds());
@@ -397,6 +424,10 @@ public class LatticeAocController extends AbstractCommandController implements I
 			implCombo.setValue(impl);
 
 		dotCheckBox.setSelected(AppPreferences.loadBool(cmd + ".dot", false));
+		// Défaut "true" : préserve le comportement historique (affichage
+		// systématique) pour les préférences existantes qui n'ont pas cette clé.
+		displayCheckBox.setSelected(AppPreferences.loadBool(cmd + ".display", true));
+		updateDisplayModeState();
 		stabilityCheckBox.setSelected(AppPreferences.loadBool(cmd + ".stability", false));
 		verboseCheckBox.setSelected(AppPreferences.loadBool(cmd + ".verbose", false));
 		timeoutField.setSeconds(AppPreferences.loadInt(cmd + ".timeout", 0));

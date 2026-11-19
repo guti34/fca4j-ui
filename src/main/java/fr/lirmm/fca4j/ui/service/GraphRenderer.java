@@ -60,6 +60,16 @@ public class GraphRenderer {
 		return currentDotFile;
 	}
 
+	/**
+	 * Associe un fichier .dot courant sans lancer de rendu GraphViz (cas où
+	 * l'utilisateur a décoché "Display" : le fichier est produit mais son
+	 * affichage automatique est sauté). Permet aux actions manuelles
+	 * (Save DOT, Export SVG/PNG/PDF) de rester disponibles.
+	 */
+	public void setCurrentDotFile(Path dotFile) {
+		this.currentDotFile = dotFile;
+	}
+
 	public void setOnNodeClick(Consumer<String> handler) {
 		this.onNodeClick = handler;
 	}

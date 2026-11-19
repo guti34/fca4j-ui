@@ -1043,6 +1043,17 @@ public class MainController implements Initializable {
 			return;
 		}
 		graphExporter.setDotFileLabel(dotFile.getFileName().toString());
+
+		// Case "Display" décochée (LATTICE/AOCPOSET) : le .dot est produit mais
+		// son ouverture automatique est sautée — utile quand dot échoue sur des
+		// structures trop grosses. Save DOT / Export restent disponibles.
+		if (currentCommandController instanceof LatticeAocController c && !c.isDisplayEnabled()) {
+			renderer.setCurrentDotFile(dotFile);
+			graphExporter.enableButtons();
+			appendConsole(I18n.get("console.graphviz.generated", dotFile));
+			return;
+		}
+
 		appendConsole(I18n.get("console.graphviz.render", dotFile));
 		renderer.render(dotFile).thenRun(() -> Platform.runLater(() -> {
 			hideOverlay();
